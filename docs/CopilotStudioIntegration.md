@@ -7,7 +7,7 @@ This document describes how to connect **Copilot Studio** to the HR Policy Knowl
 | Requirement | Details |
 |---|---|
 | Copilot Studio license | Power Virtual Agents / Copilot Studio |
-| Power Platform environment | `9cb938ce-b109-e86f-99ee-7bad48b89f09` |
+| Power Platform environment | `` |
 | Azure AI Search index | `hr-policy-index` (deployed via this project) |
 | Azure AI Search API key | Reader access (query key) |
 
