@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-azure-50: #eff6ff;
+  --color-azure-100: #dbeafe;
+  --color-azure-200: #bfdbfe;
+  --color-azure-500: #3b82f6;
+  --color-azure-600: #2563eb;
+  --color-azure-700: #1d4ed8;
+  --color-copilot-50: #f0fdf4;
+  --color-copilot-100: #dcfce7;
+  --color-copilot-500: #22c55e;
+  --color-copilot-600: #16a34a;
+  --color-copilot-700: #15803d;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}

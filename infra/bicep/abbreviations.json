@@ -1,0 +1,14 @@
+{
+  "cognitiveServicesAccounts": "cog-",
+  "cognitiveServicesProjects": "proj-",
+  "cognitiveServicesFormRecognizer": "frm-",
+  "searchSearchServices": "srch-",
+  "storageStorageAccounts": "st",
+  "managedIdentityUserAssignedIdentities": "id-",
+  "keyVaultVaults": "kv-",
+  "webSitesFunctions": "func-",
+  "webSitesAppService": "app-",
+  "webServerFarms": "plan-",
+  "operationalInsightsWorkspaces": "log-",
+  "insightsComponents": "appi-"
+}

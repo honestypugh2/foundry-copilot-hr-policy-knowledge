@@ -1,0 +1,13 @@
+# ============================================================================
+# HR Policy Knowledge Agent - Demo Infrastructure (Terraform)
+# Example variable values — copy to terraform.tfvars and fill in
+# ============================================================================
+
+subscription_id       = ""
+environment_name      = "demo"
+location              = "eastus2"
+resource_prefix       = "hr-policy-kb"
+openai_deployment_name    = "gpt-4o"
+embedding_deployment_name = "text-embedding-3-small"
+search_sku            = "basic"
+principal_id          = ""

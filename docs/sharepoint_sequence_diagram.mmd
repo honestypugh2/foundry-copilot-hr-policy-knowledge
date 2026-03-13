@@ -1,0 +1,43 @@
+sequenceDiagram
+    participant SP as SharePoint Online<br/>(HR Policy Library)
+    participant LA as Azure Logic Apps
+    participant DI as Azure AI<br/>Document Intelligence
+    participant OAI as Azure OpenAI<br/>(Embeddings)
+    participant AIS as Azure AI Search<br/>(hr-policy-index)
+    participant CS as Copilot Studio Agent
+    actor Employee as Employee
+
+    Note over SP,LA: Step 1 — Trigger from SharePoint
+    SP->>LA: (1) File created/modified event fires trigger
+    LA->>SP: (2) Get file content (.docx/.pdf)
+    SP-->>LA: (3) Return file binary content
+
+    Note over LA,DI: Step 2 — Document Intelligence Processing
+    LA->>DI: (4) Analyze Document (prebuilt-layout model)
+    DI-->>LA: (5) Return analyzeResult JSON<br/>(text, paragraphs, tables, key-value pairs)
+
+    Note over LA: Step 3 — Prepare Search Documents
+    LA->>LA: (6) Chunk content (paragraph/page/sliding window)
+    LA->>LA: (7) Enrich with metadata<br/>(policy_number, category, source, ACL hints)
+
+    Note over LA,AIS: Step 4 — Index into Azure AI Search
+
+    alt Option A: Push API with Pre-computed Embeddings
+        LA->>OAI: (8a) Generate embeddings for each chunk
+        OAI-->>LA: (9a) Return content_vector (1536-dim)
+        LA->>AIS: (10a) POST /indexes/hr-policy-index/docs/index<br/>(mergeOrUpload chunks + vectors)
+        AIS-->>LA: (11a) Index response (success)
+    else Option B: Integrated Vectorization
+        LA->>AIS: (8b) Upload extracted text to Blob Storage
+        AIS->>AIS: (9b) Indexer runs: text split skill + embedding skill
+        Note over AIS: Auto-chunking & vectorization
+    end
+
+    Note over AIS,Employee: Step 5 — Copilot Studio Consumes Index
+    Employee->>CS: (12) Ask HR policy question
+    CS->>OAI: (13) Convert query to vector embedding
+    OAI-->>CS: (14) Return query vector
+    CS->>AIS: (15) Hybrid retrieval<br/>(vector similarity + BM25 keyword search)
+    AIS-->>CS: (16) Return ranked document chunks<br/>(semantic ranker re-ranks top results)
+    CS->>CS: (17) Generate grounded answer with citations
+    CS-->>Employee: (18) Display answer with policy references
