@@ -6,23 +6,15 @@ echo "=========================================="
 echo " HR Policy Knowledge Agent - Setup"
 echo "=========================================="
 
-# Check Python version
-python_version=$(python3 --version 2>&1 | grep -oP '\d+\.\d+')
-echo "Python version: $python_version"
-
-# Create virtual environment
-if [ ! -d ".venv" ]; then
-    echo "Creating virtual environment..."
-    python3 -m venv .venv
+# Check for uv
+if ! command -v uv &> /dev/null; then
+    echo "⚠ uv not found. Installing uv..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 
-echo "Activating virtual environment..."
-source .venv/bin/activate
-
-# Install Python dependencies
-echo "Installing Python dependencies..."
-pip install --upgrade pip
-pip install -e ".[dev]"
+# Create virtual environment and install dependencies
+echo "Setting up Python environment and installing dependencies..."
+uv sync
 
 # Check for .env file
 if [ ! -f ".env" ]; then
@@ -52,9 +44,9 @@ echo ""
 echo "Next steps:"
 echo "  1. Edit .env with your Azure credentials"
 echo "  2. Index the knowledge base:"
-echo "     python -m scripts.index_knowledge_base"
+echo "     uv run python -m scripts.index_knowledge_base"
 echo "  3. Start the backend:"
-echo "     python -m src.backend.main"
+echo "     uv run python -m src.backend.main"
 echo "  4. Start the frontend (in another terminal):"
 echo "     cd src/frontend && npm run dev"
 echo ""
