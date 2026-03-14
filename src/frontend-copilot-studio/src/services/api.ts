@@ -28,7 +28,7 @@ export async function sendCopilotStudioMessage(question: string): Promise<{
   conversation_id: string;
   processing_time_ms: number;
 }> {
-  const { data } = await api.post("/copilot-studio/chat", { question });
+  const { data } = await api.post("/copilot-studio/chat", { message: question });
   return data;
 }
 

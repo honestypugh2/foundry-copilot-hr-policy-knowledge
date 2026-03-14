@@ -168,7 +168,7 @@ async def chat(request: ChatRequest):
     conversation = [m.model_dump() for m in request.conversation_history] if request.conversation_history else []
 
     result = await orchestrator.answer_question_async(
-        question=request.question,
+        question=request.message,
         conversation_history=conversation,
     )
 
@@ -332,7 +332,7 @@ async def copilot_studio_chat(request: ChatRequest):
     result = await copilot_studio.send_message(
         conversation_id=conversation_id,
         token=token,
-        message=request.question,
+        message=request.message,
     )
 
     elapsed_ms = int((time.time() - start) * 1000)
