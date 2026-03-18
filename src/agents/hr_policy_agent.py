@@ -5,11 +5,13 @@ RAG-based agent that answers employee questions using Azure AI Search
 to retrieve relevant HR policy documents and Azure OpenAI for generation.
 
 Uses Azure AI Foundry Agent Framework (agent_framework) with
-AzureAIProjectAgentProvider for grounded, citation-backed responses.
+AzureAIClient for grounded, citation-backed responses.
+
+The agent is created once at startup via initialize() and persists
+in the Azure AI Foundry portal for visibility and management.
 """
 
 import asyncio
-import json
 import logging
 import os
 import re
@@ -19,13 +21,13 @@ logger = logging.getLogger(__name__)
 
 # Agent Framework imports
 try:
-    from agent_framework.azure import AzureAIProjectAgentProvider
-    from azure.identity.aio import AzureCliCredential
+    from agent_framework.azure import AzureAIClient
+    from azure.identity.aio import DefaultAzureCredential
     AGENT_FRAMEWORK_AVAILABLE = True
 except ImportError:
     AGENT_FRAMEWORK_AVAILABLE = False
-    AzureAIProjectAgentProvider = None
-    AzureCliCredential = None
+    AzureAIClient = None
+    DefaultAzureCredential = None
     logger.warning("agent-framework not installed, agent mode unavailable")
 
 from src.search.search_service import HRPolicySearchService, expand_query_with_glossary
@@ -55,9 +57,12 @@ class HRPolicyAgent:
     """
     HR Policy Agent that uses RAG to answer employee HR questions.
 
+    The agent is created once via initialize() and persists in the
+    Azure AI Foundry portal for visibility and management.
+
     Modes:
-    1. Azure AI Agent (with AzureAIProjectAgentProvider + AI Search tool)
-    2. Local search + LLM fallback
+    1. Azure AI Agent (with AzureAIClient + AI Search tool) — persistent
+    2. Local search fallback (no LLM)
     """
 
     def __init__(
@@ -69,13 +74,89 @@ class HRPolicyAgent:
         search_connection_id: Optional[str] = None,
     ):
         self.use_agent = use_agent and AGENT_FRAMEWORK_AVAILABLE
-        self.project_endpoint = project_endpoint or os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT") or os.getenv("AZURE_AI_PROJECT_ENDPOINT", "")
+        # Prefer AZURE_AI_PROJECT_ENDPOINT (Foundry project format: services.ai.azure.com)
+        # over AZURE_AI_FOUNDRY_PROJECT_ENDPOINT which may be an OpenAI endpoint
+        self.project_endpoint = project_endpoint or os.getenv("AZURE_AI_PROJECT_ENDPOINT") or os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT", "")
         self.model_deployment_name = model_deployment_name or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
         self.search_index_name = search_index_name or os.getenv("AZURE_SEARCH_INDEX_NAME", "hr-policy-index")
         self.search_connection_id = search_connection_id or os.getenv("AI_SEARCH_PROJECT_CONNECTION_ID", "")
 
+        # Foundry agent state (populated by initialize())
+        self._credential: Any = None
+        self._agent: Any = None
+        self._agent_cm: Any = None
+        self._initialized = False
+
         # Local search service for fallback
         self.search_service = HRPolicySearchService()
+
+    async def initialize(self) -> None:
+        """
+        Create the Foundry agent once. Call at application startup.
+
+        The agent persists in the Azure AI Foundry portal and is reused
+        across all subsequent requests.
+        """
+        if self._initialized:
+            return
+        if not self.use_agent or not self.project_endpoint:
+            logger.info("Agent mode disabled or no project endpoint; skipping Foundry agent creation")
+            return
+        if not AGENT_FRAMEWORK_AVAILABLE or AzureAIClient is None or DefaultAzureCredential is None:
+            logger.warning("Agent framework not available; skipping Foundry agent creation")
+            return
+
+        try:
+            self._credential = DefaultAzureCredential()
+
+            tools: list[Any] = [self.format_hr_query_context]
+            if self.search_connection_id:
+                tools.append(self._build_azure_ai_search_tool())
+
+            self._agent_cm = AzureAIClient(
+                project_endpoint=self.project_endpoint,
+                model_deployment_name=self.model_deployment_name,
+                credential=self._credential,
+            ).as_agent(
+                name="HRPolicyAgent",
+                instructions=AGENT_INSTRUCTIONS,
+                description="HR Policy Assistant - answers employee questions from internal HR documents",
+                tools=tools,
+            )
+            self._agent = await self._agent_cm.__aenter__()
+            self._initialized = True
+            logger.info("HRPolicyAgent created and persisted in Foundry portal")
+        except Exception as e:
+            logger.error(f"Failed to create Foundry agent: {e}")
+            self._agent = None
+            self._initialized = False
+
+    async def close(self) -> None:
+        """Release local resources on shutdown. The agent remains in the Foundry portal.
+
+        NOTE: We intentionally do NOT call __aexit__ on the agent context
+        manager — that would delete the agent from Foundry. We only close
+        the credential and underlying HTTP sessions to avoid resource leaks.
+        """
+        # Close the agent's internal HTTP client if accessible
+        if self._agent:
+            for attr in ("_client", "client"):
+                client = getattr(self._agent, attr, None)
+                if client and hasattr(client, "close"):
+                    try:
+                        await client.close()
+                    except Exception:
+                        pass
+                    break
+        if self._credential:
+            try:
+                await self._credential.close()
+            except Exception:
+                pass
+            self._credential = None
+        self._agent = None
+        self._agent_cm = None
+        self._initialized = False
 
     def _build_azure_ai_search_tool(self) -> dict:
         """Build the Azure AI Search tool configuration for the agent."""
@@ -123,51 +204,29 @@ class HRPolicyAgent:
         question: str,
         conversation_history: Optional[list[dict[str, str]]] = None,
     ) -> dict[str, Any]:
-        """Answer using Azure AI Agent Framework with AI Search RAG."""
-        if not AGENT_FRAMEWORK_AVAILABLE or AzureAIProjectAgentProvider is None or AzureCliCredential is None:
-            logger.warning("Agent framework not available, falling back to local")
+        """Answer using the persisted Foundry agent with AI Search RAG."""
+        # Lazy-initialize if not done at startup
+        if not self._initialized:
+            await self.initialize()
+
+        if not self._agent:
+            logger.warning("Foundry agent not available, falling back to local")
             return await self._local_answer(question)
 
         response_text = ""
         try:
-            # Create fresh credentials (avoid pickle issues in workflow framework)
-            async with (
-                AzureCliCredential() as credential,
-                AzureAIProjectAgentProvider(credential=credential) as provider,
-            ):
-                # Build tools list
-                tools = [self.format_hr_query_context]
-                tool_resources = {}
+            prompt = self._build_prompt(question, conversation_history)
 
-                # Add Azure AI Search tool if connection is configured
-                if self.search_connection_id:
-                    tools.append(self._build_azure_ai_search_tool())
-
-                agent = await provider.create_agent(
-                    name="HRPolicyAgent",
-                    instructions=AGENT_INSTRUCTIONS,
-                    description="HR Policy Assistant - answers employee questions from internal HR documents",
-                    model=self.model_deployment_name,
-                    tools=tools,
-                    tool_resources=tool_resources,
-                )
-
-                # Build prompt with conversation context
-                prompt = self._build_prompt(question, conversation_history)
-
-                # Stream agent response
-                async for chunk in agent.run_stream(prompt):
-                    if chunk.text:
-                        response_text += str(chunk.text)
-
-                # Clean up agent
-                await provider.delete_agent(agent.id)
+            stream = self._agent.run(prompt, stream=True)
+            async for chunk in stream:
+                if chunk.text:
+                    response_text += str(chunk.text)
+            await stream.get_final_response()
 
             return self._parse_agent_response(response_text, question)
 
         except Exception as e:
             logger.error(f"Agent answer failed: {e}")
-            # Fall back to local search
             return await self._local_answer(question)
 
     async def _local_answer(self, question: str) -> dict[str, Any]:
@@ -260,10 +319,12 @@ class HRPolicyAgent:
     def answer_question(self, question: str, conversation_history: Optional[list[dict[str, str]]] = None) -> dict[str, Any]:
         """Synchronous wrapper for answer_question_async."""
         try:
-            asyncio.get_running_loop()
+            loop = asyncio.get_running_loop()
         except RuntimeError:
             return asyncio.run(self.answer_question_async(question, conversation_history))
         else:
-            import nest_asyncio
-            nest_asyncio.apply()
-            return asyncio.run(self.answer_question_async(question, conversation_history))
+            future = asyncio.ensure_future(
+                self.answer_question_async(question, conversation_history),
+                loop=loop,
+            )
+            return loop.run_until_complete(future)

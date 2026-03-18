@@ -10,36 +10,40 @@ Uses Agent Framework's Sequential Workflow pattern to coordinate:
 Reference: https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/orchestrations/sequential
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from agent_framework import Executor, WorkflowContext, handler
+
 # Agent Framework imports
+WORKFLOW_AVAILABLE = False
 try:
     from agent_framework import (
         Executor,
-        WorkflowBuilder,
         WorkflowContext,
-        WorkflowOutputEvent,
-        WorkflowStatusEvent,
-        ExecutorFailedEvent,
-        WorkflowFailedEvent,
+        WorkflowEvent,
+        WorkflowRunResult,
         WorkflowRunState,
         handler,
     )
-    from typing_extensions import Never
     WORKFLOW_AVAILABLE = True
 except ImportError:
-    WORKFLOW_AVAILABLE = False
     logger.warning("agent-framework not installed, sequential workflows unavailable")
-    # Provide stub classes so the module can still be imported
+
+if not TYPE_CHECKING and not WORKFLOW_AVAILABLE:
     class Executor:  # type: ignore[no-redef]
-        def __init__(self, *args, **kwargs): pass
-    def handler(f): return f  # type: ignore[no-redef]
+        def __init__(self, *args: Any, **kwargs: Any) -> None: pass
+
+    def handler(f: Any) -> Any:  # type: ignore[no-redef]
+        return f
 
 from src.search.search_service import HRPolicySearchService, expand_query_with_glossary, HR_GLOSSARY
 
@@ -67,7 +71,7 @@ class QueryUnderstandingExecutor(Executor):
         super().__init__(id="query_understanding")
 
     @handler
-    async def process(self, state: WorkflowState, ctx: WorkflowContext[WorkflowState]) -> None:
+    async def process(self, state: WorkflowState, ctx: WorkflowContext[dict]) -> None:
         logger.info("Step 1: Query Understanding")
 
         original_query = state.get("query", "")
@@ -114,7 +118,7 @@ class PolicyRetrievalExecutor(Executor):
         return self._search_service
 
     @handler
-    async def process(self, state: WorkflowState, ctx: WorkflowContext[WorkflowState]) -> None:
+    async def process(self, state: WorkflowState, ctx: WorkflowContext[dict]) -> None:
         logger.info("Step 2: Policy Retrieval")
 
         query = state.get("expanded_query", state.get("query", ""))
@@ -156,8 +160,11 @@ class AnswerGenerationExecutor(Executor):
         return self._agent
 
     @handler
-    async def process(self, state: WorkflowState, ctx: WorkflowContext[WorkflowState]) -> None:
+    async def process(self, state: WorkflowState, ctx: WorkflowContext[dict]) -> None:
         logger.info("Step 3: Answer Generation")
+
+        # Ensure the Foundry agent is initialized (idempotent)
+        await self.agent.initialize()
 
         question = state.get("original_query", state.get("query", ""))
         conversation_history = state.get("conversation_history", [])
@@ -231,12 +238,30 @@ class HRPolicyWorkflowOrchestrator:
 
     def __init__(self, use_azure: bool = True):
         self.use_azure = use_azure
-        self.project_endpoint = os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT") or os.getenv("AZURE_AI_PROJECT_ENDPOINT", "")
+        self.project_endpoint = os.getenv("AZURE_AI_PROJECT_ENDPOINT") or os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT", "")
+        self._hr_agent = None  # cached HRPolicyAgent for fallback path
+
+    async def initialize(self) -> None:
+        """Pre-create the Foundry agent so it persists in the portal."""
+        from src.agents.hr_policy_agent import HRPolicyAgent
+        self._hr_agent = HRPolicyAgent(
+            use_agent=bool(self.project_endpoint) and self.use_azure,
+            project_endpoint=self.project_endpoint,
+        )
+        await self._hr_agent.initialize()
+
+    async def close(self) -> None:
+        """Release local resources; the Foundry agent remains in the portal."""
+        if self._hr_agent:
+            await self._hr_agent.close()
+            self._hr_agent = None
 
     def _build_workflow(self) -> Any:
         """Build the sequential workflow with all executors."""
         if not WORKFLOW_AVAILABLE:
             raise RuntimeError("agent-framework package not installed. Cannot build workflow.")
+
+        from agent_framework import WorkflowBuilder
 
         query_executor = QueryUnderstandingExecutor()
         retrieval_executor = PolicyRetrievalExecutor()
@@ -245,8 +270,10 @@ class HRPolicyWorkflowOrchestrator:
         )
 
         workflow = (
-            WorkflowBuilder()
-            .set_start_executor(query_executor)
+            WorkflowBuilder(
+                start_executor=query_executor,
+                output_executors=[answer_executor],
+            )
             .add_edge(query_executor, retrieval_executor)
             .add_edge(retrieval_executor, answer_executor)
             .build()
@@ -280,21 +307,14 @@ class HRPolicyWorkflowOrchestrator:
         }
 
         try:
+            from agent_framework import WorkflowRunResult
+
             workflow = self._build_workflow()
-            output_event = None
+            run_result: WorkflowRunResult = await workflow.run(question)  # type: ignore[misc]
 
-            async for event in workflow.run_stream(question):
-                if isinstance(event, WorkflowStatusEvent):
-                    if event.state == WorkflowRunState.IN_PROGRESS:
-                        logger.debug("Workflow in progress...")
-                elif isinstance(event, WorkflowOutputEvent):
-                    output_event = event
-                elif isinstance(event, (ExecutorFailedEvent, WorkflowFailedEvent)):
-                    logger.error(f"Workflow failed: {event}")
-                    break
-
-            if output_event and output_event.data:
-                result = output_event.data
+            outputs = run_result.get_outputs()
+            if outputs:
+                result = outputs[-1]
             else:
                 result = await self._fallback_answer(question, conversation_history)
 
@@ -312,13 +332,14 @@ class HRPolicyWorkflowOrchestrator:
         conversation_history: Optional[list[dict[str, str]]] = None,
     ) -> dict[str, Any]:
         """Fallback: run steps manually without workflow framework."""
-        from src.agents.hr_policy_agent import HRPolicyAgent
-
-        agent = HRPolicyAgent(
-            use_agent=bool(self.project_endpoint) and self.use_azure,
-            project_endpoint=self.project_endpoint,
-        )
-        return await agent.answer_question_async(question, conversation_history)
+        if not self._hr_agent:
+            from src.agents.hr_policy_agent import HRPolicyAgent
+            self._hr_agent = HRPolicyAgent(
+                use_agent=bool(self.project_endpoint) and self.use_azure,
+                project_endpoint=self.project_endpoint,
+            )
+            await self._hr_agent.initialize()
+        return await self._hr_agent.answer_question_async(question, conversation_history)
 
     def answer_question(
         self,
@@ -328,10 +349,12 @@ class HRPolicyWorkflowOrchestrator:
         """Synchronous wrapper."""
         import asyncio
         try:
-            asyncio.get_running_loop()
+            loop = asyncio.get_running_loop()
         except RuntimeError:
             return asyncio.run(self.answer_question_async(question, conversation_history))
         else:
-            import nest_asyncio
-            nest_asyncio.apply()
-            return asyncio.run(self.answer_question_async(question, conversation_history))
+            future = asyncio.ensure_future(
+                self.answer_question_async(question, conversation_history),
+                loop=loop,
+            )
+            return loop.run_until_complete(future)

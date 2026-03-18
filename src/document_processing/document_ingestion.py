@@ -88,11 +88,16 @@ class DocumentIngestionAgent:
     def _process_with_azure(self, file_path: str) -> dict[str, Any]:
         """Process document using Azure Document Intelligence."""
         try:
+            if not DOCINT_AVAILABLE:
+                raise ImportError("Azure Document Intelligence dependencies not available")
+            from azure.ai.documentintelligence import DocumentIntelligenceClient as DIClient
+            from azure.identity import AzureCliCredential, ChainedTokenCredential, ManagedIdentityCredential
+            assert self.azure_endpoint is not None
             credential = ChainedTokenCredential(
                 ManagedIdentityCredential(),
                 AzureCliCredential(),
             )
-            client = DocumentIntelligenceClient(
+            client = DIClient(
                 endpoint=self.azure_endpoint,
                 credential=credential,
             )
@@ -131,7 +136,10 @@ class DocumentIngestionAgent:
 
     def _process_docx_locally(self, file_path: str) -> dict[str, Any]:
         """Process a Word document using python-docx."""
-        doc = docx.Document(file_path)
+        if not DOCX_AVAILABLE:
+            raise ImportError("python-docx is required for .docx processing")
+        import docx as _docx
+        doc = _docx.Document(file_path)
         paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
         text = "\n\n".join(paragraphs)
 

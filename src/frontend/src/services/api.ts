@@ -24,18 +24,23 @@ export interface ChatResponse {
 }
 
 export interface KnowledgeBaseInfo {
-  total_indexed: number;
-  local_files_count: number;
-  local_files: string[];
-  index_name: string;
+  total_documents: number;
+  categories: Record<string, number>;
+  documents: Array<{ name: string }>;
+  index_status: string;
+}
+
+export interface ServiceStatus {
+  name: string;
+  status: string;
+  details?: string;
 }
 
 export interface HealthResponse {
   status: string;
-  services: Record<
-    string,
-    { name: string; status: string; details?: string }
-  >;
+  message: string;
+  version: string;
+  services: Record<string, ServiceStatus>;
 }
 
 export interface GlossaryEntry {
@@ -48,7 +53,7 @@ export async function sendMessage(
   conversationHistory: ChatMessage[]
 ): Promise<ChatResponse> {
   const { data } = await api.post<ChatResponse>("/chat", {
-    question,
+    message: question,
     conversation_history: conversationHistory,
   });
   return data;

@@ -5,6 +5,8 @@ Handles search index creation, document indexing, and semantic search queries
 for the HR policy knowledge base.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 from typing import Any, Optional
@@ -98,10 +100,11 @@ def expand_query_with_glossary(query: str) -> str:
     expanded = query
     query_lower = query.lower()
 
+    seen: set[str] = set()
     for vernacular, formal_term in HR_GLOSSARY.items():
-        if vernacular in query_lower and formal_term.lower() not in query_lower:
+        if vernacular in query_lower and formal_term not in seen and formal_term.lower() not in query_lower:
             expanded += f" {formal_term}"
-            break  # Add at most one expansion to avoid over-expansion
+            seen.add(formal_term)
 
     return expanded
 
@@ -141,6 +144,9 @@ class HRPolicySearchService:
 
     def _get_credential(self):
         """Get Azure credential based on configuration."""
+        from azure.core.credentials import AzureKeyCredential
+        from azure.identity import AzureCliCredential, DefaultAzureCredential
+
         if self.search_key and not self.search_key.startswith("your_"):
             return AzureKeyCredential(self.search_key)
         if self.use_managed_identity:
@@ -153,6 +159,9 @@ class HRPolicySearchService:
     def get_search_client(self) -> Optional[SearchClient]:
         """Get or create SearchClient."""
         if self._search_client is None and self.is_configured:
+            from azure.search.documents import SearchClient
+
+            assert self.search_endpoint is not None
             credential = self._get_credential()
             self._search_client = SearchClient(
                 endpoint=self.search_endpoint,
@@ -164,6 +173,9 @@ class HRPolicySearchService:
     def get_index_client(self) -> Optional[SearchIndexClient]:
         """Get or create SearchIndexClient."""
         if self._index_client is None and self.is_configured:
+            from azure.search.documents.indexes import SearchIndexClient
+
+            assert self.search_endpoint is not None
             credential = self._get_credential()
             self._index_client = SearchIndexClient(
                 endpoint=self.search_endpoint,
@@ -174,19 +186,24 @@ class HRPolicySearchService:
     def get_openai_client(self):
         """Get or create Azure OpenAI client for embeddings."""
         if self._openai_client is None and OPENAI_AVAILABLE and self.openai_endpoint:
-            kwargs = {
-                "azure_endpoint": self.openai_endpoint,
-                "api_version": self.openai_api_version,
-            }
+            from openai import AzureOpenAI
+
             if self.openai_key and not self.openai_key.startswith("your_"):
-                kwargs["api_key"] = self.openai_key
+                self._openai_client = AzureOpenAI(
+                    azure_endpoint=self.openai_endpoint,
+                    api_version=self.openai_api_version,
+                    api_key=self.openai_key,
+                )
             else:
                 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
                 token_provider = get_bearer_token_provider(
                     DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
                 )
-                kwargs["azure_ad_token_provider"] = token_provider
-            self._openai_client = AzureOpenAI(**kwargs)
+                self._openai_client = AzureOpenAI(
+                    azure_endpoint=self.openai_endpoint,
+                    api_version=self.openai_api_version,
+                    azure_ad_token_provider=token_provider,
+                )
         return self._openai_client
 
     def generate_embedding(self, text: str) -> list[float] | None:
@@ -226,6 +243,8 @@ class HRPolicySearchService:
             all_terms = vernaculars + [formal]
             rules.append(",".join(all_terms))
 
+        from azure.search.documents.indexes.models import SynonymMap
+
         synonym_map = SynonymMap(
             name="hr-glossary-synonyms",
             synonyms=rules,
@@ -248,6 +267,21 @@ class HRPolicySearchService:
 
         # Ensure synonym map exists before creating index
         self.create_synonym_map()
+
+        from azure.search.documents.indexes.models import (
+            HnswAlgorithmConfiguration,
+            SearchableField,
+            SearchField,
+            SearchFieldDataType,
+            SearchIndex,
+            SemanticConfiguration,
+            SemanticField,
+            SemanticPrioritizedFields,
+            SemanticSearch,
+            SimpleField,
+            VectorSearch,
+            VectorSearchProfile,
+        )
 
         fields = [
             SimpleField(name="id", type=SearchFieldDataType.String, key=True, filterable=True),
@@ -332,6 +366,8 @@ class HRPolicySearchService:
             return []
 
         try:
+            from azure.search.documents.models import QueryType, VectorizedQuery
+
             search_kwargs: dict[str, Any] = {
                 "search_text": expanded_query,
                 "top": top,

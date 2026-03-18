@@ -44,13 +44,13 @@ export default function KnowledgeBasePage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           label="Indexed Documents"
-          value={info?.total_indexed ?? "—"}
+          value={info?.total_documents ?? "—"}
         />
         <StatCard
           label="Local Files"
-          value={info?.local_files_count ?? "—"}
+          value={info?.documents?.length ?? "—"}
         />
-        <StatCard label="Index Name" value={info?.index_name ?? "—"} />
+        <StatCard label="Index Status" value={info?.index_status ?? "—"} />
       </div>
 
       {/* Re-index */}
@@ -74,18 +74,18 @@ export default function KnowledgeBasePage() {
       </div>
 
       {/* File list */}
-      {info?.local_files && info.local_files.length > 0 && (
+      {info?.documents && info.documents.length > 0 && (
         <div className="bg-white border rounded-lg p-5">
           <h3 className="font-semibold text-gray-700 mb-3">
-            Documents ({info.local_files.length})
+            Documents ({info.documents.length})
           </h3>
           <ul className="space-y-1 max-h-64 overflow-y-auto">
-            {info.local_files.map((f) => (
+            {info.documents.map((doc) => (
               <li
-                key={f}
+                key={doc.name}
                 className="text-sm text-gray-600 py-1 border-b last:border-0"
               >
-                📄 {f}
+                📄 {doc.name}
               </li>
             ))}
           </ul>

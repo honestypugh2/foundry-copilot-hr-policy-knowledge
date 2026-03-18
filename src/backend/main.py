@@ -24,7 +24,6 @@ from src.models.schemas import (
     ChatMessage,
     ChatRequest,
     ChatResponse,
-    AzureServiceStatus,
     HealthResponse,
     KnowledgeBaseInfo,
 )
@@ -56,6 +55,13 @@ async def lifespan(app: FastAPI):
     use_azure = os.getenv("USE_AZURE_SERVICES", "true").lower() == "true"
     orchestrator = HRPolicyWorkflowOrchestrator(use_azure=use_azure)
 
+    # Create and persist the Foundry agent at startup
+    try:
+        await orchestrator.initialize()
+        logger.info("HR Policy Agent initialised and persisted in Foundry portal")
+    except Exception as e:
+        logger.warning(f"Foundry agent initialisation failed (will retry on first request): {e}")
+
     try:
         search_service = HRPolicySearchService()
         logger.info("Azure AI Search service initialised")
@@ -79,7 +85,9 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # cleanup
+    # cleanup — agent remains in Foundry portal
+    if orchestrator:
+        await orchestrator.close()
     orchestrator = None
     search_service = None
     ingestion_agent = None
@@ -111,46 +119,55 @@ app.add_middleware(
 @app.get("/api/health", response_model=HealthResponse)
 async def health():
     """Health check for all Azure services."""
-    services: dict[str, AzureServiceStatus] = {}
+    from src.models.schemas import ServiceStatus
 
-    # AI Search
+    ai_search_ok = False
     try:
         if search_service:
-            count = search_service.get_document_count()
-            services["ai_search"] = AzureServiceStatus(
-                name="Azure AI Search",
-                status="healthy",
-                details=f"{count} documents indexed",
-            )
-        else:
-            services["ai_search"] = AzureServiceStatus(
-                name="Azure AI Search", status="unavailable"
-            )
-    except Exception as e:
-        services["ai_search"] = AzureServiceStatus(
-            name="Azure AI Search", status="error", details=str(e)
-        )
+            search_service.get_document_count()
+            ai_search_ok = True
+    except Exception:
+        pass
 
-    # Document Intelligence
-    di_endpoint = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
-    services["document_intelligence"] = AzureServiceStatus(
-        name="Azure Document Intelligence",
-        status="configured" if di_endpoint else "not_configured",
+    azure_openai_ok = bool(os.getenv("AZURE_OPENAI_ENDPOINT"))
+    di_ok = bool(os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT"))
+    ai_foundry_ok = bool(
+        os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT")
+        or os.getenv("AZURE_AI_PROJECT_ENDPOINT")
     )
 
-    # Agent Framework
-    try:
-        from agent_framework import WorkflowBuilder  # noqa: F401
-        af_status = "available"
-    except ImportError:
-        af_status = "not_installed"
-    services["agent_framework"] = AzureServiceStatus(
-        name="Agent Framework", status=af_status
+    services = {
+        "ai_search": ServiceStatus(
+            name="Azure AI Search",
+            status="healthy" if ai_search_ok else "unavailable",
+            details="Connected" if ai_search_ok else "Not connected",
+        ),
+        "azure_openai": ServiceStatus(
+            name="Azure OpenAI",
+            status="configured" if azure_openai_ok else "unavailable",
+            details="Endpoint configured" if azure_openai_ok else "No endpoint set",
+        ),
+        "document_intelligence": ServiceStatus(
+            name="Azure Document Intelligence",
+            status="configured" if di_ok else "unavailable",
+            details="Endpoint configured" if di_ok else "No endpoint set",
+        ),
+        "ai_foundry": ServiceStatus(
+            name="Azure AI Foundry",
+            status="available" if ai_foundry_ok else "unavailable",
+            details="Project endpoint configured" if ai_foundry_ok else "No project endpoint",
+        ),
+    }
+
+    all_ok = ai_search_ok and azure_openai_ok
+    status = "healthy" if all_ok else "degraded"
+
+    return HealthResponse(
+        status=status,
+        message="All services operational" if all_ok else "Some services unavailable",
+        version=app.version,
+        services=services,
     )
-
-    overall = "healthy" if all(s.status in ("healthy", "configured", "available") for s in services.values()) else "degraded"
-
-    return HealthResponse(status=overall, services=services)
 
 
 # ========================================================================== #
@@ -208,10 +225,9 @@ async def knowledge_base_info():
         ]
 
     return KnowledgeBaseInfo(
-        total_indexed=doc_count,
-        local_files_count=len(local_files),
-        local_files=local_files[:50],
-        index_name=os.getenv("AZURE_AI_SEARCH_INDEX_NAME", "hr-policy-index"),
+        total_documents=doc_count,
+        documents=[{"name": f} for f in local_files[:50]],
+        index_status="connected" if search_service else "disconnected",
     )
 
 
@@ -324,14 +340,13 @@ async def copilot_studio_chat(request: ChatRequest):
     start = time.time()
 
     # Start conversation and send message
-    token_data = await copilot_studio.get_directline_token()
-    token = token_data["token"]
-    conv = await copilot_studio.start_conversation(token)
+    conv = await copilot_studio.start_conversation()
     conversation_id = conv["conversationId"]
 
+    token_data = await copilot_studio.get_directline_token()
     result = await copilot_studio.send_message(
         conversation_id=conversation_id,
-        token=token,
+        token=token_data["token"],
         message=request.message,
     )
 

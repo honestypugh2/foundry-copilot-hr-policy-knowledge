@@ -58,6 +58,7 @@ class ChatResponse(BaseModel):
     citations: list[dict[str, Any]] = Field(default_factory=list)
     confidence: float = 0.0
     policy_references: list[str] = Field(default_factory=list)
+    glossary_matches: list[dict[str, str]] = Field(default_factory=list)
     processing_time_ms: int = 0
 
 
@@ -69,11 +70,19 @@ class AzureServiceStatus(BaseModel):
     ai_foundry: bool = False
 
 
+class ServiceStatus(BaseModel):
+    """Status of a single Azure service."""
+    name: str
+    status: str  # "healthy", "available", "configured", "unavailable"
+    details: str = ""
+
+
 class HealthResponse(BaseModel):
     """Health check response."""
     status: str
     message: str
     version: str
+    services: dict[str, ServiceStatus] = Field(default_factory=dict)
 
 
 class KnowledgeBaseInfo(BaseModel):

@@ -64,7 +64,7 @@ async def test_chat_endpoint(client: AsyncClient):
         })
 
         resp = await client.post("/api/chat", json={
-            "question": "What is the PTO policy?",
+            "message": "What is the PTO policy?",
             "conversation_history": [],
         })
 
@@ -86,7 +86,7 @@ async def test_chat_empty_question(client: AsyncClient):
         })
 
         resp = await client.post("/api/chat", json={
-            "question": "",
+            "message": "",
             "conversation_history": [],
         })
         # The API should still respond (orchestrator handles empty queries)
@@ -98,5 +98,5 @@ async def test_knowledge_base_endpoint(client: AsyncClient):
     resp = await client.get("/api/knowledge-base")
     assert resp.status_code == 200
     data = resp.json()
-    assert "total_indexed" in data
-    assert "local_files_count" in data
+    assert "total_documents" in data
+    assert "documents" in data
