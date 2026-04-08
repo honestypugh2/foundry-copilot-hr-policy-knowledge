@@ -14,6 +14,9 @@
     "openAIDeploymentName": {
       "value": "gpt-4o"
     },
+    "gpt5DeploymentName": {
+      "value": "gpt-5"
+    },
     "embeddingDeploymentName": {
       "value": "text-embedding-3-small"
     },
