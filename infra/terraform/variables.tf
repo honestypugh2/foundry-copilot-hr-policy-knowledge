@@ -31,6 +31,12 @@ variable "openai_deployment_name" {
   default     = "gpt-4o"
 }
 
+variable "gpt5_deployment_name" {
+  description = "Azure OpenAI GPT-5 deployment name"
+  type        = string
+  default     = "gpt-5"
+}
+
 variable "embedding_deployment_name" {
   description = "Azure OpenAI embedding model deployment name"
   type        = string

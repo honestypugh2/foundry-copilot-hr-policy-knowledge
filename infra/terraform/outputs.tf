@@ -18,6 +18,11 @@ output "openai_deployment_name" {
   value       = azurerm_cognitive_deployment.gpt4o.name
 }
 
+output "gpt5_deployment_name" {
+  description = "GPT-5 deployment name"
+  value       = azurerm_cognitive_deployment.gpt5.name
+}
+
 output "embedding_deployment_name" {
   description = "Embedding model deployment name"
   value       = azurerm_cognitive_deployment.embedding.name

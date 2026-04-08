@@ -6,11 +6,12 @@
 #   1. Resource Group
 #   2. Azure AI Foundry (AIServices) + Project
 #   3. GPT-4o deployment
-#   4. text-embedding-3-small deployment
-#   5. Azure AI Search (semantic ranker)
-#   6. Azure Document Intelligence
-#   7. Azure Storage Account + blob container
-#   8. RBAC role assignments
+#   4. GPT-5 deployment
+#   5. text-embedding-3-small deployment
+#   6. Azure AI Search (semantic ranker)
+#   7. Azure Document Intelligence
+#   8. Azure Storage Account + blob container
+#   9. RBAC role assignments
 # ============================================================================
 
 locals {
@@ -58,7 +59,7 @@ resource "azurerm_cognitive_deployment" "gpt4o" {
   model {
     format  = "OpenAI"
     name    = "gpt-4o"
-    version = "2024-08-06"
+    version = "2024-11-20"
   }
 
   sku {
@@ -68,7 +69,28 @@ resource "azurerm_cognitive_deployment" "gpt4o" {
 }
 
 # ============================================================================
-# 4. text-embedding-3-small Deployment (vector embeddings)
+# 4. GPT-5 Deployment (advanced reasoning)
+# ============================================================================
+resource "azurerm_cognitive_deployment" "gpt5" {
+  name                 = var.gpt5_deployment_name
+  cognitive_account_id = azurerm_ai_services.ai_services.id
+
+  model {
+    format  = "OpenAI"
+    name    = "gpt-5"
+    version = "2025-08-07"
+  }
+
+  sku {
+    name     = "GlobalStandard"
+    capacity = 100
+  }
+
+  depends_on = [azurerm_cognitive_deployment.gpt4o]
+}
+
+# ============================================================================
+# 5. text-embedding-3-small Deployment (vector embeddings)
 # ============================================================================
 resource "azurerm_cognitive_deployment" "embedding" {
   name                 = var.embedding_deployment_name
@@ -81,15 +103,15 @@ resource "azurerm_cognitive_deployment" "embedding" {
   }
 
   sku {
-    name     = "Standard"
+    name     = "GlobalStandard"
     capacity = 120
   }
 
-  depends_on = [azurerm_cognitive_deployment.gpt4o]
+  depends_on = [azurerm_cognitive_deployment.gpt5]
 }
 
 # ============================================================================
-# 5. Azure AI Search (semantic ranker enabled)
+# 6. Azure AI Search (semantic ranker enabled)
 # ============================================================================
 resource "azurerm_search_service" "search" {
   name                = "srch-${local.resource_token}"
@@ -102,7 +124,7 @@ resource "azurerm_search_service" "search" {
 }
 
 # ============================================================================
-# 6. Azure Document Intelligence (FormRecognizer)
+# 7. Azure Document Intelligence (FormRecognizer)
 # ============================================================================
 resource "azurerm_cognitive_account" "doc_intelligence" {
   name                  = "frm-${local.resource_token}"
@@ -115,7 +137,7 @@ resource "azurerm_cognitive_account" "doc_intelligence" {
 }
 
 # ============================================================================
-# 7. Azure Storage Account + blob container
+# 8. Azure Storage Account + blob container
 # ============================================================================
 resource "azurerm_storage_account" "storage" {
   name                     = "st${random_string.suffix.result}"
@@ -141,7 +163,7 @@ resource "azurerm_storage_container" "documents" {
 }
 
 # ============================================================================
-# 8. RBAC Role Assignments (for demo user principal)
+# 9. RBAC Role Assignments (for demo user principal)
 # ============================================================================
 
 # Azure AI User

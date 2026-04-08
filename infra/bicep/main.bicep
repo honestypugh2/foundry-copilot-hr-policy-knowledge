@@ -3,11 +3,12 @@
 // Deploys ONLY the services needed for a demo:
 //   1. Azure AI Foundry (AIServices) + Project
 //   2. GPT-4o deployment (chat/inference)
-//   3. text-embedding-3-small deployment (vector embeddings)
-//   4. Azure AI Search (semantic ranker enabled)
-//   5. Azure Document Intelligence
-//   6. Azure Storage Account
-//   7. RBAC role assignments
+//   3. GPT-5 deployment (advanced reasoning)
+//   4. text-embedding-3-small deployment (vector embeddings)
+//   5. Azure AI Search (semantic ranker enabled)
+//   6. Azure Document Intelligence
+//   7. Azure Storage Account
+//   8. RBAC role assignments
 // ============================================================================
 
 @description('Name of the azd environment')
@@ -21,6 +22,9 @@ param resourcePrefix string
 
 @description('Azure OpenAI chat model deployment name')
 param openAIDeploymentName string
+
+@description('Azure OpenAI GPT-5 deployment name')
+param gpt5DeploymentName string
 
 @description('Azure OpenAI embedding model deployment name')
 param embeddingDeploymentName string
@@ -80,19 +84,39 @@ resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
     model: {
       format: 'OpenAI'
       name: 'gpt-4o'
-      version: '2024-08-06'
+      version: '2024-11-20'
     }
   }
 }
 
 // ============================================================================
-// 3. text-embedding-3-small Deployment (vector embeddings for hybrid search)
+// 4. GPT-5 Deployment (advanced reasoning)
+// ============================================================================
+resource gpt5Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = {
+  parent: aiServices
+  name: gpt5DeploymentName
+  sku: {
+    name: 'GlobalStandard'
+    capacity: 100
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'gpt-5'
+      version: '2025-08-07'
+    }
+  }
+  dependsOn: [gpt4oDeployment]
+}
+
+// ============================================================================
+// 5. text-embedding-3-small Deployment (vector embeddings for hybrid search)
 // ============================================================================
 resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = {
   parent: aiServices
   name: embeddingDeploymentName
   sku: {
-    name: 'Standard'
+    name: 'GlobalStandard'
     capacity: 120
   }
   properties: {
@@ -102,11 +126,11 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
       version: '1'
     }
   }
-  dependsOn: [gpt4oDeployment]
+  dependsOn: [gpt5Deployment]
 }
 
 // ============================================================================
-// 4. Azure AI Search (semantic ranker enabled for hybrid search)
+// 6. Azure AI Search (semantic ranker enabled for hybrid search)
 // ============================================================================
 resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = {
   name: '${abbrs.searchSearchServices}${resourceToken}'
@@ -121,7 +145,7 @@ resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = {
 }
 
 // ============================================================================
-// 5. Azure Document Intelligence (FormRecognizer)
+// 7. Azure Document Intelligence (FormRecognizer)
 // ============================================================================
 resource docIntelligence 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: '${abbrs.cognitiveServicesFormRecognizer}${resourceToken}'
@@ -135,7 +159,7 @@ resource docIntelligence 'Microsoft.CognitiveServices/accounts@2025-04-01-previe
 }
 
 // ============================================================================
-// 6. Azure Storage Account (document uploads + blob storage)
+// 8. Azure Storage Account (document uploads + blob storage)
 // ============================================================================
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: '${abbrs.storageStorageAccounts}${uniqueSuffix}'
@@ -169,7 +193,7 @@ resource documentsContainer 'Microsoft.Storage/storageAccounts/blobServices/cont
 }
 
 // ============================================================================
-// 7. RBAC Role Assignments (for demo user principal)
+// 9. RBAC Role Assignments (for demo user principal)
 // ============================================================================
 
 // Azure AI User — access to AI Foundry project
@@ -232,6 +256,7 @@ resource storageBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
 // ============================================================================
 output openAIEndpoint string = aiServices.properties.endpoint
 output openAIDeploymentName string = openAIDeploymentName
+output gpt5DeploymentName string = gpt5DeploymentName
 output embeddingDeploymentName string = embeddingDeploymentName
 output aiFoundryResourceName string = aiServices.name
 output aiProjectName string = aiProject.name

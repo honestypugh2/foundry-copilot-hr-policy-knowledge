@@ -8,6 +8,7 @@ dependencies = [
     "agent-framework>=1.0.0rc4",
     "agent-framework-azure-ai>=1.0.0rc4",
     "agent-framework-orchestrations>=1.0.0b260311",
+    "azure-ai-agents>=1.2.0b5",
     "azure-ai-documentintelligence>=1.0.2",
     "azure-ai-inference>=1.0.0b9",
     "azure-ai-projects>=2.0.0",
@@ -29,3 +30,6 @@ dependencies = [
     "requests>=2.32.5",
     "ruff>=0.15.5",
 ]
+
+[tool.uv]
+prerelease = "if-necessary-or-explicit"
