@@ -17,41 +17,70 @@ This demo showcases a Retrieval-Augmented Generation (RAG) solution for HR polic
 
 ## Architecture
 
+This project supports two architecture options. **Copilot Studio** is the recommended default — it connects directly to Azure AI Search with no custom backend required. A **FastAPI + React** alternative is also included for advanced scenarios that need full orchestration control.
+
+### Option A: Copilot Studio (Recommended)
+
 ```
- React UI / Copilot Studio
+Employee (Teams / Web Chat)
           │
           ▼
-    FastAPI Backend
+    Copilot Studio
           │
-  ┌───────┼───────┐
-  ▼       ▼       ▼
-Query   Policy   Answer
+          ▼
+  Azure AI Search
+  (hr-policy-index)
+          │
+          ▼
+  Grounded HR Answer
+```
+
+Copilot Studio queries the Azure AI Search index directly using **text search + semantic ranker**. No custom backend is required. Vernacular handling is provided by an index-level synonym map.
+
+### Option B: FastAPI + React (Advanced)
+
+```
+  React Frontend
+        │
+        ▼
+  FastAPI Backend
+        │
+  ┌─────┼─────┐
+  ▼     ▼     ▼
+Query Policy  Answer
 Understand Retrieval Generation
 (Glossary) (AI Search) (RAG + LLM)
 ```
+
+The FastAPI backend adds capabilities beyond what Copilot Studio provides natively:
+- **Hybrid search** (text + vector) via `content_vector` embeddings
+- **Python-side glossary expansion** on top of the index synonym map
+- **Sequential workflow orchestration** using Microsoft Agent Framework
+- **Structured citations** with policy numbers and confidence scores
 
 See [docs/Architecture.md](docs/Architecture.md) for the full diagram.
 
 ## Tech Stack
 
-- **Azure AI Foundry** — `azure-ai-projects>=2.0.0`
-- **Microsoft Agent Framework** — `agent-framework --pre` (Sequential Workflows)
-- **Azure AI Search** — Full-text + semantic search with HR glossary
-- **Azure Document Intelligence** — Word document extraction
-- **Azure OpenAI** — GPT-4o for answer generation
-- **Copilot Studio** — Teams / web chat interface
-- **FastAPI** — REST API backend
-- **React + TypeScript + Vite** — Chat UI
+| Component | Technology | Used By |
+|---|---|---|
+| Azure AI Search | Full-text + semantic search with HR glossary | Both options |
+| Azure Document Intelligence | Word document extraction | Both options |
+| Azure OpenAI (GPT-4o) | Answer generation | Both options |
+| Azure AI Foundry | `azure-ai-projects>=2.0.0` | Option B |
+| Microsoft Agent Framework | Sequential workflows (`agent-framework --pre`) | Option B |
+| Copilot Studio | Teams / web chat interface | Option A |
+| FastAPI | REST API backend | Option B |
+| React + TypeScript + Vite | Chat UI (`src/frontend`, `src/frontend-copilot-studio`) | Option B |
 
-## Quick Start
+## Quick Start — Option A: Copilot Studio
 
 ### Prerequisites
 
-- Python 3.10+
-- [uv](https://docs.astral.sh/uv/) — Python package installer and runner
-- Node.js 18+ (for frontend)
 - Azure subscription with AI Search, OpenAI, and Document Intelligence
 - Azure CLI (`az login`)
+- Python 3.10+ and [uv](https://docs.astral.sh/uv/) (for indexing scripts)
+- Copilot Studio license (Power Virtual Agents)
 
 ### 1. Clone and Setup
 
@@ -83,6 +112,36 @@ For local-only processing (no Azure services):
 uv run python -m scripts.index_knowledge_base --local-only
 ```
 
+### 4. Set Up Copilot Studio
+
+Connect Copilot Studio to your Azure AI Search index by following the step-by-step guide:
+
+> **[Copilot Studio Integration Guide](docs/CopilotStudioIntegration.md)**
+
+The guide covers:
+- Creating a Copilot in Copilot Studio
+- Adding Azure AI Search as a knowledge source
+- Configuring agent instructions and generative AI settings
+- Setting up vernacular handling via synonym maps
+- Publishing to Microsoft Teams
+- Testing and troubleshooting
+
+After completing these steps, employees can ask HR questions directly from Teams or the Copilot Studio web chat — no backend deployment needed.
+
+---
+
+## Quick Start — Option B: FastAPI + React
+
+Use this option when you need hybrid vector search, the full Agent Framework orchestration pipeline, or a custom React UI.
+
+### Additional Prerequisites
+
+- Node.js 18+
+
+### 1–3. Same as Option A
+
+Follow steps 1–3 above to clone, configure, and index the knowledge base.
+
 ### 4. Start the Backend
 
 ```bash
@@ -91,25 +150,23 @@ uv run python -m src.backend.main
 # Docs at http://localhost:8000/docs
 ```
 
-### 5. Start the Frontend
+### 5. Start a Frontend
 
-**Primary frontend (AI Agent Framework):**
+**Agent Framework frontend:**
 ```bash
 cd src/frontend
-npm install
-npm run dev
-# UI available at http://localhost:5173
+npm install && npm run dev
+# http://localhost:5173
 ```
 
-**Copilot Studio frontend:**
+**Copilot Studio Web Chat embed frontend:**
 ```bash
 cd src/frontend-copilot-studio
-npm install
-npm run dev
-# UI available at http://localhost:5174
+npm install && npm run dev
+# http://localhost:5174
 ```
 
-## API Endpoints
+### API Endpoints
 
 | Method | Path | Description |
 |---|---|---|
@@ -124,6 +181,8 @@ npm run dev
 | `POST` | `/api/copilot-studio/chat` | Proxy chat to Copilot Studio agent |
 | `GET` | `/api/copilot-studio/config` | Copilot Studio configuration status |
 
+---
+
 ## Project Structure
 
 ```
@@ -132,7 +191,7 @@ npm run dev
 │   │   ├── hr_policy_agent.py     # RAG agent with grounding rules
 │   │   └── orchestrator.py        # Sequential workflow (WorkflowBuilder)
 │   ├── backend/
-│   │   └── main.py                # FastAPI application
+│   │   └── main.py                # FastAPI application (Option B)
 │   ├── document_processing/
 │   │   └── document_ingestion.py  # Doc Intelligence + python-docx
 │   ├── search/
@@ -141,23 +200,19 @@ npm run dev
 │   │   └── schemas.py             # Pydantic data models
 │   ├── copilot_studio/
 │   │   └── service.py             # Direct-to-Engine API client
-│   ├── frontend/                  # React + TypeScript + Vite (Agent Framework)
-│   └── frontend-copilot-studio/   # React + Copilot Studio Web Chat embed
+│   ├── frontend/                  # React chat UI (Option B)
+│   └── frontend-copilot-studio/   # React + Copilot Studio Web Chat embed (Option B)
 ├── scripts/
 │   ├── index_knowledge_base.py    # Batch indexing script
 │   └── setup.sh                   # Project setup
 ├── data/knowledge_base/           # HR policy Word documents
 ├── docs/
 │   ├── Architecture.md            # System architecture
-│   └── CopilotStudioIntegration.md # Copilot Studio guide
+│   └── CopilotStudioIntegration.md # Copilot Studio guide (Option A)
 ├── infra/
 │   └── main.bicep                 # Azure infrastructure
 └── tests/
 ```
-
-## Copilot Studio Integration
-
-See [docs/CopilotStudioIntegration.md](docs/CopilotStudioIntegration.md) for step-by-step instructions on connecting this agent to Copilot Studio for Teams deployment.
 
 ## Running Tests
 

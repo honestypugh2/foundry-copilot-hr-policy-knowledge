@@ -6,14 +6,14 @@
 ┌────────────────────────────────────────────────────────────────┐
 │                         Clients                                │
 │                                                                │
-│   ┌─────────────────┐    ┌──────────────────────────────────┐  │
-│   │  React Frontend  │    │  Copilot Studio (Teams / Web)    │  │
-│   │  (Vite + TS)     │    │  Power Platform Environment      │  │
-│   └────────┬─────────┘    └──────────────┬───────────────────┘  │
-│            │                             │                      │
-└────────────┼─────────────────────────────┼──────────────────────┘
-             │  /api/*                     │  Azure AI Search
-             ▼                             ▼
+│   ┌──────────────────────────────────────────────────────────┐ │
+│   │  Copilot Studio (Teams / Web Chat)                       │ │
+│   │  Power Platform Environment                              │ │
+│   └──────────────────────────┬───────────────────────────────┘ │
+│                              │                                 │
+└──────────────────────────────┼─────────────────────────────────┘
+                               │  Azure AI Search
+                               ▼
 ┌────────────────────────────────────────────────────────────────┐
 │                     FastAPI Backend                             │
 │                                                                │
@@ -58,13 +58,12 @@
 
 | Component | Technology | Purpose |
 |---|---|---|
-| Frontend | React + TypeScript + Vite | Chat UI, KB browser |
+| Chat Interface | Copilot Studio | Teams / web chat UI (primary) |
 | Backend | FastAPI + Uvicorn | REST API, orchestration |
 | Orchestrator | Agent Framework (WorkflowBuilder) | Sequential workflow |
 | Search | Azure AI Search | Full-text + semantic search |
 | LLM | Azure OpenAI (gpt-4o) | Answer generation |
 | Doc Processing | Azure Document Intelligence | Word doc extraction |
-| Chat Interface | Copilot Studio | Teams integration |
 
 ## Addressing Customer Challenges
 

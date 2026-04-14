@@ -1,6 +1,12 @@
-import axios from "axios";
+const BASE_URL = "/api";
 
-const api = axios.create({ baseURL: "/api" });
+async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, init);
+  if (!res.ok) {
+    throw new Error(`Request failed: ${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -52,32 +58,31 @@ export async function sendMessage(
   question: string,
   conversationHistory: ChatMessage[]
 ): Promise<ChatResponse> {
-  const { data } = await api.post<ChatResponse>("/chat", {
-    message: question,
-    conversation_history: conversationHistory,
+  return fetchJson<ChatResponse>("/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: question,
+      conversation_history: conversationHistory,
+    }),
   });
-  return data;
 }
 
 export async function getKnowledgeBaseInfo(): Promise<KnowledgeBaseInfo> {
-  const { data } = await api.get<KnowledgeBaseInfo>("/knowledge-base");
-  return data;
+  return fetchJson<KnowledgeBaseInfo>("/knowledge-base");
 }
 
 export async function getHealth(): Promise<HealthResponse> {
-  const { data } = await api.get<HealthResponse>("/health");
-  return data;
+  return fetchJson<HealthResponse>("/health");
 }
 
 export async function getGlossary(): Promise<{
   glossary: GlossaryEntry[];
   total: number;
 }> {
-  const { data } = await api.get("/glossary");
-  return data;
+  return fetchJson("/glossary");
 }
 
 export async function reindexKnowledgeBase(): Promise<Record<string, unknown>> {
-  const { data } = await api.post("/knowledge-base/reindex");
-  return data;
+  return fetchJson("/knowledge-base/reindex", { method: "POST" });
 }
