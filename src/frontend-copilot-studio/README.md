@@ -96,7 +96,6 @@ Toggle between modes using the buttons in the top-right of the Chat page.
 - **Tailwind CSS 4** (styling)
 - **Bot Framework Web Chat** (Direct Line embed)
 - **React Router 7** (client-side routing)
-- **Axios** (API calls)
 
 ## Project Structure
 
