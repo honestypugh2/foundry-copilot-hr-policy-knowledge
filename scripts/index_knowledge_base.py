@@ -12,19 +12,11 @@ Usage:
 import argparse
 import asyncio
 import logging
-import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
-
-# Add project root to path
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT))
-
-load_dotenv()
-
-from datetime import datetime, timezone
 
 from src.document_processing.document_ingestion import (
     DocumentIngestionAgent,
@@ -33,6 +25,12 @@ from src.document_processing.document_ingestion import (
     generate_document_id,
 )
 from src.search.search_service import HRPolicySearchService, HR_GLOSSARY
+
+# Add project root to path
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
