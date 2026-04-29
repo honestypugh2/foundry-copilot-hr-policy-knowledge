@@ -270,7 +270,7 @@ function NotConfiguredBanner() {
         </li>
         <li>
           <code className="font-mono text-xs">COPILOT_STUDIO_AGENT_SCHEMA</code>{" "}
-          — Agent schema name (e.g. cr4ba_askHrPolicyAgent)
+          — Copilot Studio agent schema name
         </li>
         <li>
           <code className="font-mono text-xs">COPILOT_STUDIO_REGION</code>{" "}

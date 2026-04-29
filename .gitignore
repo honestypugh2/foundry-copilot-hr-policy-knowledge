@@ -140,3 +140,13 @@ data/*
 scripts/test_*.py
 
 src/content_understanding/
+
+local.settings.json
+
+src_lab/
+
+infra_lab/
+
+fix_script.py
+
+output.txt

@@ -32,7 +32,7 @@ These must be set in the root `.env` file (the backend reads them and exposes th
 | Variable | Description | Required |
 |---|---|---|
 | `COPILOT_STUDIO_ENVIRONMENT_ID` | Power Platform environment ID | Yes |
-| `COPILOT_STUDIO_AGENT_SCHEMA` | Agent schema name (e.g. `cr4ba_askHrPolicyAgent`) | Yes |
+| `COPILOT_STUDIO_AGENT_SCHEMA` | Agent schema name (e.g. `your_agent_schema`) | Yes |
 | `COPILOT_STUDIO_REGION` | Region prefix (default: `unitedstates`) | No |
 | `COPILOT_STUDIO_TOKEN_ENDPOINT` | Full token endpoint URL (overrides auto-built URL) | No |
 
