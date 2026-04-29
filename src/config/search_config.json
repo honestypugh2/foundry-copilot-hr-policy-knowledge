@@ -1,0 +1,101 @@
+{
+    "search_config": {
+        "index_name": "hr-policy-index",
+        "semantic_configuration": "hr-semantic-config",
+        "vector_field": "policy_vector",
+        "content_field": "policy",
+        "source_field": "policy_with_source",
+        "blob_url_field": "blob_url",
+        "parent_key_field": "policy_parent_id",
+        "filename_field": "metadata_storage_name",
+        "filepath_field": "metadata_storage_path",
+        "parent_title_field": "parent_title",
+        "policy_number_field": "policy_number",
+        "top_k": 5
+    },
+    "synonym_map": {
+        "name": "hr-glossary-synonyms",
+        "fields": ["parent_title", "policy", "policy_with_source"]
+    },
+    "vector_search": {
+        "algorithm": {
+            "name": "hr-hnsw-config",
+            "kind": "hnsw",
+            "parameters": {
+                "metric": "cosine",
+                "m": 4,
+                "efConstruction": 400,
+                "efSearch": 500
+            }
+        },
+        "compression": {
+            "name": "hr-scalar-quantization",
+            "kind": "scalarQuantization",
+            "parameters": {
+                "quantized_data_type": "int8"
+            },
+            "rescoring_options": {
+                "enable_rescoring": true,
+                "default_oversampling": 4
+            }
+        },
+        "profile": {
+            "name": "hr-vector-profile",
+            "algorithm_configuration_name": "hr-hnsw-config",
+            "compression_name": "hr-scalar-quantization"
+        },
+        "vectorizer": {
+            "name": "hr-azure-openai-vectorizer",
+            "deployment_name": "text-embedding-3-small",
+            "model_name": "text-embedding-3-small",
+            "dimensions": 1536
+        }
+    },
+    "semantic_search": {
+        "configuration_name": "hr-semantic-config",
+        "reranker": "BoostedRerankerScore",
+        "prioritized_fields": {
+            "title_field": "parent_title",
+            "content_fields": ["policy"],
+            "keywords_fields": ["policy_number"]
+        }
+    },
+    "skillset": {
+        "name": "hr-policy-skillset",
+        "skills": [
+            {
+                "type": "SplitSkill",
+                "name": "text-split",
+                "description": "Split text into chunks",
+                "text_split_mode": "pages",
+                "maximum_page_length": 2000,
+                "page_overlap_length": 200
+            },
+            {
+                "type": "AzureOpenAIEmbeddingSkill",
+                "name": "AzureOpenAIEmbeddingSkill",
+                "deployment_id": "text-embedding-3-small",
+                "dimensions": 1536,
+                "model_name": "text-embedding-3-small"
+            }
+        ],
+        "index_projections": {
+            "target_index_name": "hr-policy-index",
+            "parent_key_field_name": "policy_parent_id",
+            "source_context": "/document/pages/*",
+            "mappings": [
+                {"name": "policy_vector", "source": "/document/pages/*/text_vector"},
+                {"name": "policy", "source": "/document/pages/*"},
+                {"name": "blob_url", "source": "/document/metadata_storage_path"},
+                {"name": "metadata_storage_name", "source": "/document/metadata_storage_name"},
+                {"name": "metadata_storage_path", "source": "/document/metadata_storage_path"},
+                {"name": "parent_title", "source": "/document/parent_title"},
+                {"name": "policy_number", "source": "/document/policy_number"}
+            ]
+        }
+    },
+    "blob_storage": {
+        "container_name": "ask-hr-knowledge",
+        "description": "Azure Blob Storage container for HR policy documents"
+    }
+}

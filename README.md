@@ -65,6 +65,7 @@ See [docs/Architecture.md](docs/Architecture.md) for the full diagram.
 | Component | Technology | Used By |
 |---|---|---|
 | Azure AI Search | Full-text + semantic search with HR glossary | Both options |
+| Azure AI Search (Integrated Vectorization) | Indexer + skillset pipeline with server-side chunking and embedding | Option B (default), Option A (with vectorizer) |
 | Azure Document Intelligence | Word document extraction | Both options |
 | Azure OpenAI (GPT-4o) | Answer generation | Both options |
 | Azure AI Foundry | `azure-ai-projects>=2.0.0` | Option B |
@@ -72,6 +73,17 @@ See [docs/Architecture.md](docs/Architecture.md) for the full diagram.
 | Copilot Studio | Teams / web chat interface | Option A |
 | FastAPI | REST API backend | Option B |
 | React + TypeScript + Vite | Chat UI (`src/frontend`, `src/frontend-copilot-studio`) | Option B |
+
+### Search Modes
+
+The project supports two search modes:
+
+| Mode | Description | Default |
+|---|---|---|
+| **Integrated Vectorization** | Azure AI Search indexer + skillset pipeline handles chunking and embedding at index time. Query-time embedding via AzureOpenAI vectorizer. Config: `src/config/search_config.json` | Yes |
+| **Legacy** | Client-side chunking and embedding via `scripts/index_knowledge_base.py`. Query-time embedding generated client-side. | No |
+
+Set `SEARCH_MODE=legacy` in your environment to use the legacy search mode. See [docs/Architecture.md](docs/Architecture.md) for details.
 
 ## Quick Start — Option A: Copilot Studio
 
@@ -195,7 +207,10 @@ npm install && npm run dev
 │   ├── document_processing/
 │   │   └── document_ingestion.py  # Doc Intelligence + python-docx
 │   ├── search/
-│   │   └── search_service.py      # AI Search + HR glossary
+│   │   ├── search_service.py      # AI Search + HR glossary (legacy)
+│   │   └── integrated_vectorization_search.py  # Integrated vectorization search (default)
+│   ├── config/
+│   │   └── search_config.json     # Search index, vector, and semantic config
 │   ├── models/
 │   │   └── schemas.py             # Pydantic data models
 │   ├── copilot_studio/

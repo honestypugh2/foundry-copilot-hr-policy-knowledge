@@ -1,12 +1,12 @@
 """
 Upload Knowledge Base to Azure Blob Storage
 
-Uploads all files from data/knowledge_base/ and data/knowledge_base_lab/
-to Azure Blob Storage, preserving directory structure.
+Uploads files from data/knowledge_base/ASK HR Knowledge/ to Azure Blob
+Storage, preserving the flat file layout under the container.
 
 Supports authentication via:
-  - AZURE_STORAGE_CONNECTION_STRING (connection string)
   - AZURE_STORAGE_ACCOUNT_URL with DefaultAzureCredential (managed identity / az login)
+  - AZURE_STORAGE_CONNECTION_STRING (connection string)
 
 Usage:
     uv run python -m scripts.upload_to_blob
@@ -23,9 +23,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+# scripts/ -> project root
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
-load_dotenv()
+load_dotenv(PROJECT_ROOT / ".env")
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -34,8 +35,7 @@ logging.basicConfig(
 )
 
 DEFAULT_DIRS = [
-    PROJECT_ROOT / "data" / "knowledge_base",
-    PROJECT_ROOT / "data" / "knowledge_base_lab",
+    PROJECT_ROOT / "data" / "knowledge_base" / "ASK HR Knowledge",
 ]
 
 
@@ -66,10 +66,10 @@ def get_blob_service_client():
 def collect_files(directories: list[Path]) -> list[tuple[Path, str]]:
     """Walk directories and return (local_path, blob_name) pairs.
 
-    Blob names preserve the path relative to the data/ folder so the
-    container mirrors the local directory layout.
+    For files under ASK HR Knowledge/, the blob name is just the filename
+    (flat layout in the container). This matches how the integrated
+    vectorization indexer expects documents in blob storage.
     """
-    data_root = PROJECT_ROOT / "data"
     files: list[tuple[Path, str]] = []
 
     for directory in directories:
@@ -78,7 +78,8 @@ def collect_files(directories: list[Path]) -> list[tuple[Path, str]]:
             continue
         for file_path in sorted(directory.rglob("*")):
             if file_path.is_file():
-                blob_name = file_path.relative_to(data_root).as_posix()
+                # Flat blob names — just the filename, no subdirectory nesting
+                blob_name = file_path.name
                 files.append((file_path, blob_name))
 
     return files
@@ -100,8 +101,9 @@ def upload_files(
 
     if dry_run:
         logger.info("DRY RUN — %d file(s) would be uploaded:", len(files))
-        for _, blob_name in files:
-            logger.info("  -> %s", blob_name)
+        for local_path, blob_name in files:
+            size_kb = local_path.stat().st_size / 1024
+            logger.info("  -> %s (%.1f KB)", blob_name, size_kb)
         return
 
     blob_service_client = get_blob_service_client()
@@ -116,6 +118,7 @@ def upload_files(
 
     uploaded = 0
     failed = 0
+    total = len(files)
 
     for file_path, blob_name in files:
         content_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
@@ -128,20 +131,25 @@ def upload_files(
                     content_settings=ContentSettings(content_type=content_type),
                 )
             uploaded += 1
-            logger.info("Uploaded [%d/%d]: %s", uploaded + failed, len(files), blob_name)
+            logger.info("Uploaded [%d/%d]: %s", uploaded + failed, total, blob_name)
         except Exception:
             failed += 1
             logger.exception("Failed to upload: %s", blob_name)
 
-    logger.info("Upload complete — %d succeeded, %d failed out of %d total", uploaded, failed, len(files))
+    logger.info(
+        "Upload complete — %d succeeded, %d failed out of %d total",
+        uploaded, failed, total,
+    )
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Upload knowledge base files to Azure Blob Storage")
+    parser = argparse.ArgumentParser(
+        description="Upload ASK HR Knowledge files to Azure Blob Storage"
+    )
     parser.add_argument(
         "--container",
-        default=os.getenv("AZURE_STORAGE_CONTAINER", "knowledge-base"),
-        help="Target blob container name (default: AZURE_STORAGE_CONTAINER env var or 'knowledge-base')",
+        default=os.getenv("AZURE_STORAGE_CONTAINER", "ask-hr-knowledge"),
+        help="Target blob container name (default: AZURE_STORAGE_CONTAINER env var or 'ask-hr-knowledge')",
     )
     parser.add_argument(
         "--no-overwrite",
@@ -158,7 +166,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    logger.info("Collecting files from data/knowledge_base and data/knowledge_base_lab...")
+    logger.info("Collecting files from data/knowledge_base/ASK HR Knowledge/ ...")
 
     files = collect_files(DEFAULT_DIRS)
     logger.info("Found %d file(s) to upload", len(files))

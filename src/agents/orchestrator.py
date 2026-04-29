@@ -46,6 +46,7 @@ if not TYPE_CHECKING and not WORKFLOW_AVAILABLE:
         return f
 
 from src.search.search_service import HRPolicySearchService, expand_query_with_glossary, HR_GLOSSARY
+from src.search.integrated_vectorization_search import IntegratedVectorizationSearchService
 
 
 # =============================================================================
@@ -105,16 +106,22 @@ class PolicyRetrievalExecutor(Executor):
     Step 2: Retrieve relevant HR policies from Azure AI Search.
 
     Uses the expanded query from Step 1 for better search results.
+    Defaults to integrated vectorization search (indexer + skillset pipeline).
+    Set search_mode='legacy' to use the original HRPolicySearchService.
     """
 
-    def __init__(self):
-        self._search_service: Optional[HRPolicySearchService] = None
+    def __init__(self, search_mode: str = "integrated_vectorization"):
+        self._search_service = None
+        self._search_mode = search_mode
         super().__init__(id="policy_retrieval")
 
     @property
-    def search_service(self) -> HRPolicySearchService:
+    def search_service(self):
         if self._search_service is None:
-            self._search_service = HRPolicySearchService()
+            if self._search_mode == "integrated_vectorization":
+                self._search_service = IntegratedVectorizationSearchService()
+            else:
+                self._search_service = HRPolicySearchService()
         return self._search_service
 
     @handler
@@ -236,8 +243,9 @@ class HRPolicyWorkflowOrchestrator:
     └─────────────────────────┘
     """
 
-    def __init__(self, use_azure: bool = True):
+    def __init__(self, use_azure: bool = True, search_mode: str = "integrated_vectorization"):
         self.use_azure = use_azure
+        self.search_mode = search_mode
         self.project_endpoint = os.getenv("AZURE_AI_PROJECT_ENDPOINT") or os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT", "")
         self._hr_agent = None  # cached HRPolicyAgent for fallback path
 
@@ -247,6 +255,7 @@ class HRPolicyWorkflowOrchestrator:
         self._hr_agent = HRPolicyAgent(
             use_agent=bool(self.project_endpoint) and self.use_azure,
             project_endpoint=self.project_endpoint,
+            search_mode=self.search_mode,
         )
         await self._hr_agent.initialize()
 
@@ -264,7 +273,7 @@ class HRPolicyWorkflowOrchestrator:
         from agent_framework import WorkflowBuilder
 
         query_executor = QueryUnderstandingExecutor()
-        retrieval_executor = PolicyRetrievalExecutor()
+        retrieval_executor = PolicyRetrievalExecutor(search_mode=self.search_mode)
         answer_executor = AnswerGenerationExecutor(
             project_endpoint=self.project_endpoint if self.use_azure else "",
         )
@@ -337,6 +346,7 @@ class HRPolicyWorkflowOrchestrator:
             self._hr_agent = HRPolicyAgent(
                 use_agent=bool(self.project_endpoint) and self.use_azure,
                 project_endpoint=self.project_endpoint,
+                search_mode=self.search_mode,
             )
             await self._hr_agent.initialize()
         return await self._hr_agent.answer_question_async(question, conversation_history)

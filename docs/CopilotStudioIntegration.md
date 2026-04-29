@@ -29,7 +29,7 @@ Employee (Teams / Web) ──► Copilot Studio Bot
 
 ## Step 1: Create a Copilot in Copilot Studio
 
-1. Navigate to [Copilot Studio](https://copilotstudio.preview.microsoft.com/environments/9cb938ce-b109-e86f-99ee-7bad48b89f09/home)
+1. Navigate to [Copilot Studio](https://copilotstudio.microsoft.com)
 2. Click **Create** → **New copilot**
 3. Name: `Ask HR Policy Agent`
 4. Description: `Answers employee questions using internal HR policy documents`
@@ -145,13 +145,28 @@ Since Copilot Studio has limited prompt customization, we address vernacular thr
 
 These are the challenges that motivated building the full Agent Framework solution alongside Copilot Studio:
 
-1. **No vector/hybrid search**: Copilot Studio queries AI Search with text + semantic ranker only; the backend API adds vector similarity via `content_vector` embeddings for higher recall. Copilot Studio does support [integrated vectorization](https://learn.microsoft.com/en-us/azure/search/vector-search-integrated-vectorization) indexes where the same embedding model is used for both indexing and querying.
+1. **No vector/hybrid search (legacy index)**: Copilot Studio queries AI Search with text + semantic ranker only when using the legacy index; the backend API adds vector similarity via `content_vector` embeddings for higher recall. However, Copilot Studio **does** support [integrated vectorization](https://learn.microsoft.com/en-us/azure/search/vector-search-integrated-vectorization) indexes where the same embedding model is used for both indexing and querying — this project now includes an integrated vectorization search option (see below).
 2. **Instructions, not system messages**: In generative orchestration, agent behavior is guided by the **Instructions** field on the Overview page. These instructions influence tool/knowledge selection and response generation, but cannot modify search retrieval logic or override system-level behaviors.
 3. **No glossary expansion in instructions**: Copilot Studio doesn't natively expand vernacular at the prompt level; the synonym map handles this at the index level, and the backend API adds Python-side expansion
 4. **Knowledge source limits**: With generative orchestration, the agent searches up to 25 knowledge sources (file uploads don't count toward this limit). The agent uses descriptions to filter which sources to search.
 5. **Limited citation control**: The backend provides structured citations with policy numbers. In Copilot Studio, citations require a URL field in the index (e.g., `metadata_storage_path`).
 6. **Semantic search quota**: The `free` tier allows 1,000 semantic queries/month — sufficient for demos but requires upgrading for production
 7. **Conversational boosting not used in generative mode**: With generative orchestration enabled (default), the Conversational boosting system topic is **not** used for knowledge searches. Customizations to that topic only apply in classic orchestration mode.
+
+### Using Integrated Vectorization with Copilot Studio
+
+Copilot Studio supports indexes built with [integrated vectorization](https://learn.microsoft.com/en-us/azure/search/vector-search-integrated-vectorization). When the index has an AzureOpenAI vectorizer configured, Copilot Studio can leverage the vector search capability automatically. This eliminates limitation #1 above.
+
+To use integrated vectorization with Copilot Studio:
+
+1. Deploy the integrated vectorization index using the `IntegratedVectorizationSearchService.create_index()` method or set up the indexer + skillset pipeline in the Azure portal
+2. The index includes an `AzureOpenAIVectorizer` that handles query-time text-to-vector conversion
+3. In Copilot Studio, add the index as an Azure AI Search knowledge source (same steps as the legacy index)
+4. Copilot Studio will automatically use the vectorizer for hybrid (text + vector + semantic) search
+
+See:
+- [Azure AI Search integrated vectorization](https://learn.microsoft.com/en-us/azure/search/vector-search-integrated-vectorization)
+- [Copilot Studio - Add Azure AI Search as a knowledge source](https://learn.microsoft.com/en-us/microsoft-copilot-studio/knowledge-azure-ai-search)
 
 For production, consider using both:
 - **Copilot Studio** for the Teams/web chat interface
@@ -181,8 +196,8 @@ npm run dev
 
 | Variable | Description | Required |
 |---|---|---|
-| `COPILOT_STUDIO_ENVIRONMENT_ID` | Power Platform environment ID | Yes |
-| `COPILOT_STUDIO_AGENT_SCHEMA` | Agent schema name (e.g., `cr4ba_askHrPolicyAgent`) | Yes |
+| `COPILOT_STUDIO_ENVIRONMENT_ID` | Power Platform environment ID (e.g. `<your-environment-id>`) | Yes |
+| `COPILOT_STUDIO_AGENT_SCHEMA` | Agent schema name (e.g. `<your_agent_schema>`) | Yes |
 | `COPILOT_STUDIO_REGION` | Region (default: `unitedstates`) | No |
 | `COPILOT_STUDIO_TOKEN_ENDPOINT` | Full token endpoint URL (override) | No |
 

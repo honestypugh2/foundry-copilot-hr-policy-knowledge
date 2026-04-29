@@ -197,12 +197,12 @@ export default function SetupGuidePage() {
         </p>
         <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 text-xs font-mono overflow-x-auto">
 {`# Copilot Studio
-COPILOT_STUDIO_ENVIRONMENT_ID=9cb938ce-b109-e86f-99ee-7bad48b89f09
-COPILOT_STUDIO_AGENT_SCHEMA=cr4ba_askHrPolicyAgent
-COPILOT_STUDIO_REGION=unitedstates
+COPILOT_STUDIO_ENVIRONMENT_ID=your_environment_id
+COPILOT_STUDIO_AGENT_SCHEMA=your_agent_schema
+COPILOT_STUDIO_REGION=your_region
 
 # Or use the full token endpoint URL directly:
-# COPILOT_STUDIO_TOKEN_ENDPOINT=https://default...environment.api.powerplatform.com/powervirtualagents/botsbyschema/.../directline/token`}
+# COPILOT_STUDIO_TOKEN_ENDPOINT=https://your-region.api.powerplatform.com/powervirtualagents/botsbyschema/your-schema/directline/token`}
         </pre>
         <p className="text-gray-500 text-xs mt-2">
           Restart the backend after updating .env.

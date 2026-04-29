@@ -31,6 +31,7 @@ except ImportError:
     logger.warning("agent-framework not installed, agent mode unavailable")
 
 from src.search.search_service import HRPolicySearchService, expand_query_with_glossary
+from src.search.integrated_vectorization_search import IntegratedVectorizationSearchService
 
 
 AGENT_INSTRUCTIONS = """You are an HR Policy Assistant for the "Ask HR" system.
@@ -72,6 +73,7 @@ class HRPolicyAgent:
         model_deployment_name: Optional[str] = None,
         search_index_name: Optional[str] = None,
         search_connection_id: Optional[str] = None,
+        search_mode: Optional[str] = None,
     ):
         self.use_agent = use_agent and AGENT_FRAMEWORK_AVAILABLE
         # Prefer AZURE_AI_PROJECT_ENDPOINT (Foundry project format: services.ai.azure.com)
@@ -81,14 +83,20 @@ class HRPolicyAgent:
         self.search_index_name = search_index_name or os.getenv("AZURE_SEARCH_INDEX_NAME", "hr-policy-index")
         self.search_connection_id = search_connection_id or os.getenv("AI_SEARCH_PROJECT_CONNECTION_ID", "")
 
+        # Search mode: "integrated_vectorization" (default) or "legacy"
+        self.search_mode = search_mode or os.getenv("SEARCH_MODE", "integrated_vectorization")
+
         # Foundry agent state (populated by initialize())
         self._credential: Any = None
         self._agent: Any = None
         self._agent_cm: Any = None
         self._initialized = False
 
-        # Local search service for fallback
-        self.search_service = HRPolicySearchService()
+        # Search service: use integrated vectorization by default
+        if self.search_mode == "integrated_vectorization":
+            self.search_service = IntegratedVectorizationSearchService()
+        else:
+            self.search_service = HRPolicySearchService()
 
     async def initialize(self) -> None:
         """
