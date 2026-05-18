@@ -274,6 +274,8 @@ This project ships two architectural paths. Choose based on your requirements:
 
 Both architectures share the same Azure AI Search index (`hr-policy-index`), so they can coexist — the Logic Apps pipeline keeps the index current while the Agent Framework backend provides advanced query capabilities.
 
+See [ArchitectureOptions.md](ArchitectureOptions.md) for a full comparison of all pattern and preprocessing options.
+
 ## References
 
 - [SharePoint connector — When a file is created or modified](https://learn.microsoft.com/en-us/connectors/sharepointonline/)

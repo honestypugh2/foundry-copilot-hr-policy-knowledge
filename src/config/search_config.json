@@ -97,5 +97,88 @@
     "blob_storage": {
         "container_name": "ask-hr-knowledge",
         "description": "Azure Blob Storage container for HR policy documents"
+    },
+    "document_layout_skillset": {
+        "name": "hr-policy-doc-layout-skillset",
+        "description": "Skillset using Document Intelligence Layout skill for structure-aware chunking and vectorization",
+        "skills": [
+            {
+                "type": "DocumentIntelligenceLayoutSkill",
+                "name": "document-intelligence-layout",
+                "description": "Analyze document structure using Azure Document Intelligence layout model",
+                "output_mode": "oneToMany",
+                "markdown_header_depth": "h3",
+                "output_format": "text",
+                "extraction_options": ["images", "locationMetadata"],
+                "chunking_properties": {
+                    "unit": "characters",
+                    "maximum_length": 2000,
+                    "overlap_length": 200
+                }
+            },
+            {
+                "type": "AzureOpenAIEmbeddingSkill",
+                "name": "AzureOpenAIEmbeddingSkill",
+                "deployment_id": "text-embedding-3-small",
+                "dimensions": 1536,
+                "model_name": "text-embedding-3-small"
+            }
+        ],
+        "index_projections": {
+            "target_index_name": "hr-policy-index",
+            "parent_key_field_name": "policy_parent_id",
+            "source_context": "/document/text_sections/*",
+            "mappings": [
+                {"name": "policy_vector", "source": "/document/text_sections/*/text_vector"},
+                {"name": "policy", "source": "/document/text_sections/*/content"},
+                {"name": "blob_url", "source": "/document/metadata_storage_path"},
+                {"name": "metadata_storage_name", "source": "/document/metadata_storage_name"},
+                {"name": "metadata_storage_path", "source": "/document/metadata_storage_path"},
+                {"name": "parent_title", "source": "/document/parent_title"},
+                {"name": "policy_number", "source": "/document/policy_number"}
+            ]
+        },
+        "cognitive_services": {
+            "type": "AIServicesByKey",
+            "description": "AI Services for Document Intelligence Layout skill"
+        },
+        "excluded_extensions": [".vsd", ".vsdx", ".mpp"]
+    },
+    "agentic_retrieval": {
+        "knowledge_source_name": "hr-knowledge-source",
+        "knowledge_source_description": "Knowledge source for HR policy documents indexed in hr-policy-index",
+        "knowledge_base_name": "hr-knowledge-base",
+        "output_mode": "EXTRACTIVE",
+        "retrieval_reasoning_effort": "medium",
+        "search_fields": [
+            "policy",
+            "parent_title",
+            "policy_number"
+        ],
+        "semantic_configuration_name": "hr-semantic-config",
+        "source_data_fields": [
+            "id",
+            "policy",
+            "metadata_storage_name",
+            "metadata_storage_path",
+            "parent_title",
+            "policy_number",
+            "blob_url"
+        ],
+        "include_references": true,
+        "include_reference_source_data": true,
+        "always_query_source": true,
+        "include_activity": true,
+        "mcp": {
+            "project_connection_name": "hr-knowledge-mcp-connection",
+            "api_version": "2025-11-01-Preview"
+        }
+    },
+    "foundry_agent": {
+        "model": "gpt-4o",
+        "output_mode": "answerSynthesis",
+        "retrieval_reasoning": "medium",
+        "retrieval_instructions": "Use only the connected knowledge sources. Do not answer from general knowledge.\nPrimary objective: maximize recall of HR-policy-related evidence. Retrieve documents that are directly relevant to the user's query and also documents that mention the queried policy number, topic, leave type, dress code, IT policy, hiring procedure, or operational matter indirectly.\nAlways search across all connected knowledge sources.\nExpand search broadly using likely HR policy variants, policy-number variants, document-type variants, and common employee terminology where relevant.\nDo not suppress weak matches. Keep potentially relevant results so the answering layer can label them appropriately.\nPrefer retrieving the actual source documents when available, not only documents that reference them. If filenames or exact document titles appear in retrieved content, prioritize those exact files as well.\nPreserve exact filenames, source paths, and metadata exactly as stored when available. Do not invent filenames, paths, or document identifiers.\nIf evidence is not found in the connected knowledge sources, say so clearly.",
+        "answer_instructions": "Provide grounded evidence only from the connected knowledge sources.\nDo not use general knowledge. Do not fabricate filenames, paths, or document details.\nPreserve exact filenames exactly as retrieved.\nTreat this distinction as critical:\n- retrieved = the file itself was directly returned\n- referenced only = the filename is only mentioned inside retrieved content\nInclude:\n- what was found\n- where it was found\n- whether the file was directly retrieved or only referenced\nIf a source path is available, preserve it exactly as retrieved.\nIf the requested evidence was not directly found, say so clearly.\nPrefer concise, practical answers that help the user identify the relevant HR policy, citing the policy number (e.g., Policy 51350) and title."
     }
 }

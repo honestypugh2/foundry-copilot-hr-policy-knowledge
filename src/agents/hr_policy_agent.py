@@ -4,14 +4,20 @@ HR Policy Agent
 RAG-based agent that answers employee questions using Azure AI Search
 to retrieve relevant HR policy documents and Azure OpenAI for generation.
 
-Uses Azure AI Foundry Agent Framework (agent_framework) with
-AzureAIClient for grounded, citation-backed responses.
+Uses Agent Framework ``FoundryChatClient`` with ``@tool``-decorated search
+functions for grounded, citation-backed responses.
 
-The agent is created once at startup via initialize() and persists
-in the Azure AI Foundry portal for visibility and management.
+References:
+    Agent Framework overview:
+        https://learn.microsoft.com/en-us/agent-framework/overview/
+    Add tools:
+        https://learn.microsoft.com/en-us/agent-framework/get-started/add-tools
+    FoundryChatClient (Foundry provider):
+        https://learn.microsoft.com/en-us/agent-framework/agents/providers/microsoft-foundry
 """
 
-import asyncio
+from __future__ import annotations
+
 import logging
 import os
 import re
@@ -19,21 +25,28 @@ from typing import Annotated, Any, Optional
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
 # Agent Framework imports
+# ---------------------------------------------------------------------------
 try:
-    from agent_framework.azure import AzureAIClient
-    from azure.identity.aio import DefaultAzureCredential
+    from agent_framework import Agent, tool
+    from agent_framework.foundry import FoundryChatClient
+    from azure.identity import DefaultAzureCredential
     AGENT_FRAMEWORK_AVAILABLE = True
 except ImportError:
     AGENT_FRAMEWORK_AVAILABLE = False
-    AzureAIClient = None
-    DefaultAzureCredential = None
-    logger.warning("agent-framework not installed, agent mode unavailable")
+    Agent = None  # type: ignore[assignment,misc]  # noqa: N806
+    FoundryChatClient = None  # type: ignore[assignment,misc]  # noqa: N806
+    DefaultAzureCredential = None  # type: ignore[assignment,misc]  # noqa: N806
+    logger.warning("agent-framework or azure-identity not installed, agent mode unavailable")
 
 from src.search.search_service import HRPolicySearchService, expand_query_with_glossary
 from src.search.integrated_vectorization_search import IntegratedVectorizationSearchService
 
 
+# ---------------------------------------------------------------------------
+# Agent instructions
+# ---------------------------------------------------------------------------
 AGENT_INSTRUCTIONS = """You are an HR Policy Assistant for the "Ask HR" system.
 Your role is to answer employee questions based on INTERNAL HR policy documents ONLY.
 
@@ -54,16 +67,62 @@ RESPONSE FORMAT:
 """
 
 
+# ---------------------------------------------------------------------------
+# Tools — defined at module level so they can be passed to Agent(tools=[...])
+# ---------------------------------------------------------------------------
+
+# A module-level search service instance is needed by the tool functions.
+# Lazily initialised on first use.
+_search_service: Optional[Any] = None
+
+
+def _get_search_service() -> Any:
+    global _search_service
+    if _search_service is None:
+        mode = os.getenv("SEARCH_MODE", "integrated_vectorization")
+        if mode == "integrated_vectorization":
+            _search_service = IntegratedVectorizationSearchService()
+        else:
+            _search_service = HRPolicySearchService()
+    return _search_service
+
+
+@tool(approval_mode="never_require")
+def search_hr_policies(
+    query: Annotated[str, "The employee's HR question to search for in the knowledge base"],
+) -> str:
+    """Search the HR policy knowledge base and return relevant policy excerpts.
+
+    Expands the query with HR glossary terms (e.g. PTO → Paid Time Off) before
+    searching with hybrid vector + semantic ranking.
+    """
+    expanded = expand_query_with_glossary(query)
+    svc = _get_search_service()
+    results = svc.search(expanded, top=5)
+
+    if not results:
+        return "No relevant HR policy documents found for this query."
+
+    parts = []
+    for i, result in enumerate(results, 1):
+        title = result.get("title", result.get("parent_title", "Unknown Policy"))
+        policy_num = result.get("policy_number", "")
+        content = result.get("content", "")[:800]
+        parts.append(f"[{i}] Policy {policy_num} - {title}\n{content}")
+    return "\n\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# HRPolicyAgent
+# ---------------------------------------------------------------------------
+
 class HRPolicyAgent:
     """
-    HR Policy Agent that uses RAG to answer employee HR questions.
-
-    The agent is created once via initialize() and persists in the
-    Azure AI Foundry portal for visibility and management.
+    HR Policy Agent using Agent Framework + FoundryChatClient.
 
     Modes:
-    1. Azure AI Agent (with AzureAIClient + AI Search tool) — persistent
-    2. Local search fallback (no LLM)
+    1. FoundryChatClient Agent with ``search_hr_policies`` tool — full RAG
+    2. Local search fallback (no LLM) when Foundry is not configured
     """
 
     def __init__(
@@ -71,121 +130,106 @@ class HRPolicyAgent:
         use_agent: bool = True,
         project_endpoint: Optional[str] = None,
         model_deployment_name: Optional[str] = None,
-        search_index_name: Optional[str] = None,
-        search_connection_id: Optional[str] = None,
         search_mode: Optional[str] = None,
     ):
         self.use_agent = use_agent and AGENT_FRAMEWORK_AVAILABLE
-        # Prefer AZURE_AI_PROJECT_ENDPOINT (Foundry project format: services.ai.azure.com)
-        # over AZURE_AI_FOUNDRY_PROJECT_ENDPOINT which may be an OpenAI endpoint
-        self.project_endpoint = project_endpoint or os.getenv("AZURE_AI_PROJECT_ENDPOINT") or os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT", "")
-        self.model_deployment_name = model_deployment_name or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
-        self.search_index_name = search_index_name or os.getenv("AZURE_SEARCH_INDEX_NAME", "hr-policy-index")
-        self.search_connection_id = search_connection_id or os.getenv("AI_SEARCH_PROJECT_CONNECTION_ID", "")
+        self.project_endpoint = (
+            project_endpoint
+            or os.getenv("AZURE_AI_PROJECT_ENDPOINT")
+            or os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT")
+            or os.getenv("FOUNDRY_PROJECT_ENDPOINT", "")
+        )
+        self.model_deployment_name = (
+            model_deployment_name
+            or os.getenv("FOUNDRY_MODEL")
+            or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
+        )
 
         # Search mode: "integrated_vectorization" (default) or "legacy"
         self.search_mode = search_mode or os.getenv("SEARCH_MODE", "integrated_vectorization")
 
-        # Foundry agent state (populated by initialize())
-        self._credential: Any = None
+        # FoundryChatClient Agent (populated by initialize())
         self._agent: Any = None
-        self._agent_cm: Any = None
         self._initialized = False
 
-        # Search service: use integrated vectorization by default
-        if self.search_mode == "integrated_vectorization":
-            self.search_service = IntegratedVectorizationSearchService()
-        else:
-            self.search_service = HRPolicySearchService()
+        # Ensure the module-level search service matches the requested mode
+        global _search_service
+        if _search_service is None:
+            if self.search_mode == "integrated_vectorization":
+                _search_service = IntegratedVectorizationSearchService()
+            else:
+                _search_service = HRPolicySearchService()
+
+    @property
+    def search_service(self) -> Any:
+        return _get_search_service()
 
     async def initialize(self) -> None:
-        """
-        Create the Foundry agent once. Call at application startup.
-
-        The agent persists in the Azure AI Foundry portal and is reused
-        across all subsequent requests.
-        """
+        """Create the FoundryChatClient Agent. Call at application startup."""
         if self._initialized:
             return
         if not self.use_agent or not self.project_endpoint:
-            logger.info("Agent mode disabled or no project endpoint; skipping Foundry agent creation")
+            logger.info("Agent mode disabled or no project endpoint; skipping agent creation")
             return
-        if not AGENT_FRAMEWORK_AVAILABLE or AzureAIClient is None or DefaultAzureCredential is None:
-            logger.warning("Agent framework not available; skipping Foundry agent creation")
+        if not AGENT_FRAMEWORK_AVAILABLE or FoundryChatClient is None:
+            logger.warning("Agent framework not available; skipping agent creation")
             return
 
         try:
-            self._credential = DefaultAzureCredential()
-
-            tools: list[Any] = [self.format_hr_query_context]
-            if self.search_connection_id:
-                tools.append(self._build_azure_ai_search_tool())
-
-            self._agent_cm = AzureAIClient(
+            credential = DefaultAzureCredential()  # type: ignore[misc]
+            chat_client = FoundryChatClient(
                 project_endpoint=self.project_endpoint,
-                model_deployment_name=self.model_deployment_name,
-                credential=self._credential,
-            ).as_agent(
+                model=self.model_deployment_name,
+                credential=credential,
+            )
+
+            self._agent = chat_client.as_agent(
                 name="HRPolicyAgent",
                 instructions=AGENT_INSTRUCTIONS,
-                description="HR Policy Assistant - answers employee questions from internal HR documents",
-                tools=tools,
+                tools=[search_hr_policies],
             )
-            self._agent = await self._agent_cm.__aenter__()
+
             self._initialized = True
-            logger.info("HRPolicyAgent created and persisted in Foundry portal")
+            logger.info("HRPolicyAgent created via FoundryChatClient")
+
+            # Optionally register in Foundry portal for visibility
+            self._register_in_portal(credential)
+
         except Exception as e:
-            logger.error(f"Failed to create Foundry agent: {e}")
+            logger.error("Failed to create FoundryChatClient Agent: %s", e)
             self._agent = None
             self._initialized = False
 
-    async def close(self) -> None:
-        """Release local resources on shutdown. The agent remains in the Foundry portal.
+    def _register_in_portal(self, credential: Any) -> None:
+        """Register the agent in Azure AI Foundry portal for monitoring."""
+        try:
+            from azure.ai.projects import AIProjectClient
+            from azure.ai.projects.models import PromptAgentDefinition
 
-        NOTE: We intentionally do NOT call __aexit__ on the agent context
-        manager — that would delete the agent from Foundry. We only close
-        the credential and underlying HTTP sessions to avoid resource leaks.
-        """
-        # Close the agent's internal HTTP client if accessible
-        if self._agent:
-            for attr in ("_client", "client"):
-                client = getattr(self._agent, attr, None)
-                if client and hasattr(client, "close"):
-                    try:
-                        await client.close()
-                    except Exception:
-                        pass
-                    break
-        if self._credential:
+            pc = AIProjectClient(
+                endpoint=self.project_endpoint,
+                credential=credential,
+            )
             try:
-                await self._credential.close()
+                existing = pc.agents.get(agent_name="HRPolicyAgent")
+                logger.info("HRPolicyAgent already in Foundry portal")
             except Exception:
-                pass
-            self._credential = None
+                pc.agents.create_version(
+                    agent_name="HRPolicyAgent",
+                    definition=PromptAgentDefinition(
+                        model=self.model_deployment_name,
+                        instructions=AGENT_INSTRUCTIONS,
+                        temperature=0.0,
+                    ),
+                )
+                logger.info("HRPolicyAgent registered in Foundry portal")
+        except Exception as e:
+            logger.debug("Portal registration skipped: %s", e)
+
+    async def close(self) -> None:
+        """Release local resources. The Foundry agent remains in the portal."""
         self._agent = None
-        self._agent_cm = None
         self._initialized = False
-
-    def _build_azure_ai_search_tool(self) -> dict:
-        """Build the Azure AI Search tool configuration for the agent."""
-        return {
-            "type": "azure_ai_search",
-            "azure_ai_search": {
-                "indexes": [{
-                    "project_connection_id": self.search_connection_id,
-                    "index_name": self.search_index_name,
-                    "query_type": "semantic",
-                }]
-            },
-        }
-
-    @staticmethod
-    def format_hr_query_context(
-        query: Annotated[str, "The employee's HR question to search for"],
-    ) -> str:
-        """Format and expand the employee's HR query with glossary terms for better search."""
-        expanded = expand_query_with_glossary(query)
-        return f"Search for HR policy information about: {expanded}"
 
     async def answer_question_async(
         self,
@@ -195,46 +239,34 @@ class HRPolicyAgent:
         """
         Answer an HR policy question using RAG.
 
-        Args:
-            question: The employee's question
-            conversation_history: Optional previous messages for context
-
         Returns:
             dict with answer, citations, confidence, and policy_references
         """
         if self.use_agent and self.project_endpoint:
             return await self._agent_answer(question, conversation_history)
-        else:
-            return await self._local_answer(question)
+        return await self._local_answer(question)
 
     async def _agent_answer(
         self,
         question: str,
         conversation_history: Optional[list[dict[str, str]]] = None,
     ) -> dict[str, Any]:
-        """Answer using the persisted Foundry agent with AI Search RAG."""
-        # Lazy-initialize if not done at startup
+        """Answer using the FoundryChatClient Agent with search_hr_policies tool."""
         if not self._initialized:
             await self.initialize()
 
         if not self._agent:
-            logger.warning("Foundry agent not available, falling back to local")
+            logger.warning("Agent not available, falling back to local search")
             return await self._local_answer(question)
 
-        response_text = ""
         try:
             prompt = self._build_prompt(question, conversation_history)
-
-            stream = self._agent.run(prompt, stream=True)
-            async for chunk in stream:
-                if chunk.text:
-                    response_text += str(chunk.text)
-            await stream.get_final_response()
-
+            result = await self._agent.run(prompt)
+            response_text = str(result)
             return self._parse_agent_response(response_text, question)
 
         except Exception as e:
-            logger.error(f"Agent answer failed: {e}")
+            logger.error("Agent answer failed: %s", e)
             return await self._local_answer(question)
 
     async def _local_answer(self, question: str) -> dict[str, Any]:
@@ -250,13 +282,12 @@ class HRPolicyAgent:
                 "policy_references": [],
             }
 
-        # Build answer from search results
         answer_parts = ["Based on the HR policy documents, here is what I found:\n"]
         citations = []
         policy_refs = []
 
         for i, result in enumerate(results, 1):
-            title = result.get("title", "Unknown Policy")
+            title = result.get("title", result.get("parent_title", "Unknown Policy"))
             policy_num = result.get("policy_number", "")
             content = result.get("content", "")[:500]
 
@@ -291,7 +322,7 @@ class HRPolicyAgent:
 
         if conversation_history:
             parts.append("Previous conversation context:")
-            for msg in conversation_history[-5:]:  # Last 5 messages
+            for msg in conversation_history[-5:]:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
                 parts.append(f"{role}: {content}")
@@ -307,7 +338,6 @@ class HRPolicyAgent:
         citations = []
         policy_refs = []
 
-        # Extract policy references from response (e.g., [Policy 50410 - ...])
         policy_pattern = r'\[?Policy\s+(\d+)\s*[-–]\s*([^\]]+)\]?'
         matches = re.findall(policy_pattern, response_text, re.IGNORECASE)
         for num, title in matches:
@@ -326,6 +356,7 @@ class HRPolicyAgent:
 
     def answer_question(self, question: str, conversation_history: Optional[list[dict[str, str]]] = None) -> dict[str, Any]:
         """Synchronous wrapper for answer_question_async."""
+        import asyncio
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:

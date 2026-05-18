@@ -7,8 +7,8 @@
 │                         Clients                                │
 │                                                                │
 │   ┌──────────────────────────────────────────────────────────┐ │
-│   │  Chat Interface (Web / Teams)                            │ │
-│   │                                                          │ │
+│   │  Copilot Studio (Teams / Web Chat)                       │ │
+│   │  Power Platform Environment                              │ │
 │   └──────────────────────────┬───────────────────────────────┘ │
 │                              │                                 │
 └──────────────────────────────┼─────────────────────────────────┘
@@ -48,7 +48,7 @@
    - Documents uploaded to Azure AI Search index
 
 ### Question Answering
-1. User submits question via chat UI
+1. User submits question via chat UI or Copilot Studio
 2. **Query Understanding**: Glossary expands vernacular terms
 3. **Policy Retrieval**: Azure AI Search finds relevant policies
 4. **Answer Generation**: AI agent produces grounded answer with citations
@@ -58,7 +58,7 @@
 
 | Component | Technology | Purpose |
 |---|---|---|
-| Chat Interface | React + FastAPI | Web chat UI |
+| Chat Interface | Copilot Studio | Teams / web chat UI (primary) |
 | Backend | FastAPI + Uvicorn | REST API, orchestration |
 | Orchestrator | Agent Framework (WorkflowBuilder) | Sequential workflow |
 | Search | Azure AI Search | Full-text + semantic search |
