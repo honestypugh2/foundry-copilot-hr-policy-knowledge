@@ -1,418 +1,183 @@
 # HR Policy Knowledge Agent
 
-> **Ask HR** — An AI-powered assistant that answers employee questions using internal HR policy documents, built with Azure AI Foundry, Azure AI Search, Microsoft Agent Framework, and Copilot Studio.
+> **Ask HR** — An AI-powered assistant that answers employee questions
+> using internal HR policy documents. Built on Azure AI Foundry, Azure
+> AI Search, Microsoft Agent Framework (GA), and Copilot Studio.
 
-## Overview
+---
 
-This demo showcases a Retrieval-Augmented Generation (RAG) solution for HR policy Q&A. Employees ask questions in natural language — including informal shorthand — and receive grounded answers with specific policy citations.
+## Decision Tree — Pick a Pattern
 
-### Customer Challenges Addressed
-
-| # | Challenge | Solution |
-|---|---|---|
-| 1 | **Incorrect grounding** against authoritative data | Agent instructions enforce citing specific policy numbers; answers restricted to retrieved documents |
-| 2 | **Difficulty understanding technician vernacular** | HR glossary maps ~30 informal terms to formal policy names before search |
-| 3 | **Managing multiple data sources** in a single agent | Sub-agent / sequential workflow pattern handles different policy categories |
-| 4 | **Prompt and instruction limitations** in Copilot Studio | Detailed agent instructions with 7 grounding rules in the backend |
-
-## Architecture
-
-This project supports two architecture options. **Copilot Studio** is the recommended default — it connects directly to Azure AI Search with no custom backend required. A **FastAPI + React** alternative is also included for advanced scenarios that need full orchestration control.
-
-### Option A: Copilot Studio (Recommended)
-
-Copilot Studio supports **two integration paths** to the same `hr-policy-index`:
-
-```
-Employee (Teams / Web Chat)
-          │
-          ▼
-    Copilot Studio
-          │
-    ┌─────┴─────┐
-    ▼            ▼
-  Path 1       Path 2
-  Knowledge    Foundry Agent
-  Source       Action
-  (Direct)     (Agentic Retrieval)
-    │            │
-    ▼            ▼
-  Azure AI     Foundry Agent (gpt-4o)
-  Search         │
-  (hr-policy-    ├─ MCP Tool: knowledge_base_retrieve
-   index)        │   └─ Knowledge Base → hr-policy-index
-    │            │
-    ▼            ▼
-  Grounded HR Policy Answer
+```mermaid
+flowchart TD
+    Start([New HR Q&A scenario]) --> Q1{Need answer synthesis?}
+    Q1 -- "No, just locate document" --> C[Pattern C: Dual-Tool Routing POST /api/lookup]
+    Q1 -- Yes --> Q2{Need an LLM agent?}
+    Q2 -- "No, hybrid search is enough" --> A["★ Pattern A: Direct Knowledge Base Copilot Studio → AI Search (default)"]
+    Q2 -- Yes --> Q3{Self-host the runtime?}
+    Q3 -- No --> B[Pattern B: Foundry Agent Service prompt agent + MCPTool]
+    Q3 -- Yes --> H[Hosted Agent runtime Microsoft Agent Framework hosting]
 ```
 
-| Path | How It Works | Best For |
-|------|-------------|----------|
-| **Path 1: Knowledge Source (Direct)** | Copilot Studio queries `hr-policy-index` directly via its native Azure AI Search connector. Supports text + vector (integrated vectorization) + semantic ranker. Copilot Studio's built-in LLM synthesizes the answer. | Simple Q&A, fast responses, quick setup |
-| **Path 2: Foundry Agent Action** | Copilot Studio invokes a Foundry Agent as an Action. The agent uses agentic retrieval (Foundry IQ) for AI-planned query routing, subquery decomposition, and source attribution. Custom retrieval + answer instructions. | Complex queries, multi-source, detailed citations, grounded reasoning |
+| Pattern | Code path                                       | Latency  | When                                |
+| ------- | ----------------------------------------------- | -------- | ----------------------------------- |
+| **A** ★ | Copilot Studio Knowledge Source                 | ~1–2 s   | Start here — simplest setup, no agent code needed |
+| **B**   | `src/agents/hr_policy_agent.py` (PromptAgent)   | ~10–14 s | Upgrade for force-grounded answer synthesis |
+| **C**   | `src/backend/main.py:/api/lookup`               | ~1–2 s   | Add to A or B for fast doc-locator path |
+| Hosted  | `src/agents/hr_policy_agent_af.py` + container  | ~10–14 s | Self-hosted runtime (Agent Framework hosting, GA) |
 
-Both paths share the same index — populate it once using either indexing option, then configure one or both paths in Copilot Studio.
+★ **Default — start here.** Pattern A connects Copilot Studio directly to
+Azure AI Search; no agent code in this repo runs in the answer path. Step
+up to Pattern B when you need force-grounded synthesis via
+`tool_choice="required"`. Set `AGENT_SERVICE=foundry` and run
+`python -m src.agents.create_foundry_agent` to provision Pattern B.
 
-### Option B: FastAPI + React (Advanced)
+Full details: **[docs/RetrievalPatterns.md](docs/RetrievalPatterns.md)**.
+Deep-dive on the default Pattern B internals: **[docs/FoundryAgentArchitecture.md](docs/FoundryAgentArchitecture.md)**.
+SDK choice (Foundry Agent Service vs Microsoft Agent Framework): **[docs/AgentArchitecturePaths.md](docs/AgentArchitecturePaths.md)**.
+Linear setup steps: **[docs/Walkthrough.md](docs/Walkthrough.md)**.
 
-```
-  React Frontend
-        │
-        ▼
-  FastAPI Backend
-        │
-  ┌─────┼─────┐
-  ▼     ▼     ▼
-Query Policy  Answer
-Understand Retrieval Generation
-(Glossary) (AI Search) (RAG + LLM)
-```
+---
 
-The FastAPI backend adds capabilities beyond what Copilot Studio provides natively:
-- **Hybrid search** (text + vector) via `content_vector` embeddings
-- **Python-side glossary expansion** on top of the index synonym map
-- **Sequential workflow orchestration** using Microsoft Agent Framework
-- **Structured citations** with policy numbers and confidence scores
+## Walkthrough
 
-See [docs/Architecture.md](docs/Architecture.md) for the full diagram.
+### 1. Prerequisites
 
-## Tech Stack
+- Azure subscription with **AI Search**, **AI Foundry**, **OpenAI**, and **Document Intelligence**.
+- Azure CLI (`az login`) with the right subscription selected.
+- Python 3.10+ and [`uv`](https://docs.astral.sh/uv/).
+- Node.js 18+ (only if you run the React frontends).
+- Copilot Studio licence (Power Virtual Agents) for Patterns A / C.
 
-| Component | Technology | Used By |
-|---|---|---|
-| Azure AI Search | Full-text + semantic search with HR glossary | Both options |
-| Azure AI Search (Integrated Vectorization) | Indexer + skillset pipeline with server-side chunking and embedding | Option B (default), Option A (with vectorizer) |
-| Azure Document Intelligence | Word document extraction | Both options |
-| Azure OpenAI (GPT-4o) | Answer generation | Both options |
-| Azure AI Foundry | `azure-ai-projects>=2.0.0` | Option A Path 2, Option B |
-| Microsoft Agent Framework | `agent-framework>=1.1.1`, `agent-framework-foundry>=1.1.1` | Option A Path 2, Option B |
-| Copilot Studio | Teams / web chat interface | Option A (both paths) |
-| FastAPI | REST API backend | Option B |
-| React + TypeScript + Vite | Chat UI (`src/frontend`, `src/frontend-copilot-studio`) | Option B |
-
-### Search Modes
-
-The project supports two search modes:
-
-| Mode | Description | Default |
-|---|---|---|
-| **Integrated Vectorization** | Azure AI Search indexer + skillset pipeline handles chunking and embedding at index time. Query-time embedding via AzureOpenAI vectorizer. Config: `src/config/search_config.json` | Yes |
-| **Legacy** | Client-side chunking and embedding via `scripts/index_knowledge_base.py`. Query-time embedding generated client-side. | No |
-
-Set `SEARCH_MODE=legacy` in your environment to use the legacy search mode. See [docs/Architecture.md](docs/Architecture.md) for details.
-
-## Quick Start — Option A: Copilot Studio
-
-### Prerequisites
-
-- Azure subscription with AI Search, OpenAI, and Document Intelligence
-- Azure CLI (`az login`)
-- Python 3.10+ and [uv](https://docs.astral.sh/uv/) (for indexing scripts)
-- Copilot Studio license (Power Virtual Agents)
-
-### 1. Clone and Setup
+### 2. Clone, configure, install
 
 ```bash
 git clone https://github.com/honestypugh2/foundry-copilot-hr-policy-knowledge.git
 cd foundry-copilot-hr-policy-knowledge
 uv sync
-```
-
-### 2. Configure Environment
-
-Copy `.env.example` to `.env` and fill in your Azure credentials:
-
-```bash
 cp .env.example .env
-# Edit .env with your Azure service endpoints and keys
+# Edit .env with your Azure endpoints
 ```
 
-### 3. Index the Knowledge Base
+Key environment variables (see `.env.example`):
 
-Two indexing options are available. Pick one based on your needs (see [Scripts Reference](#scripts-reference) for full details):
-
-**Option 1 — Client-side chunking (recommended for dev/test):**
 ```bash
+AZURE_AI_PROJECT_ENDPOINT=https://<project>.services.ai.azure.com/api/projects/<project>
+AZURE_SEARCH_ENDPOINT=https://<search>.search.windows.net
+AZURE_OPENAI_ENDPOINT=https://<openai>.openai.azure.com
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+AGENT_SERVICE=agent-framework  # default. Set to "foundry" only when running Pattern B
+ORCHESTRATOR_PATTERN=A         # documentation hint — see docs/RetrievalPatterns.md
+SEARCH_MODE=integrated_vectorization
+```
+
+### 3. Index the knowledge base
+
+Two options — pick one. Both populate `hr-policy-index`.
+
+```bash
+# Option 1 — Client-side chunking (best for dev/test)
 uv run python scripts/index_knowledge_base_docintel_chunking.py
-```
 
-**Option 2 — Integrated vectorization (recommended for production):**
-```bash
-# Upload documents to Blob Storage, then create the indexer pipeline
+# Option 2 — Integrated vectorization (best for production)
 uv run python scripts/index_knowledge_base_integrated_vectorization.py
 ```
 
-For local-only extraction testing (no Azure Search upload):
+Local-only extraction (no Azure upload):
+
 ```bash
 uv run python scripts/index_knowledge_base_docintel_chunking.py --local-only
 ```
 
-### 4. Set Up Copilot Studio
+### 4. (Optional) Provision the Foundry Agent (Pattern B)
 
-Choose one or both integration paths:
+Skip this step if you're starting with Pattern A. Run it when you want
+force-grounded answer synthesis via `tool_choice="required"`.
 
-#### Path 1: Azure AI Search as Knowledge Source (Quick Setup)
+```bash
+uv run python -m src.agents.create_foundry_agent
+```
 
-Connect Copilot Studio directly to your search index — no backend or Foundry project needed.
+Creates: Knowledge Source → Knowledge Base → MCP connection → PromptAgent
+(`HRPolicyAgent`, `gpt-4o`, `tool_choice="required"`).
 
-1. In Copilot Studio, create a new copilot (`Ask HR Policy Agent`)
-2. Go to **Knowledge** → **Add knowledge** → **Azure AI Search**
-3. Create a connection with your search endpoint + API key
-4. Enter index name: `hr-policy-index` → **Add to agent**
-5. Configure agent instructions on the **Overview** page (see [CopilotStudioIntegration.md](docs/CopilotStudioIntegration.md#step-3-configure-agent-instructions-and-generative-ai-settings))
-6. Turn off "Allow the AI to use its own general knowledge" under **Settings → Generative AI**
-7. Publish to Teams
+Verify or clean up:
 
-> Copilot Studio automatically leverages the semantic ranker and integrated vectorization vectorizer when available on the index.
+```bash
+uv run python -m src.agents.create_foundry_agent --verify-only
+uv run python -m src.agents.create_foundry_agent --cleanup
+```
 
-#### Path 2: Foundry Agent Action (Agentic Retrieval)
-
-Wrap the search index in a Foundry Knowledge Base and expose it as an agent action in Copilot Studio.
-
-1. **Create the Foundry Agent** (requires index to be populated from step 3):
-   ```bash
-   uv run python scripts/create_foundry_agent.py
-   ```
-   This creates: Knowledge Source → Knowledge Base → MCP connection → Foundry Agent (`HRPolicyAgent`, gpt-4o) with `knowledge_base_retrieve` tool.
-
-2. **Connect in Copilot Studio:**
-   - Go to **Tools** → **Add a tool** → **Azure AI Foundry agent**
-   - Select your AI Foundry project and the `HRPolicyAgent`
-   - The Foundry agent runs as a sub-agent with agentic retrieval (AI-planned query routing, subquery decomposition, semantic ranking, and answer synthesis)
-
-3. **Alternative — REST API Tool:** If your Foundry Agent is deployed as an API (e.g., Azure Function), you can also add it as a REST API tool using an OpenAPI spec. See [CopilotStudioIntegration.md](docs/CopilotStudioIntegration.md) for details.
-
-> **RBAC required:** The Foundry project's managed identity needs `Search Index Data Reader` on the search service. See [docs/ArchitectureOptions.md](docs/ArchitectureOptions.md#rbac-requirements).
-
-#### Full Guide
-
-> **[Copilot Studio Integration Guide](docs/CopilotStudioIntegration.md)**
-
-The guide covers both paths in detail:
-- Creating a Copilot in Copilot Studio
-- Path 1: Adding Azure AI Search as a knowledge source
-- Path 2: Adding a Foundry Agent Action (direct or via REST API tool)
-- Configuring agent instructions and generative AI settings
-- Setting up vernacular handling via synonym maps
-- Publishing to Microsoft Teams
-- Testing and troubleshooting
-
-After completing these steps, employees can ask HR questions directly from Teams or the Copilot Studio web chat — no custom backend deployment needed.
-
----
-
-## Quick Start — Option B: FastAPI + React
-
-Use this option when you need hybrid vector search, the full Agent Framework orchestration pipeline, or a custom React UI.
-
-### Additional Prerequisites
-
-- Node.js 18+
-
-### 1–3. Same as Option A
-
-Follow steps 1–3 above to clone, configure, and index the knowledge base.
-
-### 4. Start the Backend
+### 5. Run the FastAPI backend
 
 ```bash
 uv run python -m src.backend.main
-# API available at http://localhost:8000
-# Docs at http://localhost:8000/docs
+# http://localhost:8000   (docs at /docs)
 ```
 
-### 5. Start a Frontend
+Endpoints:
 
-**Agent Framework frontend:**
-```bash
-cd src/frontend
-npm install && npm run dev
-# http://localhost:5173
-```
+| Method | Path                               | Notes                                |
+| ------ | ---------------------------------- | ------------------------------------ |
+| `POST` | `/api/chat`                        | Pattern B answer synthesis           |
+| `POST` | `/api/lookup`                      | Pattern C document locator (no LLM)  |
+| `GET`  | `/api/knowledge-base`              | Index metadata                       |
+| `POST` | `/api/knowledge-base/reindex`      | Full reindex                         |
+| `POST` | `/api/documents/upload`            | Upload + index a single document     |
+| `GET`  | `/api/glossary`                    | HR vernacular glossary               |
+| `GET`  | `/api/health`                      | Service health                       |
+| `GET`  | `/api/azure/status`                | Per-service config status            |
+| `GET`  | `/api/copilot-studio/token`        | Direct Line token (web chat embed)   |
+| `POST` | `/api/copilot-studio/chat`         | Proxy to Copilot Studio bot          |
 
-**Copilot Studio Web Chat embed frontend:**
-```bash
-cd src/frontend-copilot-studio
-npm install && npm run dev
-# http://localhost:5174
-```
-
-### API Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/chat` | Submit an HR question, get a grounded answer |
-| `GET` | `/api/health` | Health check for all Azure services |
-| `GET` | `/api/knowledge-base` | Knowledge base metadata and file list |
-| `POST` | `/api/knowledge-base/reindex` | Trigger re-indexing of all documents |
-| `POST` | `/api/documents/upload` | Upload and index a new HR document |
-| `GET` | `/api/glossary` | HR vernacular-to-formal term glossary |
-| `GET` | `/api/azure/status` | Azure service configuration status |
-| `GET` | `/api/copilot-studio/token` | Direct Line token for Copilot Studio Web Chat |
-| `POST` | `/api/copilot-studio/chat` | Proxy chat to Copilot Studio agent |
-| `GET` | `/api/copilot-studio/config` | Copilot Studio configuration status |
-
----
-
-## Project Structure
-
-```
-├── src/
-│   ├── agents/
-│   │   ├── hr_policy_agent.py     # RAG agent (FoundryChatClient + Agent Framework SDK)
-│   │   └── orchestrator.py        # Sequential workflow (SequentialBuilder pipeline)
-│   ├── backend/
-│   │   └── main.py                # FastAPI application (Option B)
-│   ├── config/
-│   │   ├── search_config.json     # Shared index schema, vector, semantic, skillset config
-│   │   └── search_config.py       # Typed Python accessor for search_config.json
-│   ├── document_processing/
-│   │   ├── document_ingestion.py  # Doc Intelligence + python-docx + antiword
-│   │   └── chunking.py            # Fixed-size chunking with overlap
-│   ├── search/
-│   │   ├── search_service.py      # HR_GLOSSARY, glossary expansion, legacy search client
-│   │   └── integrated_vectorization_search.py  # Hybrid search (text + vector + semantic)
-│   ├── models/
-│   │   └── schemas.py             # Pydantic data models
-│   ├── copilot_studio/
-│   │   └── service.py             # Direct-to-Engine API client
-│   ├── frontend/                  # React chat UI (Option B)
-│   └── frontend-copilot-studio/   # React + Copilot Studio Web Chat embed (Option B)
-├── scripts/                       # See Scripts Reference below
-│   ├── index_knowledge_base_docintel_chunking.py        # Pattern 1, Option 1
-│   ├── index_knowledge_base_integrated_vectorization.py # Pattern 1, Option 2
-│   ├── create_foundry_agent.py                          # Pattern 2
-│   ├── upload_to_blob.py                                # Blob upload utility
-│   ├── setup.sh                                         # Project setup
-│   ├── generate_architecture_diagram.py                 # Diagram generator
-│   ├── index_knowledge_base.py                          # (deprecated)
-│   └── index_knowledge_base_chunking.py                 # (deprecated)
-├── data/knowledge_base/           # HR policy Word documents
-├── docs/
-│   ├── Architecture.md            # System architecture
-│   ├── ArchitectureOptions.md     # Pattern 1/2 options in detail
-│   ├── DataPipelineAndTesting.md  # Data pipeline, pre-processing, and testing
-│   ├── CopilotStudioIntegration.md # Copilot Studio guide (Option A)
-│   └── SharePointLogicAppsArchitecture.md # Production SharePoint pipeline
-├── infra/
-│   └── main.bicep                 # Azure infrastructure (Bicep)
-└── tests/                         # pytest test suites
-```
-
-## Scripts Reference
-
-All scripts live in `scripts/` and share configuration from `src/config/search_config.json`.
-
-### Indexing Scripts (choose one)
-
-These scripts populate the Azure AI Search index (`hr-policy-index`). You only need to run **one** of the two active options.
-
-| Script | Pattern | Pipeline | When to Use |
-|--------|---------|----------|-------------|
-| `index_knowledge_base_docintel_chunking.py` | Pattern 1, Option 1 | Client-side: Azure DI → `fixed_size_chunking(2000, 200)` → glossary enrichment → client embedding → Push API | Dev/test, CI/CD, custom preprocessing, batch reindexing |
-| `index_knowledge_base_integrated_vectorization.py` | Pattern 1, Option 2 | Server-side: Blob upload → Indexer → Document Layout Skill (structure-aware chunking) → Embedding Skill → Index projections | Production, auto-reindex on blob changes, structure-aware chunking |
-
-**Option 1: DocIntel + Client-Side Chunking**
-```bash
-# Full pipeline — extract, chunk, embed, push
-python scripts/index_knowledge_base_docintel_chunking.py
-
-# Test extraction locally (no Azure Search upload)
-python scripts/index_knowledge_base_docintel_chunking.py --local-only
-
-# Use a different data directory
-python scripts/index_knowledge_base_docintel_chunking.py --data-dir data/knowledge_base_lab
-```
-
-**Option 2: Integrated Vectorization**
-```bash
-# Full setup — upload to blob + create index + skillset + indexer
-python scripts/index_knowledge_base_integrated_vectorization.py
-
-# Upload documents only (pipeline already exists)
-python scripts/index_knowledge_base_integrated_vectorization.py --upload-only
-
-# Create search pipeline only (documents already uploaded)
-python scripts/index_knowledge_base_integrated_vectorization.py --create-pipeline-only
-```
-
-### Foundry Agent Script (Pattern 2)
-
-Wraps the search index in a Foundry Knowledge Base and creates an agent with agentic retrieval. **Requires the index to be populated first** via one of the Pattern 1 options above.
-
-| Script | What It Does |
-|--------|--------------|
-| `create_foundry_agent.py` | Creates Knowledge Source → Knowledge Base → MCP connection → Foundry Agent (`HRPolicyAgent`, gpt-4o) with `knowledge_base_retrieve` tool |
+### 6. (Optional) Run the React frontends
 
 ```bash
-# Full setup
-python scripts/create_foundry_agent.py
+# Pure Agent Framework UI
+cd src/frontend && npm install && npm run dev          # http://localhost:5173
 
-# Verify all Foundry IQ resources exist
-python scripts/create_foundry_agent.py --verify-only
-
-# Cleanup Foundry IQ resources
-python scripts/create_foundry_agent.py --cleanup
+# Copilot Studio web chat embed
+cd src/frontend-copilot-studio && npm install && npm run dev  # http://localhost:5174
 ```
 
-### Utility Scripts
+### 7. Wire up Copilot Studio
 
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `upload_to_blob.py` | Upload documents to Azure Blob Storage (prerequisite for Option 2) | `python scripts/upload_to_blob.py [--dry-run] [--container NAME]` |
-| `setup.sh` | One-time project setup: venv, dependencies, `.env`, frontend | `./scripts/setup.sh` |
-| `generate_architecture_diagram.py` | Generate SharePoint pipeline diagram (PNG) | `python scripts/generate_architecture_diagram.py` |
+| Pattern | Setup guide                                                                |
+| ------- | -------------------------------------------------------------------------- |
+| A       | [docs/CopilotStudioIntegration.md](docs/CopilotStudioIntegration.md) — *Path 1* |
+| B       | [docs/CopilotStudioIntegration.md](docs/CopilotStudioIntegration.md) — *Path 2* |
+| C       | [docs/CopilotStudioLookupRouting.md](docs/CopilotStudioLookupRouting.md)   |
+| Hybrid  | [docs/CopilotStudioHybridExample.md](docs/CopilotStudioHybridExample.md)   |
 
-### Deprecated Scripts
+OpenAPI specs to import as Custom Connectors in Power Platform:
 
-These are superseded and should not be used for new work:
+- `copilot/openapi-lookup-v2.json` — Pattern C (`lookupHRPolicyDocument`)
+- `copilot/openapi-v2.json`        — Pattern B (`askHRPolicy`)
+- `copilot/quick_reference_guide.md` — paste into the copilot's
+  generative AI instructions or attach as a knowledge file (HR
+  glossary + policy-number map).
 
-| Script | Replaced By | Why |
-|--------|-------------|-----|
-| `index_knowledge_base.py` | `index_knowledge_base_docintel_chunking.py` | No chunking, no synonym map, no semantic config |
-| `index_knowledge_base_chunking.py` | `index_knowledge_base_docintel_chunking.py` | Smaller chunks (500/50 vs 2000/200), no synonym map |
-
-### Decision Flowchart
-
-```
-Need to populate the search index?
-├── Yes → Do documents change frequently?
-│   ├── Yes → Option 2: index_knowledge_base_integrated_vectorization.py
-│   │         (auto-reindex via indexer change tracking)
-│   └── No  → Option 1: index_knowledge_base_docintel_chunking.py
-│             (full control, runs locally or in CI/CD)
-│
-Need agentic retrieval / Foundry Agent Action?
-├── Yes → Run create_foundry_agent.py (after populating the index above)
-└── No  → Connect Copilot Studio directly to the index as a Knowledge Source
-```
-
-> **Full details:** [docs/DataPipelineAndTesting.md](docs/DataPipelineAndTesting.md) covers the pre-processing pipeline stages, shared configuration, and testing strategy. [docs/ArchitectureOptions.md](docs/ArchitectureOptions.md) covers the architecture patterns.
-
----
-
-## Running Tests
+### 8. (Optional) Run the Hosted Agent runtime
 
 ```bash
-# All tests
+cd src/hosted_agent
+uv run python server.py        # http://localhost:8088
+# or build the container:
+docker build -t hr-policy-hosted-agent .
+```
+
+`agent.yaml` declares the agent; `server.py` runs Microsoft Agent
+Framework with `FoundryChatClient` and the `@tool search_hr_policies`
+function defined in `src/agents/hr_policy_agent_af.py`.
+
+### 9. Run the test suite
+
+```bash
 uv run pytest tests/ -v
-
-# Only tests that don't need Azure credentials
-uv run pytest tests/ -v -m mock
-
-# Specific test file
-uv run pytest tests/test_chunking.py -v
+uv run pytest tests/ -v -m mock     # tests that don't need Azure
 ```
 
-Test suites:
-- `test_document_processing.py` — Policy number extraction, categorization, document ID generation
-- `test_chunking.py` — Fixed-size chunking edge cases, deterministic IDs
-- `test_search.py` — HR glossary expansion, case sensitivity, glossary integrity
-- `test_backend.py` — FastAPI endpoint responses (health, glossary, chat, knowledge base)
-
-## Infrastructure Deployment
-
-Deploy all Azure resources using Bicep:
+### 10. Deploy infrastructure
 
 ```bash
 az deployment group create \
@@ -420,6 +185,74 @@ az deployment group create \
   --template-file infra/main.bicep \
   --parameters infra/main.parameters.json
 ```
+
+---
+
+## Tech Stack
+
+| Component                     | Version (GA where applicable)                               |
+| ----------------------------- | ----------------------------------------------------------- |
+| Microsoft Agent Framework     | `agent-framework>=1.8.1` (GA)                               |
+| Foundry Agent Service SDK     | `azure-ai-projects>=2.2.0` (GA)                             |
+| Foundry helpers               | `agent-framework-foundry>=1.8.1` (GA)                       |
+| Azure AI Search SDK           | `azure-search-documents>=12.0.0`                            |
+| OpenAI SDK                    | `openai>=2.31.0`                                            |
+| FastAPI / Pydantic            | `fastapi>=0.135.1`, `pydantic>=2.12.5`                      |
+| Frontend                      | React 19, TypeScript 5.8, Vite 6, Tailwind 4                 |
+| Hosted Agent (Agent Framework hosting, GA) | `agent-framework>=1.8.1` + alpha `agent-framework-foundry-hosting==1.0.0a*` if deploying into Foundry's hosted-agents preview surface |
+
+---
+
+## Project Structure
+
+```
+.
+├── src/
+│   ├── agents/
+│   │   ├── hr_policy_agent.py        # Pattern B: Foundry PromptAgent + MCPTool
+│   │   ├── hr_policy_agent_af.py     # Hosted Agent: Microsoft Agent Framework + @tool
+│   │   ├── orchestrator.py           # Sequential workflow + AGENT_SERVICE switch
+│   │   └── create_foundry_agent.py   # Provision KB, KB Source, MCP connection, PromptAgent
+│   ├── backend/main.py               # FastAPI (POST /api/chat, /api/lookup, …)
+│   ├── config/                       # search_config.json + typed accessor
+│   ├── document_processing/          # Doc Intelligence + chunking
+│   ├── search/                       # Hybrid + integrated-vectorization clients
+│   ├── copilot_studio/service.py     # Direct-to-Engine API
+│   ├── frontend/                     # React 19 + TypeScript chat UI
+│   ├── frontend-copilot-studio/      # React 19 + Copilot Studio Web Chat embed
+│   └── hosted_agent/                 # agent.yaml + server.py + Dockerfile
+├── scripts/                          # Indexing + utilities
+│   ├── index_knowledge_base_docintel_chunking.py      # Option 1
+│   ├── index_knowledge_base_integrated_vectorization.py # Option 2
+│   ├── upload_to_blob.py
+│   └── setup.sh
+├── copilot/
+│   ├── openapi-v2.json               # Pattern B custom connector
+│   ├── openapi-lookup-v2.json        # Pattern C custom connector
+│   └── quick_reference_guide.md      # HR glossary + policy-number map
+├── docs/
+│   ├── RetrievalPatterns.md          # Decision tree + Pattern A/B/C/Hosted comparison
+│   ├── CopilotStudioIntegration.md   # Patterns A & B in Copilot Studio
+│   ├── CopilotStudioLookupRouting.md # Pattern C wiring
+│   ├── CopilotStudioHybridExample.md # Combining all three patterns
+│   ├── DataPipelineAndTesting.md     # Indexing pipeline + tests
+│   └── SharePointLogicAppsArchitecture.md
+├── infra/                            # Bicep + Terraform IaC
+└── tests/                            # pytest suites
+```
+
+---
+
+## Customer Challenges Addressed
+
+| # | Challenge                                            | Solution                                                                 |
+| - | ---------------------------------------------------- | ------------------------------------------------------------------------ |
+| 1 | Incorrect grounding against authoritative data       | PromptAgent with `tool_choice="required"` + strict citation instructions |
+| 2 | Difficulty understanding technician vernacular        | Synonym map + Python glossary expansion (`HR_GLOSSARY`)                  |
+| 3 | Managing multiple data sources in a single agent      | KB MCP tool aggregates Knowledge Sources behind one agent                |
+| 4 | Prompt and instruction limitations in Copilot Studio | Detailed `AGENT_INSTRUCTIONS` in the backend + dual-tool routing         |
+
+---
 
 ## License
 

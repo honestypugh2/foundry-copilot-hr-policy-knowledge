@@ -31,9 +31,9 @@ Shared configuration: src/config/search_config.json
     - Same index, synonym map, semantic config as Pattern 1
 
 Usage:
-    python scripts/create_foundry_agent.py
-    python scripts/create_foundry_agent.py --verify-only
-    python scripts/create_foundry_agent.py --cleanup
+    python -m src.agents.create_foundry_agent
+    python -m src.agents.create_foundry_agent --verify-only
+    python -m src.agents.create_foundry_agent --cleanup
 
 References:
     - Foundry IQ: https://github.com/Azure/Copilot-Studio-and-Azure/blob/main/labs/2.4-microsoft-foundry-agentic-retrieval/notebooks/foundry-IQ-agents.ipynb
@@ -49,7 +49,7 @@ import sys
 import time
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.config.search_config import search_cfg

@@ -175,19 +175,94 @@ async def health():
 # ========================================================================== #
 
 
+def _pattern_a_answer(question: str) -> dict:
+    """Pattern A — direct hybrid search, no LLM, no Foundry agent.
+
+    Mirrors what Copilot Studio's native Knowledge Source connector does
+    against ``hr-policy-index`` (full-text + vector + semantic ranker via
+    integrated vectorization), but returns it as a backend response so
+    the same routing decision can be tested from non-Copilot-Studio
+    callers (frontend, Pattern C composite flows).
+
+    No LLM call \u2014 the answer is a deterministic concatenation of the top
+    hits with their policy numbers and titles. Use Pattern B
+    (``ORCHESTRATOR_PATTERN=B``) when you want force-grounded synthesis.
+    """
+    from src.search.integrated_vectorization_search import IntegratedVectorizationSearchService
+    from src.search.search_service import expand_query_with_glossary
+
+    iv_search = IntegratedVectorizationSearchService()
+    expanded = expand_query_with_glossary(question or "")
+    hits = iv_search.search(expanded, top=3)
+
+    if not hits:
+        return {
+            "answer": "I could not find a relevant HR policy. Please contact your HR representative for assistance.",
+            "citations": [],
+            "policy_references": [],
+            "confidence": 0.0,
+            "matched_glossary_terms": [],
+        }
+
+    citations: list[dict] = []
+    policy_refs: list[str] = []
+    snippets: list[str] = []
+    for hit in hits:
+        policy_num = hit.get("policy_number", "")
+        title = hit.get("title", "") or hit.get("parentTitle", "")
+        content = hit.get("content", "")
+        if policy_num and title:
+            citations.append({"policy_number": policy_num, "title": title})
+            policy_refs.append(f"Policy {policy_num} - {title}")
+        if content:
+            snippets.append(f"[Policy {policy_num} - {title}]\n{content[:400].strip()}")
+
+    answer = "\n\n".join(snippets) if snippets else "Relevant HR policy documents were located but contain no extractable content."
+
+    return {
+        "answer": answer,
+        "citations": citations,
+        "policy_references": list(dict.fromkeys(policy_refs)),
+        "confidence": 0.7 if citations else 0.4,
+        "matched_glossary_terms": [],
+    }
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Answer an HR policy question."""
-    if not orchestrator:
-        raise HTTPException(status_code=503, detail="Orchestrator not initialised")
+    """Answer an HR policy question.
 
+    Routing is controlled by ``ORCHESTRATOR_PATTERN`` (default ``A``):
+
+    - **A** \u2014 Direct hybrid search via integrated vectorization, no LLM,
+      no Foundry agent. ~1\u20132 s. Mirrors the Copilot Studio Knowledge
+      Source connector behavior.
+    - **B** \u2014 Foundry Agent Service prompt agent + MCPTool with
+      ``tool_choice="required"`` for force-grounded synthesis. ~10\u201314 s.
+
+    Pattern C (``/api/lookup``) is always available regardless of this
+    setting. See [docs/RetrievalPatterns.md](../../docs/RetrievalPatterns.md).
+    """
+    pattern = os.getenv("ORCHESTRATOR_PATTERN", "A").strip().upper()
     start = time.time()
-    conversation = [m.model_dump() for m in request.conversation_history] if request.conversation_history else []
 
-    result = await orchestrator.answer_question_async(
-        question=request.message,
-        conversation_history=conversation,
-    )
+    if pattern == "A":
+        try:
+            result = _pattern_a_answer(request.message)
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"Search service unavailable: {e}")
+    else:
+        if not orchestrator:
+            raise HTTPException(status_code=503, detail="Orchestrator not initialised")
+        conversation = (
+            [m.model_dump() for m in request.conversation_history]
+            if request.conversation_history
+            else []
+        )
+        result = await orchestrator.answer_question_async(
+            question=request.message,
+            conversation_history=conversation,
+        )
 
     elapsed_ms = int((time.time() - start) * 1000)
 
@@ -199,6 +274,63 @@ async def chat(request: ChatRequest):
         glossary_matches=result.get("matched_glossary_terms", []),
         processing_time_ms=elapsed_ms,
     )
+
+
+# ========================================================================== #
+#  LOOKUP — fast policy locator (no LLM, no MCP)                             #
+# ========================================================================== #
+
+
+@app.post("/api/lookup")
+async def lookup(request: ChatRequest):
+    """Look up the storage location of an HR policy document.
+
+    Mirrors the canonical ``file_metadata_lookup`` tool from
+    honestypugh2/foundry-copilot-search-validate
+    (``src/agents/orchestrator_pattern_b.py``):
+    a direct hybrid search over the index returning metadata fields only
+    (``policy_number``, ``parent_title``, ``metadata_storage_name``,
+    ``metadata_storage_path``, ``blob_url``, ``score``). No MCP call, no
+    knowledge-base retrieval, no LLM synthesis. Typical latency ~1-2s vs
+    ~10-14s for ``/api/chat``.
+
+    Used by Copilot Studio Pattern C (Dual-Tool Routing) when the user
+    asks WHERE a document is located, asks for a file path, URL, link,
+    blob storage path, or document location. Do NOT use this endpoint
+    for content/policy questions — route those to ``/api/chat`` or to
+    the Copilot Studio knowledge source.
+    """
+    from src.search.integrated_vectorization_search import IntegratedVectorizationSearchService
+    from src.search.search_service import expand_query_with_glossary
+
+    start = time.time()
+    try:
+        iv_search = IntegratedVectorizationSearchService()
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Search service unavailable: {e}")
+
+    query = expand_query_with_glossary(request.message or "")
+    results = iv_search.search(query, top=3)
+
+    documents = []
+    for r in results:
+        documents.append({
+            "policy_number": r.get("policy_number", ""),
+            "parent_title": r.get("parentTitle", r.get("title", "")),
+            "metadata_storage_name": r.get("fileName", ""),
+            "metadata_storage_path": r.get("filePath", ""),
+            "blob_url": r.get("blob_url", ""),
+            "score": r.get("score", 0.0),
+        })
+
+    elapsed_ms = int((time.time() - start) * 1000)
+    return {
+        "query": request.message,
+        "expanded_query": query,
+        "documents": documents,
+        "total": len(documents),
+        "processing_time_ms": elapsed_ms,
+    }
 
 
 # ========================================================================== #

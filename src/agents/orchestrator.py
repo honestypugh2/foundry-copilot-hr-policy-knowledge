@@ -270,7 +270,12 @@ class HRPolicyWorkflowOrchestrator:
     └─────────────────────────┘
     """
 
-    def __init__(self, use_azure: bool = True, search_mode: str = "integrated_vectorization"):
+    def __init__(
+        self,
+        use_azure: bool = True,
+        search_mode: str = "integrated_vectorization",
+        agent_service: Optional[str] = None,
+    ):
         self.use_azure = use_azure
         self.search_mode = search_mode
         self.project_endpoint = (
@@ -282,17 +287,55 @@ class HRPolicyWorkflowOrchestrator:
             os.getenv("FOUNDRY_MODEL")
             or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
         )
+
+        # Agent service selector (driven by AGENT_SERVICE env var, see .env):
+        #   "agent-framework" (default) -> src.agents.hr_policy_agent_af.HRPolicyAgent
+        #       Microsoft Agent Framework SDK with FoundryChatClient + @tool
+        #       (matches dealer_agent.py / compliance_agent.py pattern)
+        #   "foundry"                   -> src.agents.hr_policy_agent.HRPolicyAgent
+        #       Azure AI Foundry Agent Service via chat_client.as_agent(...)
+        raw_service = (
+            agent_service
+            or os.getenv("AGENT_SERVICE", "agent-framework")
+        ).strip().lower()
+        # Normalize common aliases so underscores/hyphens both work.
+        aliases = {
+            "agent_framework": "agent-framework",
+            "agentframework": "agent-framework",
+            "foundry_agent_service": "foundry",
+            "foundry-agent-service": "foundry",
+            "foundry_chat_client": "foundry",
+        }
+        self.agent_service = aliases.get(raw_service, raw_service)
+        if self.agent_service not in ("agent-framework", "foundry"):
+            logger.warning(
+                "Unknown AGENT_SERVICE=%r; defaulting to 'agent-framework'",
+                raw_service,
+            )
+            self.agent_service = "agent-framework"
+
         self._hr_agent = None  # cached HRPolicyAgent for fallback path
+
+    def _build_hr_agent(self) -> Any:
+        """Instantiate the HRPolicyAgent for the configured agent service."""
+        if self.agent_service == "foundry":
+            from src.agents.hr_policy_agent import HRPolicyAgent as FoundryHRPolicyAgent
+            return FoundryHRPolicyAgent(
+                use_agent=bool(self.project_endpoint) and self.use_azure,
+                project_endpoint=self.project_endpoint,
+                model_deployment_name=self.model,
+                search_mode=self.search_mode,
+            )
+        from src.agents.hr_policy_agent_af import HRPolicyAgent as AFHRPolicyAgent
+        return AFHRPolicyAgent(
+            project_endpoint=self.project_endpoint,
+            model_deployment_name=self.model,
+        )
 
     async def initialize(self) -> None:
         """Pre-create the HRPolicyAgent so it is ready for the fallback path."""
-        from src.agents.hr_policy_agent import HRPolicyAgent
-        self._hr_agent = HRPolicyAgent(
-            use_agent=bool(self.project_endpoint) and self.use_azure,
-            project_endpoint=self.project_endpoint,
-            model_deployment_name=self.model,
-            search_mode=self.search_mode,
-        )
+        logger.info("HR agent service: %s", self.agent_service)
+        self._hr_agent = self._build_hr_agent()
         await self._hr_agent.initialize()
 
     async def close(self) -> None:
@@ -428,13 +471,7 @@ class HRPolicyWorkflowOrchestrator:
     ) -> dict[str, Any]:
         """Fallback: use HRPolicyAgent directly without the workflow."""
         if not self._hr_agent:
-            from src.agents.hr_policy_agent import HRPolicyAgent
-            self._hr_agent = HRPolicyAgent(
-                use_agent=bool(self.project_endpoint) and self.use_azure,
-                project_endpoint=self.project_endpoint,
-                model_deployment_name=self.model,
-                search_mode=self.search_mode,
-            )
+            self._hr_agent = self._build_hr_agent()
             await self._hr_agent.initialize()
         return await self._hr_agent.answer_question_async(question, conversation_history)
 

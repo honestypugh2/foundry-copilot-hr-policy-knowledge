@@ -1,0 +1,68 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "HR Policy Lookup API",
+    "description": "Custom file-metadata lookup tool for Copilot Studio (Pattern C — Dual-Tool Routing). Mirrors the canonical file_metadata_lookup tool definition from honestypugh2/foundry-copilot-search-validate (src/agents/orchestrator_pattern_b.py). Returns metadata fields only — it does NOT call the knowledge base or synthesize an answer.",
+    "version": "1.0.0"
+  },
+  "host": "REPLACE_WITH_YOUR_BACKEND_HOST",
+  "basePath": "/",
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/api/lookup": {
+      "post": {
+        "summary": "Look up the storage location of an HR policy document",
+        "description": "Look up the storage location, file path, blob URL, and filename for a document in the HR policy knowledge base. Use this tool when the user asks WHERE a document is located, asks for a file path, URL, link, blob storage path, or document location. This performs a direct index search for metadata fields only — it does NOT use the knowledge base. Do NOT use this for content/policy questions.",
+        "operationId": "lookupHRPolicyDocument",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["message"],
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "The search query to find the document. Include policy number and/or document title (e.g. 'PTO policy 51350', 'Code of Ethics 31000', 'uniform dress code')."
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lookup results — metadata fields only, no LLM synthesis",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "query": {"type": "string"},
+                "expanded_query": {"type": "string"},
+                "total": {"type": "integer"},
+                "processing_time_ms": {"type": "integer"},
+                "documents": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "policy_number": {"type": "string"},
+                      "parent_title": {"type": "string"},
+                      "metadata_storage_name": {"type": "string"},
+                      "metadata_storage_path": {"type": "string"},
+                      "blob_url": {"type": "string"},
+                      "score": {"type": "number"}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {"description": "Search service unavailable"}
+        }
+      }
+    }
+  }
+}

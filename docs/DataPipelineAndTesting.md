@@ -275,6 +275,48 @@ python scripts/index_knowledge_base_docintel_chunking.py --data-dir data/knowled
 
 Delegates extraction, chunking, and embedding to Azure AI Search's built-in skillset pipeline. The script sets up the Azure resources; the indexer runs automatically.
 
+### Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Dev as Developer
+    participant Script as index_knowledge_base_integrated_vectorization.py
+    participant Blob as Azure Blob Storage
+    participant Search as Azure AI Search
+    participant DI as Document Intelligence
+    participant AOAI as Azure OpenAI
+
+    Dev->>Script: uv run python …integrated_vectorization.py
+    Script->>Blob: PUT documents (ask-hr-knowledge)
+    Script->>Search: PUT data source (hr-policy-index-blob-ds)
+    Script->>Search: PUT skillset (hr-policy-doc-layout-skillset)
+    Script->>Search: PUT index (hr-policy-index, vector + semantic config)
+    Script->>Search: PUT indexer (hr-policy-index-indexer)
+    Script->>Search: POST indexer/run
+    Search->>Blob: GET document
+    Search->>DI: layout(document)
+    DI-->>Search: text_sections[*] with chunk metadata
+    Search->>AOAI: embeddings(text_sections[*])
+    AOAI-->>Search: vector[1536] per chunk
+    Search->>Search: project to hr-policy-index<br/>(policy, policy_vector, blob_url, …)
+    Search-->>Dev: indexer status (success / per-doc errors)
+```
+
+### What gets created
+
+| Resource             | Service              | Name                                | Notes                                                |
+| -------------------- | -------------------- | ----------------------------------- | ---------------------------------------------------- |
+| Container            | Blob Storage         | `ask-hr-knowledge`                  | Source of truth for raw HR policy documents          |
+| Data source          | Azure AI Search      | `hr-policy-index-blob-ds`           | Connection from Search to the blob container         |
+| Skillset             | Azure AI Search      | `hr-policy-doc-layout-skillset`     | DocumentIntelligenceLayoutSkill + AzureOpenAIEmbeddingSkill |
+| Index                | Azure AI Search      | `hr-policy-index`                   | Vector field `policy_vector` (1536) + semantic config `hr-semantic-config` |
+| Indexer              | Azure AI Search      | `hr-policy-index-indexer`           | Runs the skillset; auto-tracks blob changes          |
+| Synonym map          | Azure AI Search      | `hr-glossary-synonyms`              | HR vernacular → formal terms                         |
+| Vectorizer           | Azure AI Search      | `hr-azure-openai-vectorizer`        | Query-time embedding via Azure OpenAI                |
+
+All names are configurable via `src/config/search_config.json`.
+
 ```
 HR Policy Documents
         │
@@ -342,14 +384,14 @@ python scripts/index_knowledge_base_integrated_vectorization.py --create-pipelin
 
 ## Pattern 2: Foundry Agent Action
 
-**Script:** `scripts/create_foundry_agent.py`
+**Script:** `src/agents/create_foundry_agent.py`
 
 Creates Azure AI Foundry resources for agentic retrieval. This pattern wraps the same `hr-policy-index` in a Foundry Knowledge Base and connects it to a Foundry Agent via an MCP tool.
 
 > **Prerequisite:** The index must already be populated via Pattern 1 (Option 1 or Option 2).
 
 ```
-scripts/create_foundry_agent.py
+src/agents/create_foundry_agent.py
         │
         ├── 1. create_knowledge_source()
         │       └── hr-knowledge-source → points to hr-policy-index
@@ -379,13 +421,13 @@ scripts/create_foundry_agent.py
 **Usage:**
 ```bash
 # Full setup
-python scripts/create_foundry_agent.py
+python -m src.agents.create_foundry_agent
 
 # Verify all resources exist
-python scripts/create_foundry_agent.py --verify-only
+python -m src.agents.create_foundry_agent --verify-only
 
 # Cleanup Foundry IQ resources
-python scripts/create_foundry_agent.py --cleanup
+python -m src.agents.create_foundry_agent --cleanup
 ```
 
 **RBAC requirements:**
@@ -419,7 +461,7 @@ Both scripts contain deprecation notices at the top of the file pointing to the 
 
 ```ini
 [pytest]
-testpaths = tests src_lab/tests
+testpaths = tests
 markers =
     live: marks tests that require a running Azure Function
     mock: marks tests that can run fully mocked (no Azure needed)

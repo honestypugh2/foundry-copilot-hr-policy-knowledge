@@ -150,3 +150,5 @@ infra_lab/
 fix_script.py
 
 output.txt
+
+node_modules/
