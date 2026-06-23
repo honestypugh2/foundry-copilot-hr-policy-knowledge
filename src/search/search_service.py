@@ -19,6 +19,8 @@ try:
     from azure.search.documents import SearchClient
     from azure.search.documents.indexes import SearchIndexClient
     from azure.search.documents.indexes.models import (
+        AzureOpenAIVectorizer,
+        AzureOpenAIVectorizerParameters,
         HnswAlgorithmConfiguration,
         SearchField,
         SearchFieldDataType,
@@ -107,6 +109,28 @@ def expand_query_with_glossary(query: str) -> str:
             seen.add(formal_term)
 
     return expanded
+
+
+def enrich_content_with_glossary(content: str, title: str = "") -> str:
+    """Append matching glossary terms to document content for keyword retrieval.
+
+    Scans both ``title`` and ``content`` for glossary vernacular **and** formal
+    terms, then appends a searchable footer so consumers that don't use synonym
+    maps (e.g. Copilot Studio) can still match on common shorthand such as
+    "BBP", "PTO", or "STD".
+    """
+    combined = (title + " " + content).lower()
+    matched_terms: set[str] = set()
+
+    for vernacular, formal in HR_GLOSSARY.items():
+        if formal.lower() in combined or vernacular in combined:
+            matched_terms.add(vernacular)
+            matched_terms.add(formal)
+
+    if not matched_terms:
+        return content
+
+    return content + "\n\n---\nRelated terms: " + ", ".join(sorted(matched_terms))
 
 
 class HRPolicySearchService:
@@ -303,9 +327,29 @@ class HRPolicySearchService:
             SimpleField(name="source", type=SearchFieldDataType.String, filterable=True),
         ]
 
+        # Query-time vectorizer so Copilot Studio (and other text-only
+        # callers) can execute vector queries without pre-computing embeddings.
+        aoai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+        if "/openai" in aoai_endpoint:
+            aoai_endpoint = aoai_endpoint.split("/openai")[0]
+
+        vectorizer = AzureOpenAIVectorizer(
+            vectorizer_name="hr-azure-openai-vectorizer",
+            parameters=AzureOpenAIVectorizerParameters(
+                resource_url=aoai_endpoint,
+                deployment_name=self.EMBEDDING_MODEL,
+                model_name=self.EMBEDDING_MODEL,
+            ),
+        ) if aoai_endpoint else None
+
         vector_search = VectorSearch(
             algorithms=[HnswAlgorithmConfiguration(name="hr-hnsw-config")],
-            profiles=[VectorSearchProfile(name="hr-vector-profile", algorithm_configuration_name="hr-hnsw-config")],
+            vectorizers=[vectorizer] if vectorizer else [],
+            profiles=[VectorSearchProfile(
+                name="hr-vector-profile",
+                algorithm_configuration_name="hr-hnsw-config",
+                vectorizer_name="hr-azure-openai-vectorizer" if vectorizer else None,
+            )],
         )
 
         semantic_config = SemanticConfiguration(

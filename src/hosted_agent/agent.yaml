@@ -1,0 +1,32 @@
+# Agent manifest for Foundry Hosted Agent deployment
+# See: https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent
+
+name: hr-policy-agent
+description: >
+  HR policy assistant that answers employee questions strictly from internal HR
+  policy documents using hybrid search (text + vector) with semantic ranking
+  over an Azure AI Search index of policy chunks.
+
+# Container configuration
+image: "${ACR_LOGIN_SERVER}/hr-policy-agent:${IMAGE_TAG}"
+cpu: "1"
+memory: "2Gi"
+
+# Protocols exposed by this container
+protocols:
+  - responses
+
+# Environment variables (non-secret — injected into the container)
+# FOUNDRY_PROJECT_ENDPOINT and AZURE_AI_MODEL_DEPLOYMENT_NAME are
+# auto-injected by the platform.
+environment_variables:
+  AZURE_SEARCH_ENDPOINT: "${AZURE_SEARCH_ENDPOINT}"
+  AZURE_SEARCH_INDEX_NAME: "${AZURE_SEARCH_INDEX_NAME}"
+  AI_SEARCH_QUERY_TYPE: "semantic"
+  AI_SEARCH_SEMANTIC_CONFIG: "hr-semantic-config"
+  AI_SEARCH_VECTOR_FIELD: "policy_vector"
+  AI_SEARCH_CONTENT_FIELD: "policy"
+  AI_SEARCH_TITLE_FIELD: "parent_title"
+  AI_SEARCH_POLICY_NUMBER_FIELD: "policy_number"
+  AI_SEARCH_BLOB_URL_FIELD: "blob_url"
+  AI_SEARCH_TOP_K: "5"

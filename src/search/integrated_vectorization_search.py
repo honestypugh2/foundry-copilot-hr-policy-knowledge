@@ -387,7 +387,7 @@ class IntegratedVectorizationSearchService:
         synonym_fields = set(self._synonym_map_fields)
 
         # -- Index fields --
-        def _searchable(name: str, **kwargs: Any) -> SearchableField:
+        def _searchable(name: str, **kwargs: Any) -> SearchField:
             """Create a SearchableField, attaching synonym map if configured."""
             if name in synonym_fields:
                 kwargs["synonym_map_names"] = [self._synonym_map_name]

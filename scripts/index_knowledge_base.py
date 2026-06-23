@@ -1,6 +1,11 @@
 """
 Knowledge Base Indexing Script
 
+.. deprecated::
+    Use ``scripts/index_knowledge_base_docintel_chunking.py`` (Pattern 1, Option 1)
+    which adds chunking, synonym maps, semantic config, and shared search_config.json.
+    This script uploads whole documents without chunking.
+
 Processes all Word documents in data/knowledge_base/ASK HR Knowledge/ and
 uploads them to Azure AI Search for the HR Policy Agent.
 
@@ -24,7 +29,13 @@ from src.document_processing.document_ingestion import (
     extract_policy_number,
     generate_document_id,
 )
-from src.search.search_service import HRPolicySearchService, HR_GLOSSARY
+from src.search.search_service import HRPolicySearchService, HR_GLOSSARY, enrich_content_with_glossary
+
+# Add project root to path
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+load_dotenv()
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -40,37 +51,6 @@ logging.basicConfig(
 
 KNOWLEDGE_BASE_DIR = PROJECT_ROOT / "data" / "knowledge_base" / "ASK HR Knowledge"
 SUPPORTED_EXTENSIONS = {".docx", ".doc", ".pdf", ".txt"}
-
-
-def enrich_content_with_glossary(title: str, content: str) -> str:
-    """Append matching glossary vernacular/formal terms to document content.
-
-    This ensures that common shorthand (e.g. "BBP", "PTO", "STD") appears
-    directly in the searchable text so any consumer — including Copilot Studio,
-    which may not trigger synonym maps — can find the document.
-    """
-    combined = (title + " " + content).lower()
-    matched_terms: set[str] = set()
-
-    for vernacular, formal in HR_GLOSSARY.items():
-        # If the document already mentions the formal term, add the vernacular aliases
-        if formal.lower() in combined:
-            matched_terms.add(vernacular)
-            matched_terms.add(formal)
-        # If the document already mentions the vernacular, add the formal term
-        if vernacular in combined:
-            matched_terms.add(vernacular)
-            matched_terms.add(formal)
-
-    if not matched_terms:
-        return content
-
-    # Build a glossary footer that is searchable but clearly separated
-    glossary_footer = (
-        "\n\n---\nRelated terms: "
-        + ", ".join(sorted(matched_terms))
-    )
-    return content + glossary_footer
 
 
 async def index_all_documents(
@@ -128,7 +108,7 @@ async def index_all_documents(
 
                 # Enrich content with glossary terms so vernacular searches
                 # work even when the consumer doesn't use synonym maps
-                enriched_text = enrich_content_with_glossary(title, text)
+                enriched_text = enrich_content_with_glossary(text, title=title)
 
                 # Generate embedding vector if search service supports it
                 content_vector = None

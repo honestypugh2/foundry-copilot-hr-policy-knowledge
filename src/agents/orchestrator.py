@@ -1,218 +1,235 @@
 """
 HR Policy Knowledge Workflow Orchestrator
 
-Uses Agent Framework's Sequential Workflow pattern to coordinate:
-1. Document Ingestion (Custom Executor - no LLM)
-2. Query Understanding with Glossary (Custom Executor - no LLM)
-3. Policy Retrieval via AI Search (Agent + Custom Executor)
-4. Answer Generation (AI Agent)
+Uses Agent Framework's SequentialBuilder to coordinate:
+1. QueryUnderstandingExecutor  (custom Executor — no LLM, glossary expansion)
+2. PolicyRetrievalExecutor     (custom Executor — Azure AI Search)
+3. FoundryChatClient Agent     (answer synthesis with search context)
+4. FinalAnswerExecutor         (custom Executor — extracts structured result)
 
-Reference: https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/orchestrations/sequential
+References:
+    Agent Framework + FoundryChatClient:
+        https://learn.microsoft.com/en-us/agent-framework/agents/providers/microsoft-foundry
+    Sequential Workflow + Custom Executors:
+        https://learn.microsoft.com/en-us/agent-framework/workflows/orchestrations/sequential
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import time
-from typing import Any, Dict, Optional, TYPE_CHECKING
-from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-if TYPE_CHECKING:
-    from agent_framework import Executor, WorkflowContext, handler
-
+# ---------------------------------------------------------------------------
 # Agent Framework imports
+# ---------------------------------------------------------------------------
 WORKFLOW_AVAILABLE = False
 try:
     from agent_framework import (
+        Agent,
+        AgentExecutorResponse,
+        AgentResponse,
         Executor,
+        Message,
         WorkflowContext,
-        WorkflowEvent,
-        WorkflowRunResult,
-        WorkflowRunState,
         handler,
     )
+    from agent_framework.foundry import FoundryChatClient
+    from agent_framework.orchestrations import SequentialBuilder
+    from azure.identity import DefaultAzureCredential
     WORKFLOW_AVAILABLE = True
 except ImportError:
     logger.warning("agent-framework not installed, sequential workflows unavailable")
 
-if not TYPE_CHECKING and not WORKFLOW_AVAILABLE:
-    class Executor:  # type: ignore[no-redef]
-        def __init__(self, *args: Any, **kwargs: Any) -> None: pass
-
-    def handler(f: Any) -> Any:  # type: ignore[no-redef]
-        return f
-
 from src.search.search_service import HRPolicySearchService, expand_query_with_glossary, HR_GLOSSARY
 from src.search.integrated_vectorization_search import IntegratedVectorizationSearchService
 
-
-# =============================================================================
-# DATA STRUCTURES
-# =============================================================================
-
-WorkflowState = Dict[str, Any]
+# Reuse the canonical agent instructions from hr_policy_agent
+from src.agents.hr_policy_agent import AGENT_INSTRUCTIONS
 
 
 # =============================================================================
 # STEP 1: Query Understanding Executor (no LLM)
 # =============================================================================
 
-class QueryUnderstandingExecutor(Executor):
-    """
-    Step 1: Understand the user's query by expanding vernacular terms.
+if WORKFLOW_AVAILABLE:
 
-    This addresses the "difficulty understanding technician vernacular" challenge.
-    Maps shorthand, coded identifiers, and informal terms to formal HR policy names.
-    """
+    class QueryUnderstandingExecutor(Executor):
+        """
+        Step 1: Expand vernacular terms using the HR glossary.
 
-    def __init__(self):
-        super().__init__(id="query_understanding")
+        Receives the user query as a Message, performs glossary expansion,
+        and forwards the enriched state as JSON to the next executor.
+        """
 
-    @handler
-    async def process(self, state: WorkflowState, ctx: WorkflowContext[dict]) -> None:
-        logger.info("Step 1: Query Understanding")
+        def __init__(self):
+            super().__init__(id="query_understanding")
 
-        original_query = state.get("query", "")
-        expanded_query = expand_query_with_glossary(original_query)
+        @handler
+        async def process(
+            self,
+            messages: List[Message],
+            ctx: WorkflowContext[List[Message]],
+        ) -> None:
+            original_query = messages[-1].text.strip()
+            logger.info("Step 1: Query Understanding")
 
-        # Detect matched glossary terms
-        matched_terms = []
-        query_lower = original_query.lower()
-        for vernacular, formal in HR_GLOSSARY.items():
-            if vernacular in query_lower:
-                matched_terms.append({"vernacular": vernacular, "formal": formal})
+            expanded_query = expand_query_with_glossary(original_query)
 
-        state["original_query"] = original_query
-        state["expanded_query"] = expanded_query
-        state["matched_glossary_terms"] = matched_terms
-        state["query_understanding_complete"] = True
+            matched_terms = []
+            query_lower = original_query.lower()
+            for vernacular, formal in HR_GLOSSARY.items():
+                if vernacular in query_lower:
+                    matched_terms.append({"vernacular": vernacular, "formal": formal})
 
-        logger.info(f"Query expanded: '{original_query}' -> '{expanded_query}'")
-        if matched_terms:
-            logger.info(f"Glossary matches: {matched_terms}")
+            state = {
+                "user_query": original_query,
+                "expanded_query": expanded_query,
+                "matched_glossary_terms": matched_terms,
+            }
 
-        await ctx.send_message(state)
+            logger.info("Query expanded: '%s' -> '%s'", original_query, expanded_query)
+            if matched_terms:
+                logger.info("Glossary matches: %s", matched_terms)
 
-
-# =============================================================================
-# STEP 2: Policy Retrieval Executor (Azure AI Search)
-# =============================================================================
-
-class PolicyRetrievalExecutor(Executor):
-    """
-    Step 2: Retrieve relevant HR policies from Azure AI Search.
-
-    Uses the expanded query from Step 1 for better search results.
-    Defaults to integrated vectorization search (indexer + skillset pipeline).
-    Set search_mode='legacy' to use the original HRPolicySearchService.
-    """
-
-    def __init__(self, search_mode: str = "integrated_vectorization"):
-        self._search_service = None
-        self._search_mode = search_mode
-        super().__init__(id="policy_retrieval")
-
-    @property
-    def search_service(self):
-        if self._search_service is None:
-            if self._search_mode == "integrated_vectorization":
-                self._search_service = IntegratedVectorizationSearchService()
-            else:
-                self._search_service = HRPolicySearchService()
-        return self._search_service
-
-    @handler
-    async def process(self, state: WorkflowState, ctx: WorkflowContext[dict]) -> None:
-        logger.info("Step 2: Policy Retrieval")
-
-        query = state.get("expanded_query", state.get("query", ""))
-        results = self.search_service.search(query, top=5)
-
-        state["search_results"] = results
-        state["search_results_count"] = len(results)
-        state["policy_retrieval_complete"] = True
-
-        logger.info(f"Retrieved {len(results)} policy documents")
-        await ctx.send_message(state)
-
-
-# =============================================================================
-# STEP 3: Answer Generation Executor (AI Agent)
-# =============================================================================
-
-class AnswerGenerationExecutor(Executor):
-    """
-    Step 3: Generate a grounded answer using the retrieved policy documents.
-
-    Uses the HR Policy Agent with Azure AI Search for RAG-based generation.
-    Falls back to search-result-only responses if agent not available.
-    """
-
-    def __init__(self, project_endpoint: str = ""):
-        self.project_endpoint = project_endpoint
-        self._agent = None
-        super().__init__(id="answer_generation", is_terminal=True)
-
-    @property
-    def agent(self):
-        if self._agent is None:
-            from src.agents.hr_policy_agent import HRPolicyAgent
-            self._agent = HRPolicyAgent(
-                use_agent=bool(self.project_endpoint),
-                project_endpoint=self.project_endpoint,
+            state_json = json.dumps(state, default=str)
+            await ctx.send_message(
+                messages + [Message("assistant", [state_json], author_name="query_understanding")]
             )
-        return self._agent
 
-    @handler
-    async def process(self, state: WorkflowState, ctx: WorkflowContext[dict]) -> None:
-        logger.info("Step 3: Answer Generation")
+    # =============================================================================
+    # STEP 2: Policy Retrieval Executor (Azure AI Search — no LLM)
+    # =============================================================================
 
-        # Ensure the Foundry agent is initialized (idempotent)
-        await self.agent.initialize()
+    class PolicyRetrievalExecutor(Executor):
+        """
+        Step 2: Retrieve relevant HR policies from Azure AI Search.
 
-        question = state.get("original_query", state.get("query", ""))
-        conversation_history = state.get("conversation_history", [])
-        search_results = state.get("search_results", [])
+        Uses the expanded query from Step 1.
+        """
 
-        # If we have search results but no agent, build answer from results
-        if not self.project_endpoint and search_results:
-            answer_parts = ["Based on the HR policy documents:\n"]
+        def __init__(self, search_mode: str = "integrated_vectorization"):
+            self._search_service: Any = None
+            self._search_mode = search_mode
+            super().__init__(id="policy_retrieval")
+
+        @property
+        def search_service(self) -> Any:
+            if self._search_service is None:
+                if self._search_mode == "integrated_vectorization":
+                    self._search_service = IntegratedVectorizationSearchService()
+                else:
+                    self._search_service = HRPolicySearchService()
+            return self._search_service
+
+        @handler
+        async def process(
+            self,
+            messages: List[Message],
+            ctx: WorkflowContext[List[Message]],
+        ) -> None:
+            state = json.loads(messages[-1].text)
+            logger.info("Step 2: Policy Retrieval")
+
+            query = state.get("expanded_query", state.get("user_query", ""))
+            results = self.search_service.search(query, top=5)
+
+            # Serialise search results (drop non-serialisable fields)
+            serialisable_results = []
+            for r in results:
+                serialisable_results.append({
+                    "title": r.get("title", r.get("parent_title", "Unknown")),
+                    "policy_number": r.get("policy_number", ""),
+                    "content": r.get("content", "")[:800],
+                    "score": r.get("score", 0),
+                    "source": r.get("source", ""),
+                })
+
+            state["search_results"] = serialisable_results
+            state["search_results_count"] = len(serialisable_results)
+
+            logger.info("Retrieved %d policy documents", len(serialisable_results))
+
+            state_json = json.dumps(state, default=str)
+            await ctx.send_message(
+                messages + [Message("assistant", [state_json], author_name="policy_retrieval")]
+            )
+
+    # =============================================================================
+    # STEP 4: Final Answer Executor (terminal — captures Agent response)
+    # =============================================================================
+
+    class FinalAnswerExecutor(Executor):
+        """
+        Terminal executor that captures the FoundryChatClient Agent's response
+        and yields a structured result dict as the workflow output.
+        """
+
+        def __init__(self):
+            super().__init__(id="final_answer")
+
+        @handler
+        async def process(
+            self,
+            agent_response: AgentExecutorResponse,
+            ctx: WorkflowContext[List[Message], Dict[str, Any]],
+        ) -> None:
+            conversation = agent_response.full_conversation
+            if not conversation:
+                await ctx.yield_output(
+                    {"answer": "No conversation to process.", "citations": [], "confidence": 0.0, "policy_references": []}
+                )
+                return
+
+            # Extract the last state JSON and the agent's answer
+            state: Optional[dict] = None
+            agent_answer: Optional[str] = None
+
+            for msg in reversed(list(conversation)):
+                if msg.role == "assistant" and msg.text:
+                    try:
+                        parsed = json.loads(msg.text)
+                        if isinstance(parsed, dict) and "user_query" in parsed:
+                            if state is None or len(parsed) > len(state):
+                                state = parsed
+                            continue
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                    if agent_answer is None:
+                        agent_answer = msg.text
+
+            if state is None:
+                state = {}
+            if agent_answer is None:
+                agent_answer = "The agent did not produce a response."
+
+            import re
             citations = []
             policy_refs = []
+            policy_pattern = r'\[?Policy\s+(\d+)\s*[-–]\s*([^\]]+)\]?'
+            for num, title in re.findall(policy_pattern, agent_answer, re.IGNORECASE):
+                citations.append({"policy_number": num, "title": title.strip()})
+                policy_refs.append(f"Policy {num} - {title.strip()}")
 
-            for i, result in enumerate(search_results[:3], 1):
-                title = result.get("title", "Unknown")
-                policy_num = result.get("policy_number", "")
-                content = result.get("content", "")[:500]
+            result = {
+                "answer": agent_answer,
+                "citations": citations,
+                "confidence": 0.85 if citations else 0.6,
+                "policy_references": list(set(policy_refs)),
+                "search_results_count": state.get("search_results_count", 0),
+                "matched_glossary_terms": state.get("matched_glossary_terms", []),
+            }
 
-                answer_parts.append(f"**{i}. {title}** (Policy {policy_num})")
-                answer_parts.append(f"{content}\n")
-                citations.append({
-                    "title": title,
-                    "policy_number": policy_num,
-                    "excerpt": content[:200],
-                })
-                if policy_num:
-                    policy_refs.append(f"Policy {policy_num} - {title}")
-
-            state["answer"] = "\n".join(answer_parts)
-            state["citations"] = citations
-            state["policy_references"] = policy_refs
-            state["confidence"] = 0.7
-        else:
-            # Use AI agent for answer generation
-            result = await self.agent.answer_question_async(question, conversation_history)
-            state["answer"] = result.get("answer", "")
-            state["citations"] = result.get("citations", [])
-            state["policy_references"] = result.get("policy_references", [])
-            state["confidence"] = result.get("confidence", 0.0)
-
-        state["answer_generation_complete"] = True
-        logger.info("Answer generation complete")
-        await ctx.send_message(state)
+            result_json = json.dumps(result, default=str)
+            await ctx.send_message(
+                list(conversation)
+                + [Message("assistant", [result_json], author_name="final_answer")]
+            )
+            await ctx.yield_output(result)
 
 
 # =============================================================================
@@ -221,9 +238,13 @@ class AnswerGenerationExecutor(Executor):
 
 class HRPolicyWorkflowOrchestrator:
     """
-    Sequential Workflow Orchestrator for HR Policy Knowledge Agent.
+    Sequential Workflow Orchestrator using Agent Framework + FoundryChatClient.
 
-    Uses Agent Framework's WorkflowBuilder pattern:
+    Pipeline:
+        QueryUnderstandingExecutor (custom)
+        → PolicyRetrievalExecutor (custom)
+        → FoundryChatClient Agent (answer synthesis)
+        → FinalAnswerExecutor (custom — terminal)
 
     ┌─────────────────────────┐
     │  QueryUnderstanding     │  ← Custom Executor (NO LLM)
@@ -233,30 +254,88 @@ class HRPolicyWorkflowOrchestrator:
                 ▼
     ┌─────────────────────────┐
     │  PolicyRetrieval        │  ← Custom Executor (NO LLM)
-    │  Executor               │    Azure AI Search query
+    │  Executor               │    Azure AI Search hybrid query
     └───────────┬─────────────┘
                 │
                 ▼
     ┌─────────────────────────┐
-    │  AnswerGeneration       │  ← AI Agent (Terminal)
-    │  Executor               │    RAG-based answer with citations
+    │  FoundryChatClient      │  ← FoundryChatClient Agent (LLM)
+    │  Agent                  │    Synthesise answer from search results
+    └───────────┬─────────────┘
+                │
+                ▼
+    ┌─────────────────────────┐
+    │  FinalAnswerExecutor    │  ← Custom Executor (Terminal)
+    │                         │    Extract structured result
     └─────────────────────────┘
     """
 
-    def __init__(self, use_azure: bool = True, search_mode: str = "integrated_vectorization"):
+    def __init__(
+        self,
+        use_azure: bool = True,
+        search_mode: str = "integrated_vectorization",
+        agent_service: Optional[str] = None,
+    ):
         self.use_azure = use_azure
         self.search_mode = search_mode
-        self.project_endpoint = os.getenv("AZURE_AI_PROJECT_ENDPOINT") or os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT", "")
+        self.project_endpoint = (
+            os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT")
+            or os.getenv("AZURE_AI_PROJECT_ENDPOINT")
+            or os.getenv("FOUNDRY_PROJECT_ENDPOINT", "")
+        )
+        self.model = (
+            os.getenv("FOUNDRY_MODEL")
+            or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
+        )
+
+        # Agent service selector (driven by AGENT_SERVICE env var, see .env):
+        #   "agent-framework" (default) -> src.agents.hr_policy_agent_af.HRPolicyAgent
+        #       Microsoft Agent Framework SDK with FoundryChatClient + @tool
+        #       (matches dealer_agent.py / compliance_agent.py pattern)
+        #   "foundry"                   -> src.agents.hr_policy_agent.HRPolicyAgent
+        #       Azure AI Foundry Agent Service via chat_client.as_agent(...)
+        raw_service = (
+            agent_service
+            or os.getenv("AGENT_SERVICE", "agent-framework")
+        ).strip().lower()
+        # Normalize common aliases so underscores/hyphens both work.
+        aliases = {
+            "agent_framework": "agent-framework",
+            "agentframework": "agent-framework",
+            "foundry_agent_service": "foundry",
+            "foundry-agent-service": "foundry",
+            "foundry_chat_client": "foundry",
+        }
+        self.agent_service = aliases.get(raw_service, raw_service)
+        if self.agent_service not in ("agent-framework", "foundry"):
+            logger.warning(
+                "Unknown AGENT_SERVICE=%r; defaulting to 'agent-framework'",
+                raw_service,
+            )
+            self.agent_service = "agent-framework"
+
         self._hr_agent = None  # cached HRPolicyAgent for fallback path
 
-    async def initialize(self) -> None:
-        """Pre-create the Foundry agent so it persists in the portal."""
-        from src.agents.hr_policy_agent import HRPolicyAgent
-        self._hr_agent = HRPolicyAgent(
-            use_agent=bool(self.project_endpoint) and self.use_azure,
+    def _build_hr_agent(self) -> Any:
+        """Instantiate the HRPolicyAgent for the configured agent service."""
+        if self.agent_service == "foundry":
+            from src.agents.hr_policy_agent import HRPolicyAgent as FoundryHRPolicyAgent
+            return FoundryHRPolicyAgent(
+                use_agent=bool(self.project_endpoint) and self.use_azure,
+                project_endpoint=self.project_endpoint,
+                model_deployment_name=self.model,
+                search_mode=self.search_mode,
+            )
+        from src.agents.hr_policy_agent_af import HRPolicyAgent as AFHRPolicyAgent
+        return AFHRPolicyAgent(
             project_endpoint=self.project_endpoint,
-            search_mode=self.search_mode,
+            model_deployment_name=self.model,
         )
+
+    async def initialize(self) -> None:
+        """Pre-create the HRPolicyAgent so it is ready for the fallback path."""
+        logger.info("HR agent service: %s", self.agent_service)
+        self._hr_agent = self._build_hr_agent()
         await self._hr_agent.initialize()
 
     async def close(self) -> None:
@@ -265,29 +344,55 @@ class HRPolicyWorkflowOrchestrator:
             await self._hr_agent.close()
             self._hr_agent = None
 
+    # ------------------------------------------------------------------
+    # FoundryChatClient Agent (Step 3)
+    # ------------------------------------------------------------------
+
+    def _create_foundry_agent(self) -> Agent:
+        """Create a FoundryChatClient-backed Agent for answer synthesis."""
+        credential = DefaultAzureCredential()
+        chat_client = FoundryChatClient(
+            project_endpoint=self.project_endpoint,
+            model=self.model,
+            credential=credential,
+        )
+        return chat_client.as_agent(
+            name="HRPolicyAnswerSynthesis",
+            instructions=AGENT_INSTRUCTIONS,
+        )
+
+    # ------------------------------------------------------------------
+    # Workflow builder
+    # ------------------------------------------------------------------
+
     def _build_workflow(self) -> Any:
-        """Build the sequential workflow with all executors."""
-        if not WORKFLOW_AVAILABLE:
-            raise RuntimeError("agent-framework package not installed. Cannot build workflow.")
+        """
+        Build the sequential workflow mixing custom Executors with
+        a FoundryChatClient Agent.
 
-        from agent_framework import WorkflowBuilder
-
+        Pipeline:
+            QueryUnderstandingExecutor → PolicyRetrievalExecutor
+            → FoundryChatClient Agent → FinalAnswerExecutor
+        """
         query_executor = QueryUnderstandingExecutor()
         retrieval_executor = PolicyRetrievalExecutor(search_mode=self.search_mode)
-        answer_executor = AnswerGenerationExecutor(
-            project_endpoint=self.project_endpoint if self.use_azure else "",
-        )
+        foundry_agent = self._create_foundry_agent()
+        final_executor = FinalAnswerExecutor()
 
-        workflow = (
-            WorkflowBuilder(
-                start_executor=query_executor,
-                output_executors=[answer_executor],
-            )
-            .add_edge(query_executor, retrieval_executor)
-            .add_edge(retrieval_executor, answer_executor)
-            .build()
-        )
+        workflow = SequentialBuilder(
+            participants=[
+                query_executor,
+                retrieval_executor,
+                foundry_agent,
+                final_executor,
+            ]
+        ).build()
+
         return workflow
+
+    # ------------------------------------------------------------------
+    # Async entry-point
+    # ------------------------------------------------------------------
 
     async def answer_question_async(
         self,
@@ -297,40 +402,64 @@ class HRPolicyWorkflowOrchestrator:
         """
         Process an HR question through the sequential workflow.
 
-        Args:
-            question: The employee's HR question
-            conversation_history: Optional previous messages
-
         Returns:
             Complete workflow results with answer, citations, etc.
         """
         start_time = time.time()
 
-        if not WORKFLOW_AVAILABLE:
-            # Fallback: run steps manually without workflow framework
-            return await self._fallback_answer(question, conversation_history)
-
-        initial_state: WorkflowState = {
-            "query": question,
-            "conversation_history": conversation_history or [],
-        }
+        if not WORKFLOW_AVAILABLE or not self.project_endpoint or not self.use_azure:
+            result = await self._fallback_answer(question, conversation_history)
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            result["processing_time_ms"] = elapsed_ms
+            return result
 
         try:
-            from agent_framework import WorkflowRunResult
-
             workflow = self._build_workflow()
-            run_result: WorkflowRunResult = await workflow.run(question)  # type: ignore[misc]
 
-            outputs = run_result.get_outputs()
-            if outputs:
-                result = outputs[-1]
-            else:
-                result = await self._fallback_answer(question, conversation_history)
+            output_data = None
+            async for event in workflow.run(question, stream=True):
+                if event.type == "status":
+                    logger.debug("Workflow state: %s", event.data)
+                elif event.type == "output":
+                    output_data = event.data
+                    logger.info("Workflow output received")
+                elif event.type == "executor_failed":
+                    details = event.data
+                    logger.error(
+                        "Executor failed: %s: %s",
+                        getattr(details, "executor_id", "unknown"),
+                        getattr(details, "message", str(details)),
+                    )
+                elif event.type == "failed":
+                    details = event.data
+                    logger.error(
+                        "Workflow failed: %s",
+                        getattr(details, "message", str(details)),
+                    )
+
+            # Extract result from workflow output
+            if output_data is not None:
+                if isinstance(output_data, AgentResponse):
+                    for msg in reversed(output_data.messages):
+                        if msg.text:
+                            try:
+                                result = json.loads(msg.text)
+                                elapsed_ms = int((time.time() - start_time) * 1000)
+                                result["processing_time_ms"] = elapsed_ms
+                                return result
+                            except (json.JSONDecodeError, TypeError):
+                                continue
+                elif isinstance(output_data, dict):
+                    elapsed_ms = int((time.time() - start_time) * 1000)
+                    output_data["processing_time_ms"] = elapsed_ms
+                    return output_data
+
+            logger.warning("No structured output from workflow, falling back")
 
         except Exception as e:
-            logger.error(f"Workflow execution failed: {e}")
-            result = await self._fallback_answer(question, conversation_history)
+            logger.error("Workflow execution failed: %s", e)
 
+        result = await self._fallback_answer(question, conversation_history)
         elapsed_ms = int((time.time() - start_time) * 1000)
         result["processing_time_ms"] = elapsed_ms
         return result
@@ -340,14 +469,9 @@ class HRPolicyWorkflowOrchestrator:
         question: str,
         conversation_history: Optional[list[dict[str, str]]] = None,
     ) -> dict[str, Any]:
-        """Fallback: run steps manually without workflow framework."""
+        """Fallback: use HRPolicyAgent directly without the workflow."""
         if not self._hr_agent:
-            from src.agents.hr_policy_agent import HRPolicyAgent
-            self._hr_agent = HRPolicyAgent(
-                use_agent=bool(self.project_endpoint) and self.use_azure,
-                project_endpoint=self.project_endpoint,
-                search_mode=self.search_mode,
-            )
+            self._hr_agent = self._build_hr_agent()
             await self._hr_agent.initialize()
         return await self._hr_agent.answer_question_async(question, conversation_history)
 

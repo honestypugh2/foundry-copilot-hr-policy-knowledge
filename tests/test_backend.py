@@ -53,7 +53,8 @@ async def test_azure_status_endpoint(client: AsyncClient):
 
 
 @pytest.mark.anyio
-async def test_chat_endpoint(client: AsyncClient):
+async def test_chat_endpoint(client: AsyncClient, monkeypatch):
+    monkeypatch.setenv("ORCHESTRATOR_PATTERN", "B")
     with patch("src.backend.main.orchestrator") as mock_orch:
         mock_orch.answer_question_async = AsyncMock(return_value={
             "answer": "PTO policy allows 15 days per year.",
@@ -76,7 +77,8 @@ async def test_chat_endpoint(client: AsyncClient):
 
 
 @pytest.mark.anyio
-async def test_chat_empty_question(client: AsyncClient):
+async def test_chat_empty_question(client: AsyncClient, monkeypatch):
+    monkeypatch.setenv("ORCHESTRATOR_PATTERN", "B")
     with patch("src.backend.main.orchestrator") as mock_orch:
         mock_orch.answer_question_async = AsyncMock(return_value={
             "answer": "",
