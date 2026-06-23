@@ -76,6 +76,10 @@ Skip this step if you're starting with Pattern A. Run it when you want
 force-grounded answer synthesis via `tool_choice="required"`.
 
 ```bash
+# Preview what will be created (no RBAC needed — read-only)
+uv run python -m src.agents.create_foundry_agent --dry-run
+
+# Create the resources
 uv run python -m src.agents.create_foundry_agent
 ```
 

@@ -18,13 +18,31 @@ the search** and **how results reach Copilot Studio**.
 ```mermaid
 flowchart TD
     Start([New HR Q&A scenario]) --> Q1{Need answer synthesis?}
-    Q1 -- No, just locate document --> C[Pattern C:Dual-Tool Routing]
+    Q1 -- No, just locate document --> QL{Docs in a citation-friendly KB? SharePoint, AI Search w/ blob_url}
+    QL -- Yes --> Native[★ Native Copilot Studio citations Pattern A KB + click-through link no extra code]
+    QL -- "No — need sub-second latency, URL in body verbatim, or auditable output" --> C[Pattern C:Dual-Tool Routing]
     Q1 -- Yes --> Q2{Need an LLM agent?}
     Q2 -- No, hybrid search is enough --> A[Pattern A: Direct Knowledge Base]
     Q2 -- Yes, full agentic retrieval --> Q3{Self-host the runtime?}
-    Q3 -- No --> B[Pattern B: Foundry Agent Service prompt agent + MCPTool ★ default]
+    Q3 -- No --> B[Pattern B: Foundry Agent Service prompt agent + MCPTool ]
     Q3 -- Yes --> H[Hosted Agent runtime Microsoft Agent Framework hosting]
 ```
+
+> **Q3 is about the runtime, not the front door.** Copilot Studio is
+> still the front door for both Pattern B and the Hosted Agent — see
+> [Hosted Agent wiring](CopilotStudioIntegration.md#hosted-agent-wiring).
+> Q3 chooses whether the agent's request loop runs in Foundry
+> (Pattern B, managed) or in your container (Hosted Agent,
+> self-hosted).
+
+> **Note on the locator branch.** Copilot Studio's native knowledge-source
+> citations (SharePoint connector, or Pattern A with `blob_url` /
+> `metadata_storage_path` mapped) already give the user a click-through link
+> to the source document. Pattern C is the upgrade when you need
+> **sub-second latency**, **the URL in the answer body verbatim**,
+> **deterministic / auditable output**, or when your source isn't a
+> citation-friendly KB. See
+> [CopilotStudioLookupRouting.md — Pattern C vs native citations](CopilotStudioLookupRouting.md#pattern-c-vs-native-citations).
 
 ---
 
@@ -37,9 +55,10 @@ flowchart TD
 | **Search**            | Azure AI Search KB (REST)            | KB MCP tool inside agent             | `/api/lookup` (no LLM) + KB MCP            | Tool: `search_hr_policies` (`@tool`)  |
 | **Code path**         | Copilot Studio knowledge action       | `src/agents/hr_policy_agent.py`      | `src/backend/main.py:/api/lookup` + B/A    | `src/hosted_agent/server.py`          |
 | **Latency**           | ~1–2 s                               | ~10–14 s                             | ~1–2 s (lookup) / ~10–14 s (answer)        | ~10–14 s                              |
-| **Citations**         | Raw KB references                    | Inline `[Policy XXXX – Title]`       | Document list / Inline citations            | Inline `[Policy XXXX – Title]`        |
-| **Setup cost**        | Lowest                               | Medium (run `create_foundry_agent`)  | Medium (B + Copilot router)                | Highest (container deploy)            |
-| **Best for**          | "Find me the policy"                 | "Explain how PTO accrues"            | Mixed traffic (lookup vs explain)          | Self-hosted runtime, custom auth      |
+| **Citations**         | Native KB citation card (URL link)   | Inline `[Policy XXXX – Title]`       | Verbatim `blob_url` in answer body         | Inline `[Policy XXXX – Title]`        |
+| **Locator answer**    | Click-through citation card           | Click-through citation card           | URL printed verbatim in answer body         | Click-through citation card           |
+| **Setup cost**        | Lowest                               | Medium (run `create_foundry_agent`)  | Medium (B/A + Copilot router + REST tool)   | Highest (container deploy)            |
+| **Best for**          | "Find me the policy" — native citations cover the link | "Explain how PTO accrues"            | High-volume locator traffic / verbatim URL / deterministic output | Self-hosted runtime, custom auth      |
 
 ★ **Default in this repo — start with Pattern A.** Pattern A is the simplest
 setup: connect Copilot Studio directly to the Azure AI Search Knowledge
@@ -85,6 +104,15 @@ location** or a **content explanation**:
 - "Where is the PTO policy?" → calls `POST /api/lookup` (no LLM, ~1–2 s)
 - "How many PTO hours do I accrue?" → calls Pattern A or B (~10–14 s)
 
+> **When to add Pattern C.** Copilot Studio's native knowledge-source
+> citations already surface a click-through link to the source document
+> (SharePoint connector, or Pattern A with `blob_url` mapped). Add
+> Pattern C only when you need **sub-second latency** on locator
+> queries, the **URL in the answer body verbatim** (not in a citation
+> footer), **deterministic / auditable output**, or when your source
+> isn't a citation-friendly KB. Side-by-side trade-off table:
+> [CopilotStudioLookupRouting.md — Pattern C vs native citations](CopilotStudioLookupRouting.md#pattern-c-vs-native-citations).
+
 - **Lookup endpoint:** `src/backend/main.py:/api/lookup`
 - **OpenAPI:** `copilot/openapi-lookup-v2.json`
 - **Routing guide:** [docs/CopilotStudioLookupRouting.md](CopilotStudioLookupRouting.md)
@@ -113,6 +141,7 @@ or you want to keep the answering loop on your own infrastructure.
 - [Walkthrough.md](Walkthrough.md) — linear setup walkthrough
 - [FoundryAgentArchitecture.md](FoundryAgentArchitecture.md) — Pattern B internals
 - [AgentArchitecturePaths.md](AgentArchitecturePaths.md) — Foundry Agent Service vs Microsoft Agent Framework
+- [LabCoverage.md](LabCoverage.md) — cross-walk to Azure/Copilot-Studio-and-Azure labs 1.4 / 2.1 / 2.3 / 2.4
 - [README.md](../README.md) — top-level walkthrough
 - [DataPipelineAndTesting.md](DataPipelineAndTesting.md) — indexing pipeline
 - [CopilotStudioIntegration.md](CopilotStudioIntegration.md) — Copilot Studio wiring

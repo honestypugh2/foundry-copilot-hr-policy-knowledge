@@ -1,8 +1,24 @@
 # HR Policy Knowledge Agent
 
+> **⚠️ DISCLAIMER:** This repository is intended for **development, experimentation, and learning purposes only**. It is **not designed for production workloads**. Before deploying any AI-powered solution to production, consult the [Microsoft Azure Well-Architected Framework (WAF)](https://learn.microsoft.com/en-us/azure/well-architected/) and the [Azure AI services security baseline](https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/azure-ai-services-security-baseline) for guidance on reliability, security, cost optimization, operational excellence, and performance efficiency. Production deployments should incorporate proper authentication, monitoring, data governance, content safety filters, and compliance controls aligned to your organization's requirements.
+
 > **Ask HR** — An AI-powered assistant that answers employee questions
 > using internal HR policy documents. Built on Azure AI Foundry, Azure
 > AI Search, Microsoft Agent Framework (GA), and Copilot Studio.
+
+---
+
+## Where to Start
+
+This repo supports three main paths. Pick the one that matches your scenario:
+
+| # | Path | Start here | What you'll build |
+| - | ---- | ---------- | ----------------- |
+| 1 | **Copilot Studio alone** (Pattern A) | [docs/Walkthrough.md — Steps 1–3, then Step 7 (Pattern A)](docs/Walkthrough.md) | Copilot Studio queries Azure AI Search directly — no agent code needed. Fastest setup (~15 min after index is populated). |
+| 2 | **Foundry Agent alone** (Pattern B) | [docs/Walkthrough.md — Steps 1–5](docs/Walkthrough.md), then test with `python -m scripts.demo.test_pattern_b` | A PromptAgent with MCPTool + `tool_choice="required"` for force-grounded synthesis. No Copilot Studio required for testing. |
+| 3 | **Copilot Studio + Foundry Agent** (Patterns A+B or Hybrid) | Complete all steps in [docs/Walkthrough.md](docs/Walkthrough.md), then wire via [docs/CopilotStudioIntegration.md](docs/CopilotStudioIntegration.md) | Copilot Studio as the front door, Foundry Agent as the reasoning backend. Full enterprise pattern. |
+
+> **Not sure which?** Start with **Path 1** (Pattern A). It's zero-code, demonstrates value in minutes, and you can layer Foundry Agent Service on top later without re-indexing.
 
 ---
 
@@ -11,7 +27,9 @@
 ```mermaid
 flowchart TD
     Start([New HR Q&A scenario]) --> Q1{Need answer synthesis?}
-    Q1 -- "No, just locate document" --> C[Pattern C: Dual-Tool Routing POST /api/lookup]
+    Q1 -- No, just locate document --> QL{Docs in a citation-friendly KB? SharePoint, AI Search w/ blob_url}
+    QL -- Yes --> Native["★ Native Copilot Studio citations Pattern A KB + click-through link no extra code"]
+    QL -- "No — need sub-second latency, URL in body verbatim, or auditable output" --> C[Pattern C: Dual-Tool Routing POST /api/lookup]
     Q1 -- Yes --> Q2{Need an LLM agent?}
     Q2 -- "No, hybrid search is enough" --> A["★ Pattern A: Direct Knowledge Base Copilot Studio → AI Search (default)"]
     Q2 -- Yes --> Q3{Self-host the runtime?}
@@ -19,11 +37,18 @@ flowchart TD
     Q3 -- Yes --> H[Hosted Agent runtime Microsoft Agent Framework hosting]
 ```
 
+> **Q3 is about the runtime, not the front door.** Copilot Studio is
+> still the front door for both Pattern B and the Hosted Agent — see
+> [Hosted Agent wiring](docs/CopilotStudioIntegration.md#hosted-agent-wiring).
+> Q3 chooses whether the agent's request loop runs in Foundry
+> (Pattern B, managed) or in your container (Hosted Agent,
+> self-hosted).
+
 | Pattern | Code path                                       | Latency  | When                                |
 | ------- | ----------------------------------------------- | -------- | ----------------------------------- |
 | **A** ★ | Copilot Studio Knowledge Source                 | ~1–2 s   | Start here — simplest setup, no agent code needed |
 | **B**   | `src/agents/hr_policy_agent.py` (PromptAgent)   | ~10–14 s | Upgrade for force-grounded answer synthesis |
-| **C**   | `src/backend/main.py:/api/lookup`               | ~1–2 s   | Add to A or B for fast doc-locator path |
+| **C**   | `src/backend/main.py:/api/lookup`               | ~1–2 s   | Sub-second doc-locator with verbatim URL — only when native citations aren't enough |
 | Hosted  | `src/agents/hr_policy_agent_af.py` + container  | ~10–14 s | Self-hosted runtime (Agent Framework hosting, GA) |
 
 ★ **Default — start here.** Pattern A connects Copilot Studio directly to
@@ -32,10 +57,30 @@ up to Pattern B when you need force-grounded synthesis via
 `tool_choice="required"`. Set `AGENT_SERVICE=foundry` and run
 `python -m src.agents.create_foundry_agent` to provision Pattern B.
 
+> **Locator queries don't always need Pattern C.** Copilot Studio's
+> native knowledge-source citations (SharePoint connector, or Pattern A
+> with `blob_url` / `metadata_storage_path` mapped) already give the
+> user a click-through link to the source document. Add Pattern C only
+> when you need **sub-second latency**, **the URL in the answer body
+> verbatim**, **deterministic / auditable output**, or your source
+> isn't a citation-friendly KB. See
+> [Pattern C vs native citations](docs/CopilotStudioLookupRouting.md#pattern-c-vs-native-citations).
+
 Full details: **[docs/RetrievalPatterns.md](docs/RetrievalPatterns.md)**.
 Deep-dive on the default Pattern B internals: **[docs/FoundryAgentArchitecture.md](docs/FoundryAgentArchitecture.md)**.
 SDK choice (Foundry Agent Service vs Microsoft Agent Framework): **[docs/AgentArchitecturePaths.md](docs/AgentArchitecturePaths.md)**.
 Linear setup steps: **[docs/Walkthrough.md](docs/Walkthrough.md)**.
+Lab cross-walk to [Azure/Copilot-Studio-and-Azure](https://github.com/Azure/Copilot-Studio-and-Azure): **[docs/LabCoverage.md](docs/LabCoverage.md)**.
+
+Want to see each pattern run live? **[scripts/demo/README.md](scripts/demo/README.md)** ships a per-pattern test script for A / B / C / Hosted plus a four-act storytelling demo that walks the decision tree end-to-end:
+
+```bash
+# Full storytelling walk-through (skip Foundry-only acts if not provisioned)
+python -m scripts.demo.demo_decision_tree --skip-b --skip-hosted
+```
+
+Ready to wire and test the same patterns inside Copilot Studio? Follow the
+step-by-step **[docs/CopilotStudioTestingGuide.md](docs/CopilotStudioTestingGuide.md)** — setup steps for every pattern plus numbered test scenarios you can run from the agent's Test pane.
 
 ---
 
@@ -55,7 +100,9 @@ Linear setup steps: **[docs/Walkthrough.md](docs/Walkthrough.md)**.
 git clone https://github.com/honestypugh2/foundry-copilot-hr-policy-knowledge.git
 cd foundry-copilot-hr-policy-knowledge
 uv sync
-cp .env.example .env
+cp .env.example .env          # Full config (all patterns)
+# OR for Pattern A only:
+# cp .env.pattern-a.example .env
 # Edit .env with your Azure endpoints
 ```
 
@@ -95,6 +142,10 @@ Skip this step if you're starting with Pattern A. Run it when you want
 force-grounded answer synthesis via `tool_choice="required"`.
 
 ```bash
+# Preview what will be created (no credentials needed beyond AZURE_SEARCH_ENDPOINT)
+uv run python -m src.agents.create_foundry_agent --dry-run
+
+# Create the resources
 uv run python -m src.agents.create_foundry_agent
 ```
 
@@ -251,6 +302,22 @@ az deployment group create \
 | 2 | Difficulty understanding technician vernacular        | Synonym map + Python glossary expansion (`HR_GLOSSARY`)                  |
 | 3 | Managing multiple data sources in a single agent      | KB MCP tool aggregates Knowledge Sources behind one agent                |
 | 4 | Prompt and instruction limitations in Copilot Studio | Detailed `AGENT_INSTRUCTIONS` in the backend + dual-tool routing         |
+
+---
+
+## Production Considerations
+
+> **This repo is not production-ready.** It is a learning accelerator and reference implementation. Before promoting any of these patterns to a production environment, address the following:
+
+| Area | What to do | Reference |
+| ---- | ---------- | --------- |
+| **Security** | Remove API keys from `.env`; use Managed Identity exclusively. Enable network isolation (VNet, Private Endpoints). Add Azure Content Safety filters. | [Azure WAF — Security pillar](https://learn.microsoft.com/en-us/azure/well-architected/security/) |
+| **Reliability** | Add retry policies, circuit breakers, health probes, and multi-region failover for AI Search and OpenAI. | [Azure WAF — Reliability pillar](https://learn.microsoft.com/en-us/azure/well-architected/reliability/) |
+| **Performance** | Profile latency under load. Use semantic caching (APIM AI Gateway) and right-size SKUs. | [Azure WAF — Performance efficiency](https://learn.microsoft.com/en-us/azure/well-architected/performance-efficiency/) |
+| **Cost** | Set token budgets, monitor consumption with Application Insights, rightsize search replicas. | [Azure WAF — Cost optimization](https://learn.microsoft.com/en-us/azure/well-architected/cost-optimization/) |
+| **Operations** | Enable structured logging, distributed tracing (OpenTelemetry), and alerts. Use CI/CD for index and agent deployments. | [Azure WAF — Operational excellence](https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/) |
+| **Data governance** | Classify data sensitivity. Implement document-level ACLs in the index. Add PII redaction where required. | [Microsoft Purview](https://learn.microsoft.com/en-us/purview/) |
+| **Responsible AI** | Review model outputs for fairness and bias. Add human-in-the-loop where answers affect employment decisions. | [Microsoft Responsible AI](https://www.microsoft.com/en-us/ai/responsible-ai) |
 
 ---
 

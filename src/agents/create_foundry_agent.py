@@ -356,9 +356,55 @@ def cleanup() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Dry Run
+# ---------------------------------------------------------------------------
+def _print_dry_run(search_endpoint: str) -> None:
+    """Preview what resources would be created without making any changes."""
+    project_endpoint = os.getenv("AZURE_AI_PROJECT_ENDPOINT", "") or os.getenv("AI_FOUNDRY_PROJECT_ENDPOINT", "")
+    project_resource_id = os.getenv("PROJECT_RESOURCE_ID", "")
+    mcp_api_version = AGENTIC_CFG.get("mcp", {}).get("api_version", "2025-11-01-Preview")
+    mcp_endpoint = f"{search_endpoint}/knowledgebases/{KNOWLEDGE_BASE_NAME}/mcp?api-version={mcp_api_version}"
+
+    logger.info("=== DRY RUN — no resources will be created ===")
+    logger.info("")
+    logger.info("The following resources WOULD be created:")
+    logger.info("")
+    logger.info("  Step 1: Knowledge Source")
+    logger.info("    Name:       %s", KNOWLEDGE_SOURCE_NAME)
+    logger.info("    Index:      %s", INDEX_NAME)
+    logger.info("    Endpoint:   %s", search_endpoint)
+    logger.info("    Fields:     %s", AGENTIC_CFG.get("source_data_fields", ["id", "policy", "parent_title", "policy_number"]))
+    logger.info("")
+    logger.info("  Step 2: Knowledge Base")
+    logger.info("    Name:       %s", KNOWLEDGE_BASE_NAME)
+    logger.info("    Source:     %s", KNOWLEDGE_SOURCE_NAME)
+    logger.info("    Effort:     %s", AGENTIC_CFG.get("retrieval_reasoning_effort", "medium"))
+    logger.info("    Output:     %s", AGENTIC_CFG.get("output_mode", "EXTRACTIVE"))
+    logger.info("")
+    logger.info("  Step 3: MCP Connection")
+    logger.info("    Name:       %s", MCP_CONNECTION_NAME)
+    logger.info("    Endpoint:   %s", mcp_endpoint)
+    logger.info("    Project:    %s", project_resource_id or "(PROJECT_RESOURCE_ID not set)")
+    logger.info("")
+    logger.info("  Step 4: Foundry Agent")
+    logger.info("    Name:       %s", AGENT_NAME)
+    logger.info("    Model:      %s", AGENT_MODEL)
+    logger.info("    Project:    %s", project_endpoint or "(AZURE_AI_PROJECT_ENDPOINT not set)")
+    logger.info("    Tool:       MCPTool → knowledge_base_retrieve")
+    logger.info("    tool_choice: required")
+    logger.info("")
+    logger.info("Required RBAC:")
+    logger.info("  - Search Index Data Reader → project managed identity")
+    logger.info("  - Search Service Contributor → your user identity")
+    logger.info("")
+    logger.info("To create these resources, run without --dry-run:")
+    logger.info("  python -m src.agents.create_foundry_agent")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def run(verify_only: bool = False, do_cleanup: bool = False) -> None:
+def run(verify_only: bool = False, do_cleanup: bool = False, dry_run: bool = False) -> None:
     if not FOUNDRY_SDK_AVAILABLE:
         logger.error("Required SDK packages not installed")
         return
@@ -366,6 +412,10 @@ def run(verify_only: bool = False, do_cleanup: bool = False) -> None:
     search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT", "")
     if not search_endpoint:
         logger.error("AZURE_SEARCH_ENDPOINT not set")
+        return
+
+    if dry_run:
+        _print_dry_run(search_endpoint)
         return
 
     if do_cleanup:
@@ -407,5 +457,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--verify-only", action="store_true", help="Verify resources exist")
     parser.add_argument("--cleanup", action="store_true", help="Delete KB + KS resources")
+    parser.add_argument("--dry-run", action="store_true", help="Preview what will be created without making changes")
     args = parser.parse_args()
-    run(verify_only=args.verify_only, do_cleanup=args.cleanup)
+    run(verify_only=args.verify_only, do_cleanup=args.cleanup, dry_run=args.dry_run)

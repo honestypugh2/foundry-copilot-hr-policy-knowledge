@@ -1,5 +1,21 @@
 # SharePoint → Logic Apps → Document Intelligence → Azure AI Search → Copilot Studio
 
+> **Alternative — native SharePoint indexer.** Azure AI Search ships a
+> [SharePoint Online indexer](https://learn.microsoft.com/en-us/azure/search/search-how-to-index-sharepoint-online)
+> (preview) that pulls documents from a SharePoint document library
+> directly into an AI Search index, with no Logic App in between. That
+> path is what
+> [Lab 2.3 of Azure/Copilot-Studio-and-Azure](https://github.com/Azure/Copilot-Studio-and-Azure/blob/main/labs/2.3-ai-search-sharepoint-indexer/2.3-ai-search-sharepoint-indexer.md)
+> walks through. **Use the indexer when** the connector's defaults are
+> enough and you can tolerate preview status and an hourly minimum
+> schedule. **Use the Logic Apps pipeline below when** you need
+> Document Intelligence preprocessing (OCR / layout / tables), custom
+> field derivation (policy_number, category from filename), per-file
+> event response (vs hourly poll), or private endpoints. Either path
+> can populate the same `hr-policy-index` and Pattern A wires up
+> identically. See [LabCoverage.md — Lab 2.3](LabCoverage.md#lab-23--sharepoint-indexer)
+> for the side-by-side comparison.
+
 ## High-Level Architecture
 
 ```
@@ -274,7 +290,7 @@ This project ships two architectural paths. Choose based on your requirements:
 
 Both architectures share the same Azure AI Search index (`hr-policy-index`), so they can coexist — the Logic Apps pipeline keeps the index current while the Agent Framework backend provides advanced query capabilities.
 
-See [ArchitectureOptions.md](ArchitectureOptions.md) for a full comparison of all pattern and preprocessing options.
+See [RetrievalPatterns.md](RetrievalPatterns.md) for a full comparison of all pattern and preprocessing options.
 
 ## References
 

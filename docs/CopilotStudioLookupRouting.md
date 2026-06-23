@@ -25,6 +25,51 @@ text on both sides → same routing behavior.
 > Agent Service), import `copilot/openapi-v2.json` as the content tool
 > instead and keep everything else identical.
 
+> **Before you wire Pattern C.** Read
+> [Pattern C vs native citations](#pattern-c-vs-native-citations)
+> below — if your source documents are in SharePoint, or if Pattern A's
+> built-in citation card is enough for your users to click through to
+> the document, you may not need Pattern C at all.
+
+---
+
+<a id="pattern-c-vs-native-citations"></a>
+## Pattern C vs native Copilot Studio citations
+
+Copilot Studio's native knowledge-source connectors already attach
+clickable citations to every answer. For most "where is the X policy?"
+intents, that citation **is** the locator answer — no Pattern C
+required.
+
+| Knowledge source                       | What the user sees for "Where is the PTO policy?"                                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **SharePoint** (native connector)      | Content answer + a citation card with a direct SharePoint deep link to the file.                             |
+| **Azure AI Search** (Pattern A)        | Content answer + a citation card built from `metadata_storage_path` / `blob_url` (when those fields are mapped). |
+| **OneDrive / Dataverse / web URL**     | Content answer + native deep link to the source.                                                             |
+| **Pattern C** (`lookupHRPolicyDocument`) | The URL is printed in the answer body verbatim, returned in ~1–2 s with no LLM call.                       |
+
+### Choose Pattern C only when one of these is true
+
+| Need                                                                                  | Native citation path        | Pattern C |
+| ------------------------------------------------------------------------------------- | --------------------------- | --------- |
+| **Sub-second latency** on locator queries (no LLM synthesis pass)                     | ❌ ~10–14 s every time      | ✅ ~1–2 s |
+| **URL in the answer body verbatim**, not in a citation footer the user must click     | ❌ Citation card only       | ✅ "The file is at `https://…/51350.docx`" |
+| **Deterministic / auditable** — must return exactly this `blob_url`, never paraphrased | ⚠️ LLM can drop or reshape citations | ✅ Index field returned verbatim |
+| **Zero LLM cost** on high-volume locator traffic                                      | ❌ Full synthesis every time | ✅ No tokens spent |
+| **Source isn't a citation-friendly KB** (raw blob without URL field, custom store)    | ❌ Connector can't surface a link | ✅ Custom REST tool composes the link |
+
+If none of those apply, **skip Pattern C** and rely on the native
+citation surface (SharePoint connector if your docs are in SharePoint,
+or Pattern A with `blob_url` / `metadata_storage_path` mapped on the
+Knowledge Source).
+
+The Hybrid Orchestration walkthrough
+([CopilotStudioHybridExample.md](CopilotStudioHybridExample.md))
+assumes Pattern C is wired so the agent can answer with a verbatim URL
+for mixed content + location turns. If you're going native-only, you
+can stop after [CopilotStudioIntegration.md](CopilotStudioIntegration.md)
+(Pattern A wiring) and ignore everything below.
+
 ---
 
 ## 1. Add the lookup tool

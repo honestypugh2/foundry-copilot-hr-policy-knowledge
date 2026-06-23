@@ -2,7 +2,7 @@
 
 This document covers the end-to-end data pipeline — from raw HR policy documents to a searchable Azure AI Search index — and the testing strategy used to validate each stage.
 
-> **Related docs:** [ArchitectureOptions.md](ArchitectureOptions.md) covers the high-level architecture patterns. This document goes deeper into the data flow, pre-processing steps, and test coverage.
+> **Related docs:** [RetrievalPatterns.md](RetrievalPatterns.md) covers the high-level architecture patterns. This document goes deeper into the data flow, pre-processing steps, and test coverage.
 
 ---
 
