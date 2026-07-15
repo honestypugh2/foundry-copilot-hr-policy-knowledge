@@ -19,6 +19,7 @@ import os
 import re
 from typing import Annotated, Any, Dict, List, Optional
 
+from src.config.model_policy import get_chat_model
 from src.config.search_config import search_cfg
 from src.search.search_service import expand_query_with_glossary
 
@@ -78,6 +79,31 @@ OUTPUT FORMAT:
 """
 
 
+# System prompt for the context-provider modes (RETRIEVAL_MODE=context-*), where
+# relevant HR policy excerpts are retrieved and injected automatically before
+# each turn instead of via an explicit search tool.
+HR_POLICY_CONTEXT_SYSTEM_PROMPT = """You are an HR Policy Assistant for the "Ask HR" system.
+Relevant HR policy excerpts are automatically retrieved and provided to you as
+context before each question. Answer employee questions using ONLY that provided
+context.
+
+CRITICAL RULES:
+1. Only answer based on the retrieved HR policy context provided to you.
+2. If the information is not present in the context, respond:
+   "I could not find this information in the HR policy documents. Please contact
+   your HR representative for assistance."
+3. Always cite the specific policy number and title when referencing information.
+4. Be precise — do not paraphrase in ways that change meaning.
+5. Handle vernacular terms (e.g., "PTO" -> "Paid Time Off").
+
+OUTPUT FORMAT:
+- Start with a direct answer to the question.
+- Include specific policy citations: [Policy XXXXX - Title].
+- Quote relevant sections when precision matters.
+- End with "Source: [Policy Number - Policy Title]" for each referenced policy.
+"""
+
+
 class HRPolicyAgent:
     """HR Policy Agent using Agent Framework + FoundryChatClient.
 
@@ -94,17 +120,21 @@ class HRPolicyAgent:
         search_endpoint: Optional[str] = None,
         search_api_key: Optional[str] = None,
         search_query_type: str = "semantic",
+        retrieval_mode: Optional[str] = None,
     ) -> None:
+        # Retrieval mode selects how the Agent Framework path does RAG:
+        #   "tool"             -> custom @tool classic search (default)
+        #   "context-semantic" -> AzureAISearchContextProvider, classic search
+        #   "context-agentic"  -> AzureAISearchContextProvider, agentic retrieval
+        #                         over the Foundry IQ knowledge base
+        self.retrieval_mode = (
+            retrieval_mode or os.getenv("RETRIEVAL_MODE", "tool")
+        ).lower()
         self.project_endpoint = project_endpoint or os.getenv(
             "AZURE_AI_PROJECT_ENDPOINT",
             os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT", ""),
         )
-        self.model_deployment_name = (
-            model_deployment_name
-            or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
-            or os.getenv("AZURE_OPENAI_DEPLOYMENT")
-            or "gpt-4o"
-        )
+        self.model_deployment_name = get_chat_model(model_deployment_name)
         self.search_index_name = (
             search_index_name
             or os.getenv("AZURE_SEARCH_INDEX_NAME")
@@ -298,17 +328,54 @@ class HRPolicyAgent:
             credential=credential,
         )
 
-        # Build tools list: Azure AI Search function tool
-        tools = [self.search_hr_policies]
+        # Select the RAG strategy based on retrieval_mode:
+        #   context-semantic / context-agentic -> out-of-the-box context provider
+        #   tool (default)                      -> custom @tool classic search
+        from src.search.agentic_context_provider import is_context_mode
+
+        tools: list[Any] = []
+        context_providers: list[Any] = []
+        instructions = HR_POLICY_SYSTEM_PROMPT
+        use_tool_steps = True
+
+        if is_context_mode(self.retrieval_mode):
+            try:
+                from src.search.agentic_context_provider import (
+                    build_search_context_provider,
+                )
+
+                context_providers = [
+                    build_search_context_provider(
+                        self.retrieval_mode,
+                        endpoint=self.search_endpoint,
+                        index_name=self.search_index_name,
+                        api_key=self.search_api_key,
+                        top_k=self._top_k,
+                    )
+                ]
+                instructions = HR_POLICY_CONTEXT_SYSTEM_PROMPT
+                use_tool_steps = False
+            except Exception as e:
+                logger.warning(
+                    "Search context provider unavailable (%s); "
+                    "falling back to the classic search tool.",
+                    e,
+                )
+                tools = [self.search_hr_policies]
+        else:
+            tools = [self.search_hr_policies]
 
         agent = Agent(
             client=client,
             name="HRPolicyAgent",
-            instructions=HR_POLICY_SYSTEM_PROMPT,
+            instructions=instructions,
             tools=tools,
+            context_providers=context_providers or None,
         )
 
-        prompt = self._build_prompt(question, conversation_history)
+        prompt = self._build_prompt(
+            question, conversation_history, use_tool_steps=use_tool_steps
+        )
 
         # Stream the agent response
         response_text = ""
@@ -332,8 +399,14 @@ class HRPolicyAgent:
         self,
         question: str,
         conversation_history: Optional[List[Dict[str, str]]] = None,
+        use_tool_steps: bool = True,
     ) -> str:
-        """Build the prompt for the agent including conversation context."""
+        """Build the prompt for the agent including conversation context.
+
+        When ``use_tool_steps`` is ``False`` (context-provider modes), the prompt
+        omits the explicit "call the search tool" step because retrieval runs
+        automatically before each turn.
+        """
         prompt = f"Answer the following HR policy question:\n\n{question}"
 
         if conversation_history:
@@ -343,15 +416,23 @@ class HRPolicyAgent:
             )
             prompt += f"\n\nPREVIOUS CONVERSATION:\n{history_text}"
 
-        prompt += (
-            "\n\nPlease perform the following steps:\n"
-            "1. Use the search_hr_policies tool to find relevant HR policies.\n"
-            "2. Analyze the retrieved excerpts for the specific information requested.\n"
-            "3. Provide a clear, grounded answer with policy number citations "
-            "in the format [Policy XXXXX - Title].\n"
-            "4. End with 'Source: [Policy Number - Policy Title]' for each "
-            "referenced policy."
-        )
+        if use_tool_steps:
+            prompt += (
+                "\n\nPlease perform the following steps:\n"
+                "1. Use the search_hr_policies tool to find relevant HR policies.\n"
+                "2. Analyze the retrieved excerpts for the specific information requested.\n"
+                "3. Provide a clear, grounded answer with policy number citations "
+                "in the format [Policy XXXXX - Title].\n"
+                "4. End with 'Source: [Policy Number - Policy Title]' for each "
+                "referenced policy."
+            )
+        else:
+            prompt += (
+                "\n\nUse the retrieved HR policy context provided to you to answer. "
+                "Provide a clear, grounded answer with policy number citations in "
+                "the format [Policy XXXXX - Title], and end with "
+                "'Source: [Policy Number - Policy Title]' for each referenced policy."
+            )
 
         return prompt
 
@@ -431,11 +512,7 @@ async def main() -> None:
             or os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT")
             or ""
         ),
-        model_deployment_name=(
-            os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
-            or os.getenv("AZURE_OPENAI_DEPLOYMENT")
-            or "gpt-4o"
-        ),
+        model_deployment_name=get_chat_model(),
         search_index_name=(
             os.getenv("AZURE_SEARCH_INDEX_NAME") or search_cfg.index_name
         ),

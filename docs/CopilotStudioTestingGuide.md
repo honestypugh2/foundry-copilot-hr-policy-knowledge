@@ -40,25 +40,33 @@ everything in one tenant for the Hybrid test.
 ## 📋 Prerequisites
 
 Before opening Copilot Studio, complete the bring-up in
-[../README.md](../README.md):
+[../README.md](../README.md). The one-shot path is **`azd up`** (after
+`azd ext install azure.ai.agents`), which provisions the AI Foundry project,
+Azure AI Search, Storage, **Azure Container Registry**, a **Container Apps
+environment + FastAPI backend**, **Log Analytics + Application Insights**, and
+all RBAC — then builds/pushes and deploys the backend + Hosted Agent images.
 
 | ✅ | What | Why |
 | -- | ---- | --- |
+| ☐ | `azd up` completed (infra + services) — see [README.md § 10](../README.md#10-deploy-infrastructure-and-services) | Provisions ACR, Container Apps, App Insights + deploys backend & Hosted Agent |
 | ☐ | `hr-policy-index` populated (`uv run python scripts/index_knowledge_base_integrated_vectorization.py`) | All four patterns query this index |
 | ☐ | Foundry project endpoint set (`AZURE_AI_PROJECT_ENDPOINT` in `.env`) | Required for Pattern B + Hosted |
 | ☐ | `HRPolicyAgent` PromptAgent provisioned (`uv run python -m src.agents.create_foundry_agent`) | Required for Pattern B |
-| ☐ | `hr-policy-agent` container deployed via `src/hosted_agent/agent.yaml` | Required for Hosted Agent |
-| ☐ | FastAPI backend deployed and reachable (Azure Function or App Service) | Required for Pattern C REST tool import |
-| ☐ | Function key captured — `az functionapp keys list -g <rg> -n <func> --query "functionKeys.default" -o tsv` | Required for Pattern C auth |
+| ☐ | `hr-policy-agent` Hosted Agent deployed (`azd deploy`, host `azure.ai.agent`; descriptor `src/hosted_agent/agent.yaml`) | Required for Hosted Agent |
+| ☐ | FastAPI backend deployed on **Azure Container Apps** (via `azd up`); note its ingress URL (`azd env get-value SERVICE_BACKEND_URI`) | Required for Pattern C / B2 REST tool import |
+| ☐ | Backend endpoint auth decided — Container Apps public ingress needs **no key** for a demo; for production front it with **Entra (Container Apps authentication)**. The `az functionapp keys list` / `code` query-key steps in Step C2 / D apply **only if you host the backend on Azure Functions instead**. | Pattern C / B2 auth |
 | ☐ | Smoke-tested locally with `python -m scripts.demo.demo_decision_tree --skip-b --skip-hosted` | Confirms search + lookup work before Copilot Studio is in the loop |
 
-Required RBAC on the Azure AI Search service (Patterns B / Hosted only):
+Required RBAC on the Azure AI Search service (Patterns B / Hosted only) — all
+assigned automatically by the Bicep when `AZURE_PRINCIPAL_ID` is set:
 
 | Role | Assigned to | Purpose |
 | ---- | ----------- | ------- |
 | Search Index Data Contributor | Your user | Create indexes, upload docs |
-| Search Index Data Reader | Your user + project managed identity | Query the index from Foundry |
+| Search Index Data Reader | Your user + project managed identity + backend Container App identity | Query the index from Foundry / the backend |
 | Search Service Contributor | Your user | Create knowledge bases/sources |
+| Foundry Project Manager | Your user | Deploy the Hosted Agent |
+| AcrPull | Project managed identity + backend Container App identity | Pull container images from ACR |
 
 ---
 
@@ -149,13 +157,16 @@ The simplest path — Copilot Studio's native Azure AI Search connector.
 
    ![Add knowledge → Azure AI Search](images/copilot-studio/04-add-knowledge-aisearch.png)
 
-2. Click **Create new connection**. Authentication = **Access Key**.
+2. Click **Create new connection**. Authentication =
+   **Microsoft Entra ID Integrated** (recommended — no secrets; grant the
+   agent the **Search Index Data Reader** role on the search service). See
+   [CopilotStudioIntegration.md § Step 2](CopilotStudioIntegration.md) for the
+   full data-connection guidance.
    Fill in:
 
    | Field | Value |
    | ----- | ----- |
    | Azure AI Search Endpoint URL | `https://<your-search-service>.search.windows.net` |
-   | Azure AI Search Admin Key | Your API key (query key suffices for read-only) |
 
    ![Azure AI Search connection dialog](images/copilot-studio/05-knowledge-connection.png)
 
@@ -206,27 +217,49 @@ Two options. Pick one.
 
 #### Option B1 — Add the Foundry agent directly (recommended)
 
+> **⚠️ New Foundry portal only.** Copilot Studio can only connect to Foundry
+> agents created in the **new Foundry portal** — connecting to one created in
+> the previous portal fails with `404 - Version not found`. This repo's
+> `create_foundry_agent.py` uses the GA `azure-ai-projects` SDK (new Foundry),
+> so `HRPolicyAgent` is compatible.
+
 1. **Agents → Add an agent → Connect to an external agent → Microsoft Foundry (Preview)**.
-2. Select your Azure AI Foundry project, then pick **`HRPolicyAgent`**.
+2. Select an existing **connection**, or create one using your **Foundry project
+   endpoint URL**, then select **Next**.
+3. Enter a **Name** and **Description** (the description drives orchestration),
+   then enter the **Agent Id** — `HRPolicyAgent`. You can change the Agent Id
+   later from the agent's details page.
 
    ![Foundry agent picker](images/copilot-studio/07-agents-add-foundry-agent.png)
 
-3. Set **Completion → Write the response with generative AI**
+4. Set **Completion → Write the response with generative AI**
    (lets Copilot Studio reformat citations).
-4. Click **Save**.
+5. Select **Add Agent**, then **Save**.
 
 #### Option B2 — Add as a REST API tool
 
-Use this when your Foundry agent is fronted by an HTTP endpoint
-(Azure Function `/api/chat`).
+Use this when your Foundry agent is fronted by an HTTP endpoint. In this repo
+the backend runs on **Azure Container Apps** (`/api/chat`).
 
 1. **Tools → Add a tool → New tool → REST API**.
 2. Upload [`copilot/openapi-v2.json`](../copilot/openapi-v2.json).
+3. **Authentication.** Copilot Studio's REST API tool supports **None**,
+   **API key**, or **OAuth 2.0** — the backend does **not** have to be Azure
+   Functions. Pick based on how the endpoint is protected:
 
-3. **Authentication → API key.**
-   - **Parameter name:** `code`
-   - **Location:** `Query` ⚠️ (not `Header` — Azure Functions function keys return **401** against `Header`).
-   - **Value:** the function key.
+   | Backend host | Auth to select |
+   | ------------ | -------------- |
+   | **Container Apps — public ingress** (default here) | **None** (demo only) |
+   | **Container Apps — Entra auth** (`backendAuthClientId` set) | **OAuth 2.0** (Microsoft Entra ID) |
+   | **Azure Functions** | **API key** — `code` in **Query** (or `x-functions-key` in **Header**; the default `Authorization` header returns **401**) |
+
+   > **Prefer OAuth 2.0 (Entra) beyond a quick demo.** Every other hop uses
+   > Entra ID / managed identity; a function key or public ingress is a
+   > shared-secret / unauthenticated shortcut. **Managed identity does not apply
+   > to this hop** — Copilot Studio is a SaaS caller with no MI for outbound
+   > calls, so the Entra-aligned option is OAuth 2.0. Enable Entra on the backend
+   > by setting `backendAuthClientId` (an admin-created app registration); the
+   > Container App then returns 401 to unauthenticated callers.
 
 4. Map the user's message to the `message` input.
 5. Under **Details → Allow agent to decide dynamically when to use the tool** = **On**.
@@ -249,7 +282,13 @@ intents.
    `file_metadata_lookup` tool definition from
    [honestypugh2/foundry-copilot-search-validate](https://github.com/honestypugh2/foundry-copilot-search-validate)
    — keep it verbatim so the planner picks it for "WHERE is X" intents.
-3. **Authentication → API key.** Same as Step C2: `code` in **Query**.
+3. **Authentication.** Same choices as Step C2 — **None** (Container Apps public
+   ingress, demo), **OAuth 2.0** (Container Apps Entra auth via
+   `backendAuthClientId`), or **API key** (`code` in **Query**, or
+   `x-functions-key` in **Header**) only if the backend is on Azure Functions.
+   Prefer OAuth 2.0 for production; the function-key path applies only to
+   Functions hosting. Managed identity does not apply to the Copilot Studio → API
+   hop.
 4. Save. Confirm the operation `lookupHRPolicyDocument` appears in the
    tools list.
 5. Open the agent's **Instructions** (Overview page) and **replace**
@@ -689,7 +728,7 @@ Tick these off in order. Skip rows for patterns you're not wiring.
 | **Pattern A-SP** — vernacular like "vacation" misses | No synonym map on the SP connector | Wire Pattern A alongside, or add a Custom topic for the term |
 | Foundry agent tool dropdown is empty | PromptAgent not published, or different tenant | Run `uv run python -m src.agents.create_foundry_agent --verify-only`; confirm tenant alignment |
 | Pattern B / Hosted returns 401 in Activity trace | RBAC not assigned to project managed identity | Assign **Search Index Data Reader** to the Foundry project's managed identity on the search service |
-| REST tool returns 401 even with key | Auth set to **Header** instead of **Query** | Edit the connection → Authentication → switch `code` parameter location to **Query** |
+| REST tool returns 401 even with key | Auth set to **Header** with the default header name instead of **Query** | Use `code` in **Query**, or **Header** with parameter name `x-functions-key` (the default `Authorization` header name returns 401) |
 | Connection error: *"Let's get you connected first"* | Copilot Studio connection to Foundry Agent Service expired | **Open connection manager → Azure AI Foundry Agent Service → Connect**, then **Retry** in the chat |
 | Pattern C fires on content questions | Tool description too generic, or router instructions weak | Restore `description` text in `openapi-lookup-v2.json` verbatim; tighten rule #2 in Step D instructions |
 | Hosted Agent answers without calling `search_hr_policies` | System prompt rule 1 ignored by the model | Lower temperature in `FoundryChatClient` config, or move the "MUST call search_hr_policies first" rule to the top of `HR_POLICY_SYSTEM_PROMPT` |

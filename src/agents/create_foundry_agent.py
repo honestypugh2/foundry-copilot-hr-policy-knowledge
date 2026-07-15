@@ -52,6 +52,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.config.model_policy import get_chat_model
 from src.config.search_config import search_cfg
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
@@ -65,9 +66,6 @@ try:
         SearchIndexKnowledgeSourceParameters,
         SearchIndexFieldReference,
         KnowledgeBase,
-        KnowledgeRetrievalMinimalReasoningEffort,
-        KnowledgeRetrievalMediumReasoningEffort,
-        KnowledgeRetrievalOutputMode,
         KnowledgeSourceReference,
     )
     from azure.ai.projects import AIProjectClient
@@ -76,7 +74,7 @@ try:
 except ImportError as e:
     FOUNDRY_SDK_AVAILABLE = False
     logger.warning("Required SDK packages not installed: %s", e)
-    logger.info("Install: pip install azure-search-documents>=11.7.0b2 azure-ai-projects>=2.0.0b1 azure-identity")
+    logger.info("Install: pip install 'azure-search-documents>=12.0.0,<12.1' 'azure-ai-projects>=2.3.0' azure-identity")
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +90,7 @@ MCP_CONNECTION_NAME = search_cfg.mcp_connection_name
 
 # Agent config
 AGENT_NAME = "HRPolicyAgent"
-AGENT_MODEL = FOUNDRY_CFG.get("model", "gpt-4o")
+AGENT_MODEL = get_chat_model(FOUNDRY_CFG.get("model"))
 
 
 def _get_credential():
@@ -135,31 +133,24 @@ def create_knowledge_source() -> None:
 # Step 2: Create Knowledge Base
 # ---------------------------------------------------------------------------
 def create_knowledge_base() -> None:
-    """Create a Knowledge Base wrapping the Knowledge Source(s)."""
+    """Create a Knowledge Base wrapping the Knowledge Source(s).
+
+    In ``azure-search-documents`` 12.0.0 (GA) the Knowledge Base definition no
+    longer carries ``output_mode`` or ``retrieval_reasoning_effort``. Those are
+    now supplied at **retrieval time** on the agentic-retrieval request (the MCP
+    tool call, ``api-version={AGENTIC_CFG['mcp']['api_version']}``), so the
+    config values ``agentic_retrieval.output_mode`` and
+    ``agentic_retrieval.retrieval_reasoning_effort`` are applied by the caller,
+    not here.
+    """
     search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT", "")
     credential = _get_credential()
     index_client = SearchIndexClient(endpoint=search_endpoint, credential=credential)
-
-    # Determine reasoning effort
-    effort_str = AGENTIC_CFG.get("retrieval_reasoning_effort", "medium")
-    if effort_str == "minimal":
-        reasoning_effort = KnowledgeRetrievalMinimalReasoningEffort()
-    else:
-        reasoning_effort = KnowledgeRetrievalMediumReasoningEffort()
-
-    # Determine output mode
-    output_mode_str = AGENTIC_CFG.get("output_mode", "EXTRACTIVE")
-    if output_mode_str.upper() == "EXTRACTIVE":
-        output_mode = KnowledgeRetrievalOutputMode.EXTRACTIVE_DATA
-    else:
-        output_mode = KnowledgeRetrievalOutputMode.EXTRACTIVE_DATA
 
     kb = KnowledgeBase(
         name=KNOWLEDGE_BASE_NAME,
         description=f"HR policy knowledge base with agentic retrieval over {INDEX_NAME}",
         knowledge_sources=[KnowledgeSourceReference(name=KNOWLEDGE_SOURCE_NAME)],
-        output_mode=output_mode,
-        retrieval_reasoning_effort=reasoning_effort,
     )
 
     index_client.create_or_update_knowledge_base(knowledge_base=kb)
@@ -174,11 +165,15 @@ def create_mcp_connection() -> str:
     import requests
 
     search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT", "")
-    project_resource_id = os.getenv("PROJECT_RESOURCE_ID", "")
-    mcp_api_version = AGENTIC_CFG.get("mcp", {}).get("api_version", "2025-11-01-Preview")
+    project_resource_id = os.getenv("AZURE_AI_PROJECT_RESOURCE_ID") or os.getenv(
+        "PROJECT_RESOURCE_ID", ""
+    )
+    mcp_api_version = AGENTIC_CFG.get("mcp", {}).get("api_version", "2026-05-01-preview")
 
     if not project_resource_id:
-        logger.error("PROJECT_RESOURCE_ID not set. Set it to your Foundry project ARM resource ID.")
+        logger.error(
+            "AZURE_AI_PROJECT_RESOURCE_ID not set. Set it to your Foundry project ARM resource ID."
+        )
         return ""
 
     mcp_endpoint = f"{search_endpoint}/knowledgebases/{KNOWLEDGE_BASE_NAME}/mcp?api-version={mcp_api_version}"
@@ -361,8 +356,10 @@ def cleanup() -> None:
 def _print_dry_run(search_endpoint: str) -> None:
     """Preview what resources would be created without making any changes."""
     project_endpoint = os.getenv("AZURE_AI_PROJECT_ENDPOINT", "") or os.getenv("AI_FOUNDRY_PROJECT_ENDPOINT", "")
-    project_resource_id = os.getenv("PROJECT_RESOURCE_ID", "")
-    mcp_api_version = AGENTIC_CFG.get("mcp", {}).get("api_version", "2025-11-01-Preview")
+    project_resource_id = os.getenv("AZURE_AI_PROJECT_RESOURCE_ID") or os.getenv(
+        "PROJECT_RESOURCE_ID", ""
+    )
+    mcp_api_version = AGENTIC_CFG.get("mcp", {}).get("api_version", "2026-05-01-preview")
     mcp_endpoint = f"{search_endpoint}/knowledgebases/{KNOWLEDGE_BASE_NAME}/mcp?api-version={mcp_api_version}"
 
     logger.info("=== DRY RUN — no resources will be created ===")
@@ -384,7 +381,7 @@ def _print_dry_run(search_endpoint: str) -> None:
     logger.info("  Step 3: MCP Connection")
     logger.info("    Name:       %s", MCP_CONNECTION_NAME)
     logger.info("    Endpoint:   %s", mcp_endpoint)
-    logger.info("    Project:    %s", project_resource_id or "(PROJECT_RESOURCE_ID not set)")
+    logger.info("    Project:    %s", project_resource_id or "(AZURE_AI_PROJECT_RESOURCE_ID not set)")
     logger.info("")
     logger.info("  Step 4: Foundry Agent")
     logger.info("    Name:       %s", AGENT_NAME)
@@ -440,7 +437,7 @@ def run(verify_only: bool = False, do_cleanup: bool = False, dry_run: bool = Fal
     logger.info("")
     logger.info("Step 3: Create MCP Connection")
     search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT", "")
-    mcp_api_version = AGENTIC_CFG.get("mcp", {}).get("api_version", "2025-11-01-Preview")
+    mcp_api_version = AGENTIC_CFG.get("mcp", {}).get("api_version", "2026-05-01-preview")
     mcp_endpoint = f"{search_endpoint}/knowledgebases/{KNOWLEDGE_BASE_NAME}/mcp?api-version={mcp_api_version}"
     result = create_mcp_connection()
     if not result:

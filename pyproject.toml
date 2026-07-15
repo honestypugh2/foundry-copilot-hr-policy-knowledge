@@ -5,23 +5,26 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "agent-framework>=1.8.1",
+    "agent-framework>=1.11.0",
     "agent-framework-azure-ai>=1.0.0rc6",
-    "agent-framework-foundry>=1.8.1",
+    "agent-framework-azure-ai-search>=1.0.0b260709",
+    "agent-framework-foundry>=1.10.1",
+    "agent-framework-foundry-hosting>=1.0.0a260709",
     "agent-framework-orchestrations>=1.0.0b260423",
     "azure-ai-contentunderstanding>=1.1.0",
     "azure-ai-documentintelligence>=1.0.2",
-    "azure-ai-inference>=1.0.0b9",
-    "azure-ai-projects>=2.2.0",
+    "azure-ai-projects>=2.3.0",
     "azure-functions>=1.24.0",
     "azure-identity>=1.25.2",
-    "azure-search-documents>=12.0.0",
+    "azure-monitor-opentelemetry>=1.8.9",
+    "azure-search-documents>=12.0.0,<12.1",
     "azure-storage-blob>=12.28.0",
     "diagrams>=0.25.1",
     "fastapi>=0.135.1",
     "httpx>=0.28.1",
     "nest-asyncio>=1.6.0",
     "openai>=2.31.0",
+    "opentelemetry-sdk>=1.41.0",
     "playwright>=1.58.0",
     "plotly>=6.6.0",
     "pydantic>=2.12.5",
@@ -34,6 +37,14 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "requests>=2.32.5",
     "ruff>=0.15.5",
+    "uvicorn[standard]>=0.34.0",
+]
+
+[project.optional-dependencies]
+# LLM-graded evaluators (groundedness, relevance, retrieval). Optional because
+# the deterministic graders in src/evaluation/graders.py run without Azure.
+eval = [
+    "azure-ai-evaluation>=1.0.0",
 ]
 
 [tool.uv]

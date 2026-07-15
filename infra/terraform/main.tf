@@ -5,7 +5,7 @@
 # Demo-only services:
 #   1. Resource Group
 #   2. Azure AI Foundry (AIServices) + Project
-#   3. GPT-4o deployment
+#   3. GPT-4.1 deployment
 #   4. GPT-5 deployment
 #   5. text-embedding-3-small deployment
 #   6. Azure AI Search (semantic ranker)
@@ -50,16 +50,16 @@ resource "azurerm_ai_services" "ai_services" {
 }
 
 # ============================================================================
-# 3. GPT-4o Deployment (chat / inference)
+# 3. GPT-4.1 Deployment (chat / inference)
 # ============================================================================
-resource "azurerm_cognitive_deployment" "gpt4o" {
+resource "azurerm_cognitive_deployment" "gpt41" {
   name                 = var.openai_deployment_name
   cognitive_account_id = azurerm_ai_services.ai_services.id
 
   model {
     format  = "OpenAI"
-    name    = "gpt-4o"
-    version = "2024-11-20"
+    name    = "gpt-4.1"
+    version = "2025-04-14"
   }
 
   sku {
@@ -86,7 +86,7 @@ resource "azurerm_cognitive_deployment" "gpt5" {
     capacity = 100
   }
 
-  depends_on = [azurerm_cognitive_deployment.gpt4o]
+  depends_on = [azurerm_cognitive_deployment.gpt41]
 }
 
 # ============================================================================

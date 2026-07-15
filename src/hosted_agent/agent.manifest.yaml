@@ -1,0 +1,32 @@
+# azd ai agent init template manifest for the Foundry Hosted Agent.
+#   Onboard/scaffold from this file with:
+#     azd ai agent init -m <raw-url-to-this-file>
+# For deploying THIS repo directly (azd up / azd deploy, or the SDK) the manifest
+# is optional — src/hosted_agent/agent.yaml is the deployment descriptor.
+# Schema aligned with the official sample:
+#   https://github.com/microsoft/agent-framework/blob/main/python/samples/04-hosting/foundry-hosted-agents/responses/02_tools/agent.manifest.yaml
+name: hr-policy-agent
+description: >
+  An HR policy assistant hosted by Foundry that answers employee questions
+  strictly from internal HR policy documents using hybrid search (text + vector)
+  with semantic ranking over an Azure AI Search index.
+metadata:
+  tags:
+    - Agent Framework
+    - AI Agent Hosting
+    - Azure AI AgentServer
+    - Responses Protocol
+    - HR Knowledge
+template:
+  name: hr-policy-agent
+  kind: hosted
+  protocols:
+    - protocol: responses
+      version: 2.0.0
+  environment_variables:
+    - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
+      value: "{{AZURE_AI_MODEL_DEPLOYMENT_NAME}}"
+resources:
+  - kind: model
+    id: gpt-4.1
+    name: AZURE_AI_MODEL_DEPLOYMENT_NAME

@@ -114,7 +114,7 @@ agent call).
 | Foundry IQ Knowledge Source over an Azure AI Search index                       | `KnowledgeSource` provisioned by [`src/agents/create_foundry_agent.py`](../src/agents/create_foundry_agent.py) |
 | Foundry IQ Knowledge Base aggregating sources                                   | Same — `KnowledgeBase` created by `create_foundry_agent.py`                                         |
 | Fraud Analyst Agent with MCP tool calling the KB                                | **Pattern B** — `HRPolicyAgent` PromptAgentDefinition + MCPTool (`tool_choice="required"`)         |
-| `gpt-4o` chat model + `text-embedding-3-large` embedding model                  | Same model surface — `AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o` and embedding deployment from `infra`   |
+| `gpt-4o` chat model + `text-embedding-3-large` embedding model                  | Modernized model surface — `AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1` (GPT-4o retired) + `text-embedding-3-small` embedding deployment from `infra`   |
 | Required RBAC: `Search Index Data Reader` + `Search Service Contributor`        | Wired in `infra/bicep/main.bicep` for the project managed identity                                  |
 | Copilot Studio orchestrator routes "quick lookup" vs "deep question"             | **Pattern C** — `copilot/openapi-lookup-v2.json` for fast deterministic lookup + Pattern A or B for content. See [CopilotStudioLookupRouting.md](CopilotStudioLookupRouting.md). |
 | **Hybrid scenarios** (combine quick refs + deep analysis in one answer)         | [CopilotStudioHybridExample.md](CopilotStudioHybridExample.md) — same Connected Agents shape       |

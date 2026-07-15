@@ -10,5 +10,8 @@
   "webSitesAppService": "app-",
   "webServerFarms": "plan-",
   "operationalInsightsWorkspaces": "log-",
-  "insightsComponents": "appi-"
+  "insightsComponents": "appi-",
+  "containerRegistryRegistries": "cr",
+  "appManagedEnvironments": "cae-",
+  "appContainerApps": "ca-"
 }

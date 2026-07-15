@@ -17,7 +17,7 @@ param location string
 param resourcePrefix string = 'hr-policy-kb'
 
 @description('Azure OpenAI chat model deployment name')
-param openAIDeploymentName string = 'gpt-4o'
+param openAIDeploymentName string = 'gpt-4.1'
 
 @description('Azure OpenAI GPT-5 deployment name')
 param gpt5DeploymentName string = 'gpt-5'
@@ -31,6 +31,9 @@ param searchSku string = 'basic'
 
 @description('Principal ID for RBAC role assignments (e.g. your user or service principal objectId)')
 param principalId string = ''
+
+@description('Optional Entra app registration (client) ID to protect the backend Container App with Microsoft Entra authentication. Leave empty for public ingress (demo).')
+param backendAuthClientId string = ''
 
 // ---------- Resource Group ----------
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
@@ -51,6 +54,7 @@ module resources './bicep/main.bicep' = {
     embeddingDeploymentName: embeddingDeploymentName
     searchSku: searchSku
     principalId: principalId
+    backendAuthClientId: backendAuthClientId
   }
 }
 
@@ -67,3 +71,10 @@ output AZURE_SEARCH_ENDPOINT string = resources.outputs.searchEndpoint
 output AZURE_SEARCH_NAME string = resources.outputs.searchName
 output AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT string = resources.outputs.docIntelligenceEndpoint
 output AZURE_STORAGE_ACCOUNT string = resources.outputs.storageAccountName
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.containerRegistryLoginServer
+output AZURE_CONTAINER_REGISTRY_NAME string = resources.outputs.containerRegistryName
+output AZURE_CONTAINER_APPS_ENVIRONMENT string = resources.outputs.containerAppsEnvironmentName
+output SERVICE_BACKEND_NAME string = resources.outputs.backendAppName
+output SERVICE_BACKEND_URI string = resources.outputs.backendAppUrl
+output APPLICATIONINSIGHTS_CONNECTION_STRING string = resources.outputs.applicationInsightsConnectionString
+output APPLICATIONINSIGHTS_NAME string = resources.outputs.applicationInsightsName

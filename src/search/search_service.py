@@ -11,6 +11,8 @@ import logging
 import os
 from typing import Any, Optional
 
+from src.config.search_config import search_cfg
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -143,8 +145,9 @@ class HRPolicySearchService:
     - Local fallback search for demo mode
     """
 
-    EMBEDDING_MODEL = "text-embedding-3-small"
-    EMBEDDING_DIMENSIONS = 1536
+    # Sourced from the single embedding block in search_config.json.
+    EMBEDDING_MODEL = search_cfg.embedding_model
+    EMBEDDING_DIMENSIONS = search_cfg.embedding_dimensions
 
     def __init__(self):
         self.search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT")
@@ -308,23 +311,23 @@ class HRPolicySearchService:
         )
 
         fields = [
-            SimpleField(name="id", type=SearchFieldDataType.String, key=True, filterable=True),
+            SimpleField(name="id", type="Edm.String", key=True, filterable=True),
             SearchableField(name="title", type=SearchFieldDataType.String, filterable=True, sortable=True, synonym_map_names=["hr-glossary-synonyms"]),
-            SimpleField(name="policy_number", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="policy_number", type="Edm.String", filterable=True),
             SearchableField(name="category", type=SearchFieldDataType.String, filterable=True, synonym_map_names=["hr-glossary-synonyms"]),
             SearchableField(name="content", type=SearchFieldDataType.String, synonym_map_names=["hr-glossary-synonyms"]),
             SearchField(
                 name="content_vector",
-                type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
+                type="Collection(Edm.Single)",
                 searchable=True,
                 vector_search_dimensions=self.EMBEDDING_DIMENSIONS,
                 vector_search_profile_name="hr-vector-profile",
             ),
-            SimpleField(name="file_path", type=SearchFieldDataType.String),
-            SimpleField(name="file_type", type=SearchFieldDataType.String, filterable=True),
-            SimpleField(name="word_count", type=SearchFieldDataType.Int32),
-            SimpleField(name="indexed_date", type=SearchFieldDataType.String, sortable=True),
-            SimpleField(name="source", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="file_path", type="Edm.String"),
+            SimpleField(name="file_type", type="Edm.String", filterable=True),
+            SimpleField(name="word_count", type="Edm.Int32"),
+            SimpleField(name="indexed_date", type="Edm.String", sortable=True),
+            SimpleField(name="source", type="Edm.String", filterable=True),
         ]
 
         # Query-time vectorizer so Copilot Studio (and other text-only
@@ -337,8 +340,8 @@ class HRPolicySearchService:
             vectorizer_name="hr-azure-openai-vectorizer",
             parameters=AzureOpenAIVectorizerParameters(
                 resource_url=aoai_endpoint,
-                deployment_name=self.EMBEDDING_MODEL,
-                model_name=self.EMBEDDING_MODEL,
+                deployment_name=search_cfg.embedding_deployment,
+                model_name=search_cfg.embedding_model,
             ),
         ) if aoai_endpoint else None
 

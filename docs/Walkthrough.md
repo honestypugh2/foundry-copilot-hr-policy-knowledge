@@ -40,7 +40,7 @@ cp .env.example .env
 | `AZURE_AI_PROJECT_ENDPOINT`         | Foundry project endpoint (`https://<proj>.services.ai.azure.com/api/projects/<proj>`) |
 | `AZURE_SEARCH_ENDPOINT`             | Search service endpoint (`https://<srv>.search.windows.net`)     |
 | `AZURE_OPENAI_ENDPOINT`             | OpenAI / model endpoint                                          |
-| `AZURE_OPENAI_DEPLOYMENT_NAME`      | Default `gpt-4o`                                                 |
+| `AZURE_OPENAI_DEPLOYMENT_NAME`      | Default `gpt-4.1` (GPT-4o retired for generative orchestration Oct 2025; override with GPT-5.x or Claude) |
 | `AGENT_SERVICE`                     | `agent-framework` (default; Hosted Agent or no agent for Pattern A) or `foundry` (Pattern B) |
 | `ORCHESTRATOR_PATTERN`              | `A` (default) / `B` / `C` — documentation hint, no code dependency |
 | `SEARCH_MODE`                       | `integrated_vectorization` (default) or `legacy`                 |
@@ -84,7 +84,7 @@ uv run python -m src.agents.create_foundry_agent
 ```
 
 Creates: **Knowledge Source → Knowledge Base → MCP connection →
-PromptAgent** (`HRPolicyAgent`, `gpt-4o`, `tool_choice="required"`).
+PromptAgent** (`HRPolicyAgent`, `gpt-4.1`, `tool_choice="required"`).
 
 Verify or clean up:
 

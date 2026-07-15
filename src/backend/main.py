@@ -31,6 +31,7 @@ from src.agents.orchestrator import HRPolicyWorkflowOrchestrator
 from src.search.search_service import HRPolicySearchService, HR_GLOSSARY
 from src.document_processing.document_ingestion import DocumentIngestionAgent
 from src.copilot_studio.service import CopilotStudioService
+from src.observability import enable_tracing
 
 load_dotenv()
 
@@ -51,6 +52,13 @@ KNOWLEDGE_BASE_DIR = Path(__file__).resolve().parents[2] / "data" / "knowledge_b
 async def lifespan(app: FastAPI):
     """Initialise shared services on startup."""
     global orchestrator, search_service, ingestion_agent, copilot_studio
+
+    # Wire GenAI tracing first so agent/model/tool calls are captured as spans.
+    if os.getenv("ENABLE_TRACING", "true").lower() == "true":
+        try:
+            enable_tracing()
+        except Exception as e:  # best-effort; never block startup
+            logger.warning(f"Tracing setup failed: {e}")
 
     use_azure = os.getenv("USE_AZURE_SERVICES", "true").lower() == "true"
     orchestrator = HRPolicyWorkflowOrchestrator(use_azure=use_azure)
@@ -369,7 +377,7 @@ async def reindex_knowledge_base():
     if not search_service or not ingestion_agent:
         raise HTTPException(status_code=503, detail="Search or ingestion service unavailable")
 
-    from scripts.index_knowledge_base import index_all_documents
+    from src.indexing.reindex import index_all_documents
     result = await index_all_documents(
         kb_dir=str(KNOWLEDGE_BASE_DIR),
         search_service=search_service,

@@ -106,17 +106,43 @@ class SearchConfig:
     def vector_search(self) -> dict[str, Any]:
         return self._raw.get("vector_search", {})
 
+    # -- embedding section (single source of truth for the embedding model) --
     @property
-    def vectorizer_deployment(self) -> str:
-        return self.vector_search.get("vectorizer", {}).get("deployment_name", "text-embedding-3-small")
+    def embedding(self) -> dict[str, Any]:
+        return self._raw.get("embedding", {})
 
     @property
-    def vectorizer_model(self) -> str:
-        return self.vector_search.get("vectorizer", {}).get("model_name", "text-embedding-3-small")
+    def embedding_deployment(self) -> str:
+        return (
+            self.embedding.get("deployment")
+            or self.vector_search.get("vectorizer", {}).get("deployment_name")
+            or "text-embedding-3-small"
+        )
+
+    @property
+    def embedding_model(self) -> str:
+        return (
+            self.embedding.get("model")
+            or self.vector_search.get("vectorizer", {}).get("model_name")
+            or "text-embedding-3-small"
+        )
 
     @property
     def embedding_dimensions(self) -> int:
-        return self.vector_search.get("vectorizer", {}).get("dimensions", 1536)
+        return (
+            self.embedding.get("dimensions")
+            or self.vector_search.get("vectorizer", {}).get("dimensions")
+            or 1536
+        )
+
+    # Backward-compatible aliases (delegate to the embedding block).
+    @property
+    def vectorizer_deployment(self) -> str:
+        return self.embedding_deployment
+
+    @property
+    def vectorizer_model(self) -> str:
+        return self.embedding_model
 
     # -- semantic_search section --
     @property
@@ -137,6 +163,56 @@ class SearchConfig:
     @property
     def blob_container_name(self) -> str:
         return self._raw.get("blob_storage", {}).get("container_name", "ask-hr-knowledge")
+
+    @property
+    def included_extensions(self) -> list[str]:
+        return self._raw.get("blob_storage", {}).get(
+            "included_extensions",
+            [".docx", ".doc", ".pdf", ".xlsx", ".pptx", ".html"],
+        )
+
+    # -- indexer section --
+    @property
+    def indexer(self) -> dict[str, Any]:
+        return self._raw.get("indexer", {})
+
+    @property
+    def indexer_data_source_name(self) -> str:
+        return self.indexer.get("data_source_name") or f"{self.index_name}-blob-ds"
+
+    @property
+    def indexer_name(self) -> str:
+        return self.indexer.get("name") or f"{self.index_name}-indexer"
+
+    @property
+    def indexer_api_version(self) -> str:
+        return self.indexer.get("api_version", "2024-07-01")
+
+    @property
+    def indexer_batch_size(self) -> int:
+        return self.indexer.get("batch_size", 1)
+
+    @property
+    def indexer_data_to_extract(self) -> str:
+        return self.indexer.get("data_to_extract", "contentAndMetadata")
+
+    @property
+    def indexer_parsing_mode(self) -> str:
+        return self.indexer.get("parsing_mode", "default")
+
+    @property
+    def indexer_allow_skillset_to_read_file_data(self) -> bool:
+        return self.indexer.get("allow_skillset_to_read_file_data", True)
+
+    @property
+    def indexer_field_mappings(self) -> list[dict[str, str]]:
+        return self.indexer.get(
+            "field_mappings",
+            [
+                {"source": "metadata_storage_path", "target": "metadata_storage_path"},
+                {"source": "metadata_storage_name", "target": "metadata_storage_name"},
+            ],
+        )
 
     # -- agentic_retrieval section (Pattern 2) --
     @property

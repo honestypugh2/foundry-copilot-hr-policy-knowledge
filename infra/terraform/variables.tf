@@ -16,7 +16,7 @@ variable "environment_name" {
 variable "location" {
   description = "Azure region for all resources"
   type        = string
-  default     = "eastus2"
+  default     = "eastus"
 }
 
 variable "resource_prefix" {
@@ -28,7 +28,7 @@ variable "resource_prefix" {
 variable "openai_deployment_name" {
   description = "Azure OpenAI chat model deployment name"
   type        = string
-  default     = "gpt-4o"
+  default     = "gpt-4.1"
 }
 
 variable "gpt5_deployment_name" {

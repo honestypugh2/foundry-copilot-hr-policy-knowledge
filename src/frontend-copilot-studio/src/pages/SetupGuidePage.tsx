@@ -25,7 +25,7 @@ export default function SetupGuidePage() {
           <li>
             HR policy documents indexed in Azure AI Search (use the{" "}
             <code className="bg-gray-100 px-1 rounded text-xs font-mono">
-              scripts/index_knowledge_base.py
+              scripts/index_knowledge_base_integrated_vectorization.py
             </code>{" "}
             script)
           </li>

@@ -23,6 +23,7 @@ import os
 import re
 from typing import Any, Optional
 
+from src.config.model_policy import get_chat_model
 from src.config.search_config import search_cfg
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,7 @@ def _build_kb_mcp_endpoint() -> str:
     search_endpoint = (os.getenv("AZURE_SEARCH_ENDPOINT") or "").rstrip("/")
     kb_name = search_cfg.knowledge_base_name
     api_version = search_cfg.agentic_retrieval.get("mcp", {}).get(
-        "api_version", "2025-11-01-Preview"
+        "api_version", "2026-05-01-preview"
     )
     if not search_endpoint:
         return ""
@@ -132,11 +133,7 @@ class HRPolicyAgent:
             or os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT")
             or os.getenv("FOUNDRY_PROJECT_ENDPOINT", "")
         )
-        self.model_deployment_name = (
-            model_deployment_name
-            or os.getenv("FOUNDRY_MODEL")
-            or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
-        )
+        self.model_deployment_name = get_chat_model(model_deployment_name)
         self.search_mode = search_mode or os.getenv("SEARCH_MODE", "integrated_vectorization")
 
         # Lazily initialised clients / state

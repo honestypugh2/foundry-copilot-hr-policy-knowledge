@@ -25,10 +25,10 @@ azd up
 
 ```bash
 az deployment sub create \
-  --location eastus2 \
+  --location eastus \
   --template-file ../main.bicep \
   --parameters ../main.parameters.json \
-  --parameters environmentName=demo location=eastus2 principalId=$(az ad signed-in-user show --query id -o tsv)
+  --parameters environmentName=demo location=eastus principalId=$(az ad signed-in-user show --query id -o tsv)
 ```
 
 ## Parameters
@@ -38,7 +38,7 @@ az deployment sub create \
 | `environmentName` | string | _(required)_ | Environment name used as suffix in resource group and resource names |
 | `location` | string | _(required)_ | Azure region for all resources |
 | `resourcePrefix` | string | `hr-policy-kb` | Prefix for resource naming |
-| `openAIDeploymentName` | string | `gpt-4o` | GPT-4o deployment name |
+| `openAIDeploymentName` | string | `gpt-4.1` | GPT-4.1 deployment name |
 | `embeddingDeploymentName` | string | `text-embedding-3-small` | Embedding model deployment name |
 | `searchSku` | string | `basic` | AI Search SKU (`basic` or `standard`) |
 | `principalId` | string | `""` | User/SP object ID for RBAC; leave empty to skip role assignments |
@@ -48,7 +48,7 @@ az deployment sub create \
 | Output | Description |
 |--------|-------------|
 | `openAIEndpoint` | AI Foundry / OpenAI endpoint URL |
-| `openAIDeploymentName` | GPT-4o deployment name |
+| `openAIDeploymentName` | GPT-4.1 deployment name |
 | `embeddingDeploymentName` | Embedding deployment name |
 | `aiFoundryResourceName` | AI Foundry account resource name |
 | `aiProjectName` | AI Foundry project name |

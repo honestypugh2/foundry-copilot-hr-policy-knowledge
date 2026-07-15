@@ -13,6 +13,11 @@
         "policy_number_field": "policy_number",
         "top_k": 5
     },
+    "embedding": {
+        "deployment": "text-embedding-3-small",
+        "model": "text-embedding-3-small",
+        "dimensions": 1536
+    },
     "synonym_map": {
         "name": "hr-glossary-synonyms",
         "fields": ["parent_title", "policy", "policy_with_source"]
@@ -45,10 +50,7 @@
             "compression_name": "hr-scalar-quantization"
         },
         "vectorizer": {
-            "name": "hr-azure-openai-vectorizer",
-            "deployment_name": "text-embedding-3-small",
-            "model_name": "text-embedding-3-small",
-            "dimensions": 1536
+            "name": "hr-azure-openai-vectorizer"
         }
     },
     "semantic_search": {
@@ -73,10 +75,7 @@
             },
             {
                 "type": "AzureOpenAIEmbeddingSkill",
-                "name": "AzureOpenAIEmbeddingSkill",
-                "deployment_id": "text-embedding-3-small",
-                "dimensions": 1536,
-                "model_name": "text-embedding-3-small"
+                "name": "AzureOpenAIEmbeddingSkill"
             }
         ],
         "index_projections": {
@@ -96,7 +95,21 @@
     },
     "blob_storage": {
         "container_name": "ask-hr-knowledge",
-        "description": "Azure Blob Storage container for HR policy documents"
+        "description": "Azure Blob Storage container for HR policy documents",
+        "included_extensions": [".docx", ".doc", ".pdf", ".xlsx", ".pptx", ".html"]
+    },
+    "indexer": {
+        "data_source_name": "hr-policy-index-blob-ds",
+        "name": "hr-policy-index-indexer",
+        "api_version": "2024-07-01",
+        "batch_size": 1,
+        "data_to_extract": "contentAndMetadata",
+        "parsing_mode": "default",
+        "allow_skillset_to_read_file_data": true,
+        "field_mappings": [
+            {"source": "metadata_storage_path", "target": "metadata_storage_path"},
+            {"source": "metadata_storage_name", "target": "metadata_storage_name"}
+        ]
     },
     "document_layout_skillset": {
         "name": "hr-policy-doc-layout-skillset",
@@ -118,10 +131,7 @@
             },
             {
                 "type": "AzureOpenAIEmbeddingSkill",
-                "name": "AzureOpenAIEmbeddingSkill",
-                "deployment_id": "text-embedding-3-small",
-                "dimensions": 1536,
-                "model_name": "text-embedding-3-small"
+                "name": "AzureOpenAIEmbeddingSkill"
             }
         ],
         "index_projections": {
@@ -171,11 +181,11 @@
         "include_activity": true,
         "mcp": {
             "project_connection_name": "hr-knowledge-mcp-connection",
-            "api_version": "2025-11-01-Preview"
+            "api_version": "2026-05-01-preview"
         }
     },
     "foundry_agent": {
-        "model": "gpt-4o",
+        "model": "gpt-4.1",
         "output_mode": "answerSynthesis",
         "retrieval_reasoning": "medium",
         "retrieval_instructions": "Use only the connected knowledge sources. Do not answer from general knowledge.\nPrimary objective: maximize recall of HR-policy-related evidence. Retrieve documents that are directly relevant to the user's query and also documents that mention the queried policy number, topic, leave type, dress code, IT policy, hiring procedure, or operational matter indirectly.\nAlways search across all connected knowledge sources.\nExpand search broadly using likely HR policy variants, policy-number variants, document-type variants, and common employee terminology where relevant.\nDo not suppress weak matches. Keep potentially relevant results so the answering layer can label them appropriately.\nPrefer retrieving the actual source documents when available, not only documents that reference them. If filenames or exact document titles appear in retrieved content, prioritize those exact files as well.\nPreserve exact filenames, source paths, and metadata exactly as stored when available. Do not invent filenames, paths, or document identifiers.\nIf evidence is not found in the connected knowledge sources, say so clearly.",

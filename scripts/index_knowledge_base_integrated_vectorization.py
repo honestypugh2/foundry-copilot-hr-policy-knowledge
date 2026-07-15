@@ -112,9 +112,9 @@ SYNONYM_CFG_NAME = search_cfg.synonym_map_name
 SYNONYM_CFG_FIELDS = search_cfg.synonym_map_fields
 
 # Naming conventions
-DATA_SOURCE_NAME = f"{INDEX_NAME}-blob-ds"
+DATA_SOURCE_NAME = search_cfg.indexer_data_source_name
 SKILLSET_NAME = SKILLSET_CFG.get("name", "hr-policy-doc-layout-skillset")
-INDEXER_NAME = f"{INDEX_NAME}-indexer"
+INDEXER_NAME = search_cfg.indexer_name
 
 
 def _get_credential():
@@ -157,7 +157,7 @@ def upload_documents(data_dir: str) -> int:
 
     data_path = Path(data_dir)
     uploaded = 0
-    extensions = {".docx", ".doc", ".pdf", ".xlsx", ".pptx", ".html"}
+    extensions = {ext.lower() for ext in search_cfg.included_extensions}
 
     for file_path in sorted(data_path.rglob("*")):
         if file_path.suffix.lower() not in extensions:
@@ -241,8 +241,8 @@ def create_index() -> None:
                 vectorizer_name=vectorizer_cfg.get("name", "hr-azure-openai-vectorizer"),
                 parameters=AzureOpenAIVectorizerParameters(
                     resource_url=aoai_endpoint,
-                    deployment_name=vectorizer_cfg.get("deployment_name", "text-embedding-3-small"),
-                    model_name=vectorizer_cfg.get("model_name", "text-embedding-3-small"),
+                    deployment_name=search_cfg.embedding_deployment,
+                    model_name=search_cfg.embedding_model,
                 ),
             )
         ],
@@ -289,7 +289,7 @@ def create_index() -> None:
             name="id", type=SearchFieldDataType.String,
             key=True, filterable=True, analyzer_name="keyword",
         ),
-        SimpleField(name=search_cfg.blob_url_field, type=SearchFieldDataType.String),
+        SimpleField(name=search_cfg.blob_url_field, type="Edm.String"),
         _searchable(search_cfg.content_field),
         _searchable(search_cfg.source_field),
         _searchable(search_cfg.filename_field, filterable=True),
@@ -298,11 +298,11 @@ def create_index() -> None:
         _searchable(search_cfg.policy_number_field, filterable=True),
         SimpleField(
             name=search_cfg.parent_key_field,
-            type=SearchFieldDataType.String, filterable=True,
+            type="Edm.String", filterable=True,
         ),
         SearchField(
             name=search_cfg.vector_field,
-            type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
+            type="Collection(Edm.Single)",
             searchable=True,
             vector_search_dimensions=search_cfg.embedding_dimensions,
             vector_search_profile_name=profile_cfg.get("name", "hr-vector-profile"),
@@ -358,14 +358,12 @@ def create_skillset() -> None:
         endpoint=search_endpoint, credential=_get_credential()
     )
 
-    # Get skill configs
+    # Get skill config (embedding settings come from the single `embedding` block)
     layout_skill_cfg = None
-    embedding_skill_cfg = None
     for skill in SKILLSET_CFG.get("skills", []):
         if skill.get("type") == "DocumentIntelligenceLayoutSkill":
             layout_skill_cfg = skill
-        elif skill.get("type") == "AzureOpenAIEmbeddingSkill":
-            embedding_skill_cfg = skill
+            break
 
     # Build REST-compatible skillset definition
     # The DocumentIntelligenceLayoutSkill uses @odata.type for SDK compatibility
@@ -395,10 +393,10 @@ def create_skillset() -> None:
         ],
     })
 
-    # Skill 2: Azure OpenAI Embedding
-    emb_deployment = embedding_skill_cfg.get("deployment_id", "text-embedding-3-small") if embedding_skill_cfg else "text-embedding-3-small"
-    emb_model = embedding_skill_cfg.get("model_name", "text-embedding-3-small") if embedding_skill_cfg else "text-embedding-3-small"
-    emb_dimensions = embedding_skill_cfg.get("dimensions", 1536) if embedding_skill_cfg else 1536
+    # Skill 2: Azure OpenAI Embedding (settings from the single `embedding` block)
+    emb_deployment = search_cfg.embedding_deployment
+    emb_model = search_cfg.embedding_model
+    emb_dimensions = search_cfg.embedding_dimensions
 
     skills.append({
         "@odata.type": "#Microsoft.Skills.Text.AzureOpenAIEmbeddingSkill",
@@ -414,6 +412,7 @@ def create_skillset() -> None:
         "resourceUri": aoai_endpoint,
         "deploymentId": emb_deployment,
         "modelName": emb_model,
+        "dimensions": emb_dimensions,
         "apiKey": aoai_key if aoai_key and not aoai_key.startswith("your_") else None,
     })
 
@@ -451,7 +450,7 @@ def create_skillset() -> None:
 
     # Use REST API to create skillset (SDK may not support all skill types natively)
     import requests
-    api_version = "2024-07-01"
+    api_version = search_cfg.indexer_api_version
     api_key = os.getenv("AZURE_SEARCH_API_KEY", "")
 
     headers = {"Content-Type": "application/json"}
@@ -484,16 +483,16 @@ def create_indexer() -> None:
         target_index_name=INDEX_NAME,
         skillset_name=SKILLSET_NAME,
         parameters=IndexingParameters(
-            batch_size=1,
+            batch_size=search_cfg.indexer_batch_size,
             configuration=IndexingParametersConfiguration(
-                data_to_extract="contentAndMetadata",
-                parsing_mode="default",
-                allow_skillset_to_read_file_data=True,
+                data_to_extract=search_cfg.indexer_data_to_extract,
+                parsing_mode=search_cfg.indexer_parsing_mode,
+                allow_skillset_to_read_file_data=search_cfg.indexer_allow_skillset_to_read_file_data,
             ),
         ),
         field_mappings=[
-            FieldMapping(source_field_name="metadata_storage_path", target_field_name="metadata_storage_path"),
-            FieldMapping(source_field_name="metadata_storage_name", target_field_name="metadata_storage_name"),
+            FieldMapping(source_field_name=fm["source"], target_field_name=fm["target"])
+            for fm in search_cfg.indexer_field_mappings
         ],
         output_field_mappings=[],
     )

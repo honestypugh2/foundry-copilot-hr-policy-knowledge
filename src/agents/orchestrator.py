@@ -50,6 +50,7 @@ from src.search.integrated_vectorization_search import IntegratedVectorizationSe
 
 # Reuse the canonical agent instructions from hr_policy_agent
 from src.agents.hr_policy_agent import AGENT_INSTRUCTIONS
+from src.config.model_policy import get_chat_model
 
 
 # =============================================================================
@@ -283,10 +284,7 @@ class HRPolicyWorkflowOrchestrator:
             or os.getenv("AZURE_AI_PROJECT_ENDPOINT")
             or os.getenv("FOUNDRY_PROJECT_ENDPOINT", "")
         )
-        self.model = (
-            os.getenv("FOUNDRY_MODEL")
-            or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
-        )
+        self.model = get_chat_model()
 
         # Agent service selector (driven by AGENT_SERVICE env var, see .env):
         #   "agent-framework" (default) -> src.agents.hr_policy_agent_af.HRPolicyAgent

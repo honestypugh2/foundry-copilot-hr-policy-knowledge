@@ -92,7 +92,7 @@ work together to enforce grounding.
 
 ```python
 PromptAgentDefinition(
-    model="gpt-4o",
+    model="gpt-4.1",
     instructions=AGENT_INSTRUCTIONS,
     tools=[MCPTool(server_label="hr-knowledge", server_url=mcp_endpoint, …)],
     tool_choice="required",

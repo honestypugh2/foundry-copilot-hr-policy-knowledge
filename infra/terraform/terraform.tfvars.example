@@ -5,9 +5,9 @@
 
 subscription_id       = ""
 environment_name      = "demo"
-location              = "eastus2"
+location              = "eastus"
 resource_prefix       = "hr-policy-kb"
-openai_deployment_name    = "gpt-4o"
+openai_deployment_name    = "gpt-4.1"
 gpt5_deployment_name      = "gpt-5"
 embedding_deployment_name = "text-embedding-3-small"
 search_sku            = "basic"

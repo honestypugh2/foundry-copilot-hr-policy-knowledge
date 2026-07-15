@@ -5,3 +5,19 @@ metadata:
 infra:
   provider: bicep
   path: infra
+services:
+  # FastAPI backend — hosts Pattern C (/api/lookup) and Pattern B2 (/api/chat).
+  # azd builds the image, pushes it to ACR, and updates the Container App.
+  backend:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: src/backend/Dockerfile
+      context: .
+  # Foundry Hosted Agent (Agent Framework, Responses protocol). Deployed via the
+  # azd ai agent extension (run: `azd ext install azure.ai.agents`). Reads
+  # src/hosted_agent/agent.yaml as its deployment descriptor.
+  hr-policy-agent:
+    project: src/hosted_agent
+    host: azure.ai.agent

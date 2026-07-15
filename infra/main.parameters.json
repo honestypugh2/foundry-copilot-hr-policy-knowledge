@@ -12,7 +12,7 @@
       "value": "hr-policy-kb"
     },
     "openAIDeploymentName": {
-      "value": "gpt-4o"
+      "value": "gpt-4.1"
     },
     "gpt5DeploymentName": {
       "value": "gpt-5"
@@ -25,6 +25,9 @@
     },
     "principalId": {
       "value": "${AZURE_PRINCIPAL_ID}"
+    },
+    "backendAuthClientId": {
+      "value": "${AZURE_BACKEND_AUTH_CLIENT_ID=}"
     }
   }
 }

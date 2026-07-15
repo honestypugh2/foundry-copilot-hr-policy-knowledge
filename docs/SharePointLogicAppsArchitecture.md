@@ -280,7 +280,7 @@ This project ships two architectural paths. Choose based on your requirements:
 
 | Aspect | Logic Apps Pipeline (this doc) | Agent Framework Backend ([Architecture.md](Architecture.md)) |
 |---|---|---|
-| **Ingestion** | Automated via SharePoint trigger | Manual script (`index_knowledge_base.py`) |
+| **Ingestion** | Automated via SharePoint trigger | Manual script (`index_knowledge_base_integrated_vectorization.py`) |
 | **Orchestration** | Azure Logic Apps (low-code) | FastAPI + WorkflowBuilder (code-first) |
 | **Processing** | Document Intelligence (in Logic App) | Document Intelligence or python-docx fallback |
 | **Vectorization** | Integrated vectorization or pre-push | Pre-push via indexing script |

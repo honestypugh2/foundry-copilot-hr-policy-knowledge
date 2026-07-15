@@ -1,32 +1,53 @@
-# Agent manifest for Foundry Hosted Agent deployment
-# See: https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent
-
+# Foundry Hosted Agent deployment descriptor (Agent Framework, Responses protocol)
+# Schema aligned with the official sample:
+#   https://github.com/microsoft/agent-framework/blob/main/python/samples/04-hosting/foundry-hosted-agents/responses/02_tools/agent.yaml
+# See also: https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent
+kind: hosted
 name: hr-policy-agent
 description: >
   HR policy assistant that answers employee questions strictly from internal HR
   policy documents using hybrid search (text + vector) with semantic ranking
   over an Azure AI Search index of policy chunks.
 
-# Container configuration
-image: "${ACR_LOGIN_SERVER}/hr-policy-agent:${IMAGE_TAG}"
-cpu: "1"
-memory: "2Gi"
-
-# Protocols exposed by this container
+# Protocols exposed by this container. The protocol version MUST be 2.0.0 to match
+# the agent-framework-foundry-hosting package — versions 1.0.0 and 2.0.0 are
+# incompatible (see the hosted-agent troubleshooting guide).
 protocols:
-  - responses
+  - protocol: responses
+    version: 2.0.0
 
-# Environment variables (non-secret — injected into the container)
-# FOUNDRY_PROJECT_ENDPOINT and AZURE_AI_MODEL_DEPLOYMENT_NAME are
-# auto-injected by the platform.
+resources:
+  cpu: "1"
+  memory: "2Gi"
+
+# Non-secret env vars injected into the container.
+# FOUNDRY_PROJECT_ENDPOINT and AZURE_AI_MODEL_DEPLOYMENT_NAME are also
+# auto-injected by the platform at runtime.
+#
+# The container image is supplied at deploy time — `azd deploy` builds and
+# pushes it automatically for the azure.ai.agent service flow; for SDK/REST
+# deploys pass it to create_version, e.g.:
+#   image: ${ACR_LOGIN_SERVER}/hr-policy-agent:${IMAGE_TAG}
 environment_variables:
-  AZURE_SEARCH_ENDPOINT: "${AZURE_SEARCH_ENDPOINT}"
-  AZURE_SEARCH_INDEX_NAME: "${AZURE_SEARCH_INDEX_NAME}"
-  AI_SEARCH_QUERY_TYPE: "semantic"
-  AI_SEARCH_SEMANTIC_CONFIG: "hr-semantic-config"
-  AI_SEARCH_VECTOR_FIELD: "policy_vector"
-  AI_SEARCH_CONTENT_FIELD: "policy"
-  AI_SEARCH_TITLE_FIELD: "parent_title"
-  AI_SEARCH_POLICY_NUMBER_FIELD: "policy_number"
-  AI_SEARCH_BLOB_URL_FIELD: "blob_url"
-  AI_SEARCH_TOP_K: "5"
+  - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
+    value: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+  - name: AZURE_SEARCH_ENDPOINT
+    value: ${AZURE_SEARCH_ENDPOINT}
+  - name: AZURE_SEARCH_INDEX_NAME
+    value: ${AZURE_SEARCH_INDEX_NAME}
+  - name: AI_SEARCH_QUERY_TYPE
+    value: "semantic"
+  - name: AI_SEARCH_SEMANTIC_CONFIG
+    value: "hr-semantic-config"
+  - name: AI_SEARCH_VECTOR_FIELD
+    value: "policy_vector"
+  - name: AI_SEARCH_CONTENT_FIELD
+    value: "policy"
+  - name: AI_SEARCH_TITLE_FIELD
+    value: "parent_title"
+  - name: AI_SEARCH_POLICY_NUMBER_FIELD
+    value: "policy_number"
+  - name: AI_SEARCH_BLOB_URL_FIELD
+    value: "blob_url"
+  - name: AI_SEARCH_TOP_K
+    value: "5"

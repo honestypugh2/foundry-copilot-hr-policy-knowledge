@@ -18,7 +18,6 @@ This document covers the end-to-end data pipeline — from raw HR policy documen
 - [Pattern 1, Option 1: DocIntel + Client-Side Chunking](#pattern-1-option-1-docIntel--client-side-chunking)
 - [Pattern 1, Option 2: Integrated Vectorization](#pattern-1-option-2-integrated-vectorization)
 - [Pattern 2: Foundry Agent Action](#pattern-2-foundry-agent-action)
-- [Legacy Scripts (Deprecated)](#legacy-scripts-deprecated)
 - [Testing](#testing)
   - [Test Configuration](#test-configuration)
   - [Test Suites](#test-suites)
@@ -128,7 +127,7 @@ chunks: list[TextChunk] = fixed_size_chunking(
 - `size` must be > 0
 - `overlap` must be ≥ 0 and < `size`
 
-> **Note:** Pattern 1 Option 1 uses `size=2000, overlap=200`. The deprecated `index_knowledge_base_chunking.py` used `size=500, overlap=50`.
+> **Note:** Pattern 1 Option 1 uses `size=2000, overlap=200`.
 
 ### 3. Glossary Enrichment
 
@@ -403,7 +402,7 @@ src/agents/create_foundry_agent.py
         │       └── MCP connection (project managed identity)
         │
         └── 4. create_foundry_agent()
-                └── HRPolicyAgent (gpt-4o) + knowledge_base_retrieve MCP tool
+                └── HRPolicyAgent (gpt-4.1) + knowledge_base_retrieve MCP tool
 ```
 
 **Agent configuration** is driven by `src/config/search_config.json`:
@@ -414,7 +413,7 @@ src/agents/create_foundry_agent.py
 | `agentic_retrieval.knowledge_base_name` | Knowledge base name (`hr-knowledge-base`) |
 | `agentic_retrieval.output_mode` | Retrieval output mode (`EXTRACTIVE`) |
 | `agentic_retrieval.retrieval_reasoning_effort` | Reasoning effort (`medium`) |
-| `foundry_agent.model` | LLM model (`gpt-4o`) |
+| `foundry_agent.model` | LLM model (`gpt-4.1`) |
 | `foundry_agent.retrieval_instructions` | Detailed retrieval guidelines |
 | `foundry_agent.answer_instructions` | Detailed answer generation guidelines |
 
@@ -437,19 +436,6 @@ python -m src.agents.create_foundry_agent --cleanup
 | Search Index Data Contributor | Your user identity | Create indexes, upload documents |
 | Search Index Data Reader | User + Project Managed Identity | Query indexes, access knowledge base |
 | Search Service Contributor | Your user identity | Create knowledge bases and sources |
-
----
-
-## Legacy Scripts (Deprecated)
-
-These scripts are superseded by `index_knowledge_base_docintel_chunking.py` and should not be used for new work.
-
-| Script | Reason for Deprecation |
-|--------|----------------------|
-| `scripts/index_knowledge_base.py` | Indexes whole documents without chunking; no synonym map; smaller context window |
-| `scripts/index_knowledge_base_chunking.py` | Uses smaller chunks (500/50 vs 2000/200); missing synonym map and semantic config |
-
-Both scripts contain deprecation notices at the top of the file pointing to the replacement.
 
 ---
 

@@ -72,6 +72,7 @@ except ImportError:
     OPENAI_AVAILABLE = False
     logger.info("openai not installed, vector search unavailable")
 
+from src.config.search_config import search_cfg
 from src.search.search_service import HR_GLOSSARY, expand_query_with_glossary
 
 
@@ -115,8 +116,9 @@ class IntegratedVectorizationSearchService:
           to vectors at query time, or embeddings can be generated client-side.
     """
 
-    EMBEDDING_MODEL = "text-embedding-3-small"
-    EMBEDDING_DIMENSIONS = 1536
+    # Sourced from the single embedding block in search_config.json.
+    EMBEDDING_MODEL = search_cfg.embedding_model
+    EMBEDDING_DIMENSIONS = search_cfg.embedding_dimensions
 
     def __init__(self) -> None:
         self.search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT", "")
@@ -330,8 +332,17 @@ class IntegratedVectorizationSearchService:
         if "/openai" in aoai_endpoint:
             aoai_endpoint = aoai_endpoint.split("/openai")[0]
         vectorizer_name = vectorizer_cfg.get("name", "hr-azure-openai-vectorizer")
-        vectorizer_deployment = vectorizer_cfg.get("deployment_name", self.EMBEDDING_MODEL)
-        vectorizer_model = vectorizer_cfg.get("model_name", self.EMBEDDING_MODEL)
+        _embedding_cfg = _SEARCH_CONFIG.get("embedding", {})
+        vectorizer_deployment = (
+            _embedding_cfg.get("deployment")
+            or vectorizer_cfg.get("deployment_name")
+            or self.EMBEDDING_MODEL
+        )
+        vectorizer_model = (
+            _embedding_cfg.get("model")
+            or vectorizer_cfg.get("model_name")
+            or self.EMBEDDING_MODEL
+        )
 
         vectorizer = AzureOpenAIVectorizer(
             vectorizer_name=vectorizer_name,
@@ -401,7 +412,7 @@ class IntegratedVectorizationSearchService:
                 filterable=True,
                 analyzer_name="keyword",
             ),
-            SimpleField(name=self._blob_url_field, type=SearchFieldDataType.String),
+            SimpleField(name=self._blob_url_field, type="Edm.String"),
             _searchable(self._content_field),
             _searchable(self._source_field),
             _searchable(self._filename_field, filterable=True),
@@ -410,12 +421,12 @@ class IntegratedVectorizationSearchService:
             _searchable(self._policy_number_field, filterable=True),
             SimpleField(
                 name=_SEARCH_CONFIG.get("parent_key_field", "policy_parent_id"),
-                type=SearchFieldDataType.String,
+                type="Edm.String",
                 filterable=True,
             ),
             SearchField(
                 name=self._vector_field,
-                type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
+                type="Collection(Edm.Single)",
                 searchable=True,
                 vector_search_dimensions=self.EMBEDDING_DIMENSIONS,
                 vector_search_profile_name=profile_cfg.get("name", "hr-vector-profile"),

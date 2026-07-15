@@ -39,7 +39,7 @@ PROJECT_ENDPOINT = os.environ.get(
 )
 MODEL = os.environ.get(
     "AZURE_AI_MODEL_DEPLOYMENT_NAME",
-    os.environ.get("FOUNDRY_MODEL", os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")),
+    os.environ.get("FOUNDRY_MODEL", os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4.1")),
 )
 AZURE_SEARCH_ENDPOINT = os.environ.get("AZURE_SEARCH_ENDPOINT", "")
 AZURE_SEARCH_INDEX = os.environ.get(
@@ -243,7 +243,46 @@ OUTPUT FORMAT:
 # ---------------------------------------------------------------------------
 # Create Agent + Server
 # ---------------------------------------------------------------------------
+# GenAI tracing (best-effort; captures agent/model/tool calls as spans).
+if os.environ.get("ENABLE_TRACING", "true").lower() == "true":
+    try:
+        from src.observability import enable_tracing
+
+        enable_tracing()
+    except Exception as _trace_exc:  # pragma: no cover - never block hosting
+        logger.warning("GenAI tracing not enabled: %s", _trace_exc)
+
 credential = DefaultAzureCredential()
+
+# Retrieval mode: "tool" (default classic @tool search), "context-semantic"
+# (classic search via the out-of-the-box context provider), or "context-agentic"
+# (agentic retrieval over the Foundry IQ knowledge base). The context-provider
+# modes run retrieval automatically before each turn.
+RETRIEVAL_MODE = os.environ.get("RETRIEVAL_MODE", "tool").lower()
+
+_tools: list[Any] = [search_hr_policies]
+_context_providers: list[Any] | None = None
+_instructions = HR_POLICY_INSTRUCTIONS
+
+if RETRIEVAL_MODE in ("context-semantic", "context-agentic", "semantic", "agentic"):
+    try:
+        from src.search.agentic_context_provider import build_search_context_provider
+
+        _context_providers = [
+            build_search_context_provider(
+                RETRIEVAL_MODE,
+                endpoint=AZURE_SEARCH_ENDPOINT,
+                index_name=AZURE_SEARCH_INDEX,
+                api_key=AZURE_SEARCH_API_KEY,
+                top_k=AI_SEARCH_TOP_K,
+            )
+        ]
+        _tools = []
+        logger.info("Hosted agent RAG mode: %s (context provider)", RETRIEVAL_MODE)
+    except Exception as _rag_exc:  # pragma: no cover - never block hosting
+        logger.warning(
+            "Context provider unavailable (%s); using classic search tool.", _rag_exc
+        )
 
 agent = Agent(
     client=FoundryChatClient(
@@ -252,8 +291,9 @@ agent = Agent(
         credential=credential,
     ),
     name="HRPolicyAgent",
-    instructions=HR_POLICY_INSTRUCTIONS,
-    tools=[search_hr_policies],
+    instructions=_instructions,
+    tools=_tools,
+    context_providers=_context_providers,
     # The hosting infrastructure manages conversation history, so don't
     # have the agent persist messages itself.
     default_options={"store": False},

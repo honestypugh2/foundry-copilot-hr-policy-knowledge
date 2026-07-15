@@ -79,10 +79,31 @@ can stop after [CopilotStudioIntegration.md](CopilotStudioIntegration.md)
 2. Upload / paste [`copilot/openapi-lookup-v2.json`](../copilot/openapi-lookup-v2.json)
    (Swagger 2.0 — do not upload OpenAPI v3 YAML; the v3 → v2
    auto-translate can drop the body schema and auth).
-3. **Authentication: API key.**
+
+> **Authentication is not Functions-specific.** Copilot Studio's REST API tool
+> supports **None**, **API key**, or **OAuth 2.0** — any HTTPS host works, so you
+> do **not** need Azure Functions. In this repo the backend runs on **Azure
+> Container Apps**:
+>
+> | Backend host | Auth to select |
+> | ------------ | -------------- |
+> | **Container Apps — public ingress** (default) | **None** (demo only) |
+> | **Container Apps — Entra auth** (`backendAuthClientId` set) | **OAuth 2.0** (Microsoft Entra ID) |
+> | **Azure Functions** | **API key** — `code` in **Query** (or `x-functions-key` in **Header**; the default `Authorization` header returns 401) |
+>
+> **Prefer OAuth 2.0 (Entra) beyond a quick demo** — a function key or public
+> ingress is a shared-secret / unauthenticated shortcut, whereas every other hop
+> uses Entra ID / managed identity. **Managed identity does not apply here** —
+> Copilot Studio is a SaaS caller with no MI for outbound calls, so the
+> Entra-aligned option is OAuth 2.0, not MI.
+
+3. **Authentication.** Select per the table above. For the default Container
+   Apps public ingress choose **None**; once Entra auth is enabled choose
+   **OAuth 2.0**. Only if you host the backend on **Azure Functions** use
+   **API key** with:
    - **Parameter name:** `code`
-   - **Location:** `Query` ⚠️ change from the default `Header` —
-     `Header` returns 401 against an Azure Functions function key.
+   - **Location:** `Query` (or `Header` with **Parameter name**
+     `x-functions-key`; the default `Authorization` header returns 401)
    - **Value:** the function key —
      ```bash
      az functionapp keys list \

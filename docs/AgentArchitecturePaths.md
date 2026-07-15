@@ -6,7 +6,7 @@ one based on **where the agent runs** and **who orchestrates the tools**.
 | Decision factor                   | Foundry Agent Service (Pattern B, default ★) | Microsoft Agent Framework (Hosted Agent runtime) |
 | --------------------------------- | -------------------------------------------- | ------------------------------------------------ |
 | **Runtime**                       | Managed by Azure (Foundry project)           | Self-hosted container (`src/hosted_agent/`)      |
-| **SDK**                           | `azure-ai-projects>=2.2.0`                   | `agent-framework>=1.8.1` + `agent-framework-foundry>=1.8.1` |
+| **SDK**                           | `azure-ai-projects>=2.3.0`                   | `agent-framework>=1.11.0` + `agent-framework-foundry>=1.10.1` |
 | **Agent definition**              | `PromptAgentDefinition` published to the project | `Agent` instance in process                  |
 | **Tool location**                 | Server-side (MCPTool inside the agent)        | Client-side (`@tool` Python functions)          |
 | **Provisioning command**          | `python -m src.agents.create_foundry_agent`  | `cd src/hosted_agent && uv run python server.py` |
@@ -74,7 +74,7 @@ project = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=DefaultAzureCred
 project.agents.create_version(
     agent_name="HRPolicyAgent",
     definition=PromptAgentDefinition(
-        model="gpt-4o",
+        model="gpt-4.1",
         instructions=AGENT_INSTRUCTIONS,
         tools=[MCPTool(
             server_label="hr-knowledge",
@@ -110,7 +110,7 @@ def search_hr_policies(query: str) -> list[dict]:
 
 chat_client = FoundryChatClient(
     project_endpoint=PROJECT_ENDPOINT,
-    model="gpt-4o",
+    model="gpt-4.1",
     credential=DefaultAzureCredential(),
 )
 agent = chat_client.as_agent(

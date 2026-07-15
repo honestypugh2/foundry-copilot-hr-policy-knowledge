@@ -63,7 +63,7 @@ knowledge source — lives in
 | ------------------------ | -------------------------------------- | ----------------------------------------- |
 | **How it works**         | Copilot Studio queries `hr-policy-index` directly via its native Azure AI Search connector. Hybrid (text + vector + semantic) search via integrated vectorization. Copilot Studio's built-in LLM synthesizes the answer. | Copilot Studio invokes a Foundry Agent via **Agents → Add an agent → Connect to an external agent → Microsoft Foundry (Preview)** (or a **REST API tool**). The agent uses agentic retrieval for AI-planned query routing, sub-query decomposition, and source attribution with custom retrieval + answer instructions. |
 | **Search type**          | Text + vector + semantic ranker (single query) | Agentic retrieval (query planning + sub-queries + semantic ranking + answer synthesis) |
-| **Answer synthesis**     | Copilot Studio built-in LLM            | Foundry Agent (`gpt-4o`) with custom instructions |
+| **Answer synthesis**     | Copilot Studio built-in LLM            | Foundry Agent (`gpt-4.1`) with custom instructions |
 | **Custom instructions**  | Limited (Copilot Studio Instructions field) | Full retrieval + answer instructions in `search_config.json` |
 | **Source attribution**   | URL-based citations (`metadata_storage_path`) | Rich per-fact citations with policy numbers via agent instructions |
 | **Latency**              | ~1–2 s                                | ~10–14 s                                |
@@ -79,7 +79,7 @@ knowledge source — lives in
 | Copilot Studio license          | Power Virtual Agents / Copilot Studio                                |
 | Power Platform environment      | (your environment ID)                                                |
 | Azure AI Search index           | `hr-policy-index` (deployed via this project)                        |
-| Azure AI Search query key       | Reader access (query key sufficient for both patterns)               |
+| Azure AI Search access (Entra ID) | Data connection with **Entra ID** auth; grant **Search Index Data Reader** to the Copilot Studio agent identity (and the Foundry project managed identity for Pattern B) |
 | Azure AI Foundry project        | Required for **Pattern B** only                                      |
 | RBAC: Search Index Data Reader  | Assigned to the Foundry project managed identity (Pattern B only)    |
 
@@ -94,7 +94,7 @@ Employee (Teams / Web) ──► Copilot Studio Agent
             Knowledge Source     Foundry Agent Tool
             (Azure AI Search)      │
                     │              ▼
-                    │         Foundry Agent (gpt-4o)
+                    │         Foundry Agent (gpt-4.1)
                     │              │
                     │         MCP Tool: knowledge_base_retrieve
                     │              │
@@ -130,23 +130,57 @@ Employee (Teams / Web) ──► Copilot Studio Agent
 
 ### Step 2: Add Azure AI Search as a Knowledge Source
 
+> **Use a formal data connection with Entra ID — not API keys.**
+> Per current Microsoft guidance
+> ([Add Azure AI Search as a knowledge source](https://learn.microsoft.com/en-us/microsoft-copilot-studio/knowledge-azure-ai-search)),
+> add Azure AI Search through **Data sources → Azure AI Search** with
+> **Microsoft Entra ID authentication**. Don't manually configure an
+> endpoint and Admin Key: broken key-based connections are managed at the
+> *environment level* and can prevent the Azure AI Search dialog from
+> loading for **all** agents, with no UI to delete the faulty connection.
+> Key-based auth also spreads a long-lived admin secret into Power
+> Platform (OWASP A07 — identification & authentication failures).
+
 1. In the copilot editor, go to the **Knowledge** page (or click
    **Add knowledge** from the **Overview** page).
 2. Click **Add knowledge → Featured → Azure AI Search**.
 3. Click **Create new connection**.
-4. Authentication: **Access Key**.
+4. Authentication: choose one of the Entra ID options (in order of
+   preference):
+
+   | Authentication type              | When to use                                                        |
+   | -------------------------------- | ------------------------------------------------------------------ |
+   | **Microsoft Entra ID Integrated** | Recommended — no secrets; the signed-in maker/agent identity is used. |
+   | **Service principal (Entra ID app)** | Automated/unattended provisioning across environments.          |
+   | **Client Certificate Auth**      | Certificate-based enterprise auth.                                  |
+
+   Grant the agent (or service principal) the **Search Index Data Reader**
+   role on the Azure AI Search service so it can query the index.
 5. Connection details:
 
    | Field                          | Value                                                       |
    | ------------------------------ | ----------------------------------------------------------- |
    | Azure AI Search Endpoint URL   | `https://<your-search-service>.search.windows.net`          |
-   | Azure AI Search Admin Key      | Your API key (a query key is sufficient for read-only).     |
 
 6. Click **Create** — a green check mark confirms the connection.
 7. Click **Next**.
-8. Index name: `hr-policy-index`.
+8. Index name: `hr-policy-index` (only one vector index can be added per
+   connection).
 9. Click **Add to agent**.
 10. Wait for status **In progress → Ready**.
+
+> **Recovering a broken connection.** If a faulty (typically key-based)
+> Azure AI Search connection was created and the dialog now fails to load,
+> reset the agent's external access or delete and recreate the agent, then
+> re-add Azure AI Search using **Data sources → Azure AI Search** with
+> **Entra ID authentication**.
+>
+> **Private networking.** Copilot Studio supports Azure AI Search indexes
+> behind a **private endpoint / VNet**. Configure
+> [Virtual Network support for Power Platform](https://learn.microsoft.com/en-us/power-platform/admin/vnet-support-setup-configure)
+> and a
+> [private endpoint for Azure AI Search](https://learn.microsoft.com/en-us/azure/search/service-create-private-endpoint)
+> for enterprise isolation.
 
 > **Semantic Ranker.** The index is provisioned with `semanticSearch:
 > 'free'` and a semantic configuration named `hr-semantic-config`
@@ -158,6 +192,66 @@ Employee (Teams / Web) ──► Copilot Studio Agent
 > `AzureOpenAIVectorizer` (`text-embedding-3-small`), so Copilot Studio
 > performs **hybrid (text + vector + semantic)** search out of the box
 > — no Foundry project required for Pattern A.
+
+### Pattern A2 wiring (new experience → Microsoft IQ → Foundry IQ)
+
+Steps 1–2 above wire **Pattern A** — the *classic search* path, connecting
+Copilot Studio to an Azure AI Search **index**. The Copilot Studio **new agent
+experience** (preview) adds a second, distinct front door: connect the agent
+**directly to a Foundry IQ knowledge base** (`hr-knowledge-base`) via
+**Microsoft IQ**. This is **agentic retrieval** — the knowledge base plans
+sub-queries, retrieves in parallel, reranks, and returns merged results — and it
+needs **no Foundry prompt agent** in the path.
+
+> **Prerequisite.** Provision the knowledge base first:
+> `python -m src.agents.create_foundry_agent` (it creates the Knowledge Source
+> and `hr-knowledge-base`; the PromptAgent it also creates is not required for
+> Pattern A2). Copilot Studio and the Foundry project must share the same Entra
+> tenant, and you must have access to the knowledge base in Azure AI Foundry.
+
+1. Open your agent (new experience) and select the **Build** tab.
+2. In the components panel, select **Microsoft IQ** → **Foundry IQ**.
+3. Select **Create new connection**, choose an authentication type
+   (**Microsoft Entra ID Integrated** recommended; API key / client certificate /
+   service principal also supported), enter the Foundry IQ Search Service
+   endpoint, and select **Create**.
+4. Select **Next**, choose **`hr-knowledge-base`** from the list, and select
+   **Add to agent**, then **Save**.
+5. Select the connected Foundry IQ knowledge base and give it a **detailed
+   description** — the description drives orchestration. Select **Save**.
+6. Test on the **Preview** tab and open the **activity trace**; confirm a
+   **Foundry IQ retrieval** step appears.
+
+> **One Foundry IQ connection per agent.** Tune retrieval (sources, instructions,
+> ranking) in **Azure AI Foundry**, not Copilot Studio. Removing the connection
+> in Copilot Studio doesn't delete the knowledge base in Foundry.
+>
+> **Why Microsoft Entra ID Integrated matters (security trimming).** With
+> **Entra ID Integrated** auth, the signed-in user's identity flows through to
+> the knowledge base, so results are **ACL-trimmed per user** — each user only
+> sees content they're authorized to access, with no extra configuration in
+> Copilot Studio. The other auth types (API key / client certificate / service
+> principal) query under a single shared identity and do **not** honor
+> per-user ACLs, so prefer Entra ID Integrated whenever the underlying sources
+> carry document-level permissions. Foundry IQ knowledge bases also carry
+> enterprise-readiness controls (customer-managed keys, network isolation,
+> Microsoft Entra ID, FedRAMP/SOC2 compliance) inherited from Azure AI Search —
+> see [Azure AI Search security overview](https://learn.microsoft.com/en-us/azure/search/search-security-overview).
+>
+> **Multi-source federation.** A knowledge base can bundle **multiple**
+> knowledge sources; agentic retrieval plans sub-queries and federates across
+> them in parallel, then reranks the merged results. This repo provisions a
+> single source (`hr-knowledge-source`), but you can add more sources to
+> `hr-knowledge-base` in Azure AI Foundry without changing the Copilot Studio
+> wiring.
+>
+> **When to use A2 vs B.** A2 connects Copilot Studio straight to the KB
+> (simplest agentic path, new experience). Pattern B wraps the same KB in a
+> Foundry prompt agent with `tool_choice="required"` and connects Copilot Studio
+> to the *agent* — use B when you need forced grounding / answer synthesis owned
+> in Foundry, or when you're on the classic Copilot Studio experience.
+>
+> **Reference:** [Connect to Foundry IQ from an agent (preview)](https://learn.microsoft.com/en-us/microsoft-copilot-studio/agents-experience/foundry-iq-connect).
 
 ### Step 3: Configure Lever 1 — Agent Instructions
 
@@ -379,7 +473,7 @@ This creates:
 1. **Knowledge Source** (`hr-knowledge-source`) → points to `hr-policy-index`.
 2. **Knowledge Base** (`hr-knowledge-base`) → wraps knowledge source(s).
 3. **MCP connection** in the Foundry project (managed identity).
-4. **Foundry Agent** (`HRPolicyAgent`, `gpt-4o`) with the
+4. **Foundry Agent** (`HRPolicyAgent`, `gpt-4.1`) with the
    `knowledge_base_retrieve` MCP tool and `tool_choice="required"`.
 
 Verify all resources exist:
@@ -400,27 +494,53 @@ python -m src.agents.create_foundry_agent --verify-only
 
 **Option A — Add the Foundry Agent directly:**
 
+> **⚠️ New Foundry portal only.** Copilot Studio can only connect to Foundry
+> agents created in the **new Foundry portal**; a previous-portal agent fails
+> with `404 - Version not found`. This repo's `create_foundry_agent.py` uses the
+> GA `azure-ai-projects` SDK (new Foundry), so `HRPolicyAgent` is compatible.
+
 1. **Agents → Add an agent → Connect to an external agent → Microsoft Foundry (Preview)**.
-2. Select your AI Foundry project and `HRPolicyAgent`.
-3. The Foundry agent runs as a sub-agent for complex tasks with agentic
-   retrieval.
+2. Select an existing **connection**, or create one with your **Foundry project
+   endpoint URL**, then select **Next**.
+3. Enter a **Name** and **Description**, then enter the **Agent Id**
+   (`HRPolicyAgent`). The Foundry agent runs as a sub-agent for complex tasks
+   with agentic retrieval; you can change the Agent Id later from its details
+   page.
 4. Under **Completion**, select **Write the response with generative
    AI** (lets Copilot Studio format the answer with citations).
-5. Click **Save**.
+5. Select **Add Agent**, then **Save**.
 
 See: [Add a Foundry agent to Copilot Studio](https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-agent-foundry-agent).
 
 **Option B — Add as a REST API tool (if the agent is deployed behind
 an HTTP endpoint):**
 
-If your Foundry Agent is exposed via an Azure Function or FastAPI
-endpoint, import [`copilot/openapi-v2.json`](../copilot/openapi-v2.json):
+If your Foundry Agent is exposed via an HTTP endpoint — in this repo the backend
+runs on **Azure Container Apps** (`/api/chat`) — import
+[`copilot/openapi-v2.json`](../copilot/openapi-v2.json):
+
+> **Authentication is not Functions-specific.** Copilot Studio's REST API tool
+> supports **None**, **API key**, or **OAuth 2.0**. Any HTTPS host works — you
+> do **not** need Azure Functions. Choose by how the endpoint is protected:
+>
+> | Backend host | Auth to select |
+> | ------------ | -------------- |
+> | **Container Apps — public ingress** (default here) | **None** (demo only) |
+> | **Container Apps — Entra auth** (`backendAuthClientId` set) | **OAuth 2.0** (Microsoft Entra ID) |
+> | **Azure Functions** | **API key** — `code` in **Query** (or `x-functions-key` in **Header**) |
+>
+> **Prefer OAuth 2.0 (Entra) beyond a quick demo.** Every other hop uses Entra
+> ID / managed identity; a function key or public ingress is a shared-secret /
+> unauthenticated shortcut. **Managed identity does not apply to this hop** —
+> Copilot Studio is a SaaS caller with no MI for outbound calls, so the
+> Entra-aligned option is OAuth 2.0. (MI is correctly used for Foundry → Azure
+> AI Search.)
 
 1. **Tools → Add a tool → New tool → REST API**.
 2. Upload `copilot/openapi-v2.json`.
-3. Authentication: API key — **Parameter name** `code`,
-   **Location** `Query` (not `Header` — Azure Functions function keys
-   return 401 against `Header`). Value: `az functionapp keys list -g <rg> -n <func> --query "functionKeys.default" -o tsv`.
+3. Set **Authentication** per the table above (**None** for the default
+   Container Apps public ingress, **OAuth 2.0** once Entra auth is enabled, or
+   **API key** with `code` in **Query** only if hosted on Azure Functions).
 4. Map the user's message to the `message` input parameter.
 5. Under **Details**, ensure **Allow agent to decide dynamically when
    to use the tool** is checked.
@@ -444,7 +564,7 @@ If you prefer explicit routing instead of generative orchestration:
 <a id="hosted-agent-wiring"></a>
 ## Hosted Agent wiring — Self-hosted container as a Tool
 
-This path runs the same answer loop as Pattern B — `gpt-4o` synthesising
+This path runs the same answer loop as Pattern B — `gpt-4.1` synthesising
 over an Azure AI Search retrieval tool — but inside your own container
 ([`src/hosted_agent/server.py`](../src/hosted_agent/server.py)). Use it
 when you need custom auth, sidecar services, or full control of the

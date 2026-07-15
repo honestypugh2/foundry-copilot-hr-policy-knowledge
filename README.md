@@ -69,6 +69,7 @@ up to Pattern B when you need force-grounded synthesis via
 Full details: **[docs/RetrievalPatterns.md](docs/RetrievalPatterns.md)**.
 Deep-dive on the default Pattern B internals: **[docs/FoundryAgentArchitecture.md](docs/FoundryAgentArchitecture.md)**.
 SDK choice (Foundry Agent Service vs Microsoft Agent Framework): **[docs/AgentArchitecturePaths.md](docs/AgentArchitecturePaths.md)**.
+Distribute Pattern B to Microsoft 365 Copilot & Teams (GA): **[docs/Distribution-M365-Teams.md](docs/Distribution-M365-Teams.md)**.
 Linear setup steps: **[docs/Walkthrough.md](docs/Walkthrough.md)**.
 Lab cross-walk to [Azure/Copilot-Studio-and-Azure](https://github.com/Azure/Copilot-Studio-and-Azure): **[docs/LabCoverage.md](docs/LabCoverage.md)**.
 
@@ -89,7 +90,10 @@ step-by-step **[docs/CopilotStudioTestingGuide.md](docs/CopilotStudioTestingGuid
 ### 1. Prerequisites
 
 - Azure subscription with **AI Search**, **AI Foundry**, **OpenAI**, and **Document Intelligence**.
+  - To deploy the Hosted Agent you also need the **Foundry Project Manager** role on the project — the Bicep grants it to `AZURE_PRINCIPAL_ID` automatically.
 - Azure CLI (`az login`) with the right subscription selected.
+- [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) for `azd up`, plus the hosted-agent extension: `azd ext install azure.ai.agents`.
+- **Docker Desktop** running — `azd` builds the backend and hosted-agent container images.
 - Python 3.10+ and [`uv`](https://docs.astral.sh/uv/).
 - Node.js 18+ (only if you run the React frontends).
 - Copilot Studio licence (Power Virtual Agents) for Patterns A / C.
@@ -112,7 +116,7 @@ Key environment variables (see `.env.example`):
 AZURE_AI_PROJECT_ENDPOINT=https://<project>.services.ai.azure.com/api/projects/<project>
 AZURE_SEARCH_ENDPOINT=https://<search>.search.windows.net
 AZURE_OPENAI_ENDPOINT=https://<openai>.openai.azure.com
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1
 AGENT_SERVICE=agent-framework  # default. Set to "foundry" only when running Pattern B
 ORCHESTRATOR_PATTERN=A         # documentation hint — see docs/RetrievalPatterns.md
 SEARCH_MODE=integrated_vectorization
@@ -150,7 +154,7 @@ uv run python -m src.agents.create_foundry_agent
 ```
 
 Creates: Knowledge Source → Knowledge Base → MCP connection → PromptAgent
-(`HRPolicyAgent`, `gpt-4o`, `tool_choice="required"`).
+(`HRPolicyAgent`, `gpt-4.1`, `tool_choice="required"`).
 
 Verify or clean up:
 
@@ -228,14 +232,30 @@ uv run pytest tests/ -v
 uv run pytest tests/ -v -m mock     # tests that don't need Azure
 ```
 
-### 10. Deploy infrastructure
+### 10. Deploy infrastructure and services
+
+The Bicep is subscription-scoped and `azure.yaml` declares two deployable
+services, so use **`azd up`** — it provisions the resources *and* builds,
+pushes, and deploys the backend + hosted agent in one step.
 
 ```bash
-az deployment group create \
-  --resource-group <your-rg> \
-  --template-file infra/main.bicep \
-  --parameters infra/main.parameters.json
+azd ext install azure.ai.agents          # hosted-agent (azure.ai.agent) support
+azd auth login
+azd env new hr-demo
+azd env set AZURE_PRINCIPAL_ID $(az ad signed-in-user show --query id -o tsv)
+azd up
 ```
+
+`azd up` provisions: AI Foundry + project, gpt-4.1 / gpt-5 / embeddings,
+Azure AI Search, Document Intelligence, Storage (`ask-hr-knowledge` container),
+**Azure Container Registry**, a **Container Apps environment + FastAPI backend**
+(Pattern C `/api/lookup` + Pattern B2 `/api/chat`), **Log Analytics + Application
+Insights**, and all RBAC — including the Foundry project managed identity's
+Search read role and the user's Foundry Project Manager role. It then builds and
+pushes the backend and **`hr-policy-agent`** Hosted Agent images and deploys them.
+
+Push code-only changes afterwards with `azd deploy`; provision without deploying
+services with `azd provision`.
 
 ---
 
@@ -243,14 +263,14 @@ az deployment group create \
 
 | Component                     | Version (GA where applicable)                               |
 | ----------------------------- | ----------------------------------------------------------- |
-| Microsoft Agent Framework     | `agent-framework>=1.8.1` (GA)                               |
-| Foundry Agent Service SDK     | `azure-ai-projects>=2.2.0` (GA)                             |
-| Foundry helpers               | `agent-framework-foundry>=1.8.1` (GA)                       |
-| Azure AI Search SDK           | `azure-search-documents>=12.0.0`                            |
+| Microsoft Agent Framework     | `agent-framework>=1.11.0` (GA)                              |
+| Foundry Agent Service SDK     | `azure-ai-projects>=2.3.0` (GA)                             |
+| Foundry helpers               | `agent-framework-foundry>=1.10.1` (GA)                      |
+| Azure AI Search SDK           | `azure-search-documents>=12.0.0,<12.1`                      |
 | OpenAI SDK                    | `openai>=2.31.0`                                            |
 | FastAPI / Pydantic            | `fastapi>=0.135.1`, `pydantic>=2.12.5`                      |
 | Frontend                      | React 19, TypeScript 5.8, Vite 6, Tailwind 4                 |
-| Hosted Agent (Agent Framework hosting, GA) | `agent-framework>=1.8.1` + alpha `agent-framework-foundry-hosting==1.0.0a*` if deploying into Foundry's hosted-agents preview surface |
+| Hosted Agent (Agent Framework hosting, GA) | `agent-framework>=1.11.0` + `agent-framework-foundry-hosting>=1.0.0a260709` (preview) for Foundry's hosted-agents surface |
 
 ---
 
@@ -315,7 +335,7 @@ az deployment group create \
 | **Reliability** | Add retry policies, circuit breakers, health probes, and multi-region failover for AI Search and OpenAI. | [Azure WAF — Reliability pillar](https://learn.microsoft.com/en-us/azure/well-architected/reliability/) |
 | **Performance** | Profile latency under load. Use semantic caching (APIM AI Gateway) and right-size SKUs. | [Azure WAF — Performance efficiency](https://learn.microsoft.com/en-us/azure/well-architected/performance-efficiency/) |
 | **Cost** | Set token budgets, monitor consumption with Application Insights, rightsize search replicas. | [Azure WAF — Cost optimization](https://learn.microsoft.com/en-us/azure/well-architected/cost-optimization/) |
-| **Operations** | Enable structured logging, distributed tracing (OpenTelemetry), and alerts. Use CI/CD for index and agent deployments. | [Azure WAF — Operational excellence](https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/) |
+| **Operations** | Enable structured logging, distributed tracing, and alerts. Use CI/CD for index and agent deployments. This repo ships starting points: GenAI tracing ([`src/observability/tracing.py`](src/observability/tracing.py)), an evaluation harness ([`src/evaluation/`](src/evaluation/)), and a Foundry memory store ([`src/memory/`](src/memory/)). | [Azure WAF — Operational excellence](https://learn.microsoft.com/en-us/azure/well-architected/operational-excellence/) |
 | **Data governance** | Classify data sensitivity. Implement document-level ACLs in the index. Add PII redaction where required. | [Microsoft Purview](https://learn.microsoft.com/en-us/purview/) |
 | **Responsible AI** | Review model outputs for fairness and bias. Add human-in-the-loop where answers affect employment decisions. | [Microsoft Responsible AI](https://www.microsoft.com/en-us/ai/responsible-ai) |
 

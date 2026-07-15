@@ -5,7 +5,7 @@ This project supports three retrieval patterns plus a Hosted Agent runtime
 the search** and **how results reach Copilot Studio**.
 
 > Naming note: "Hosted Agent" here means the **Agent Framework hosting**
-> pattern (GA — see [Step 6: Host Your Agent](https://learn.microsoft.com/en-us/agent-framework/get-started/hosting?pivots=programming-language-python)).
+> pattern (GA — see [Step 7: Host Your Agent](https://learn.microsoft.com/en-us/agent-framework/get-started/hosting?pivots=programming-language-python)).
 > "Prompt Agent" means the **Foundry Agent Service** prompt agent (GA — see
 > [Quickstart: Create a prompt agent](https://learn.microsoft.com/en-us/azure/foundry/agents/quickstarts/prompt-agent?tabs=python)).
 > Deploying an Agent Framework agent *into* Foundry Agent Service via the
@@ -51,7 +51,7 @@ flowchart TD
 | Aspect                | Pattern A — Direct KB ★              | Pattern B — Foundry Agent + MCP      | Pattern C — Dual-Tool Routing              | Hosted Agent (Agent Framework)        |
 | --------------------- | ------------------------------------ | ------------------------------------ | ------------------------------------------ | ------------------------------------- |
 | **Orchestrator**      | Copilot Studio                       | Foundry Agent Service                | Copilot Studio (router)                    | Agent Framework runtime container      |
-| **LLM call**          | None (extractive only)               | Yes (`gpt-4o`)                       | Yes for content; none for lookup           | Yes (`gpt-4o` via FoundryChatClient)  |
+| **LLM call**          | None (extractive only)               | Yes (`gpt-4.1`)                      | Yes for content; none for lookup           | Yes (`gpt-4.1` via FoundryChatClient) |
 | **Search**            | Azure AI Search KB (REST)            | KB MCP tool inside agent             | `/api/lookup` (no LLM) + KB MCP            | Tool: `search_hr_policies` (`@tool`)  |
 | **Code path**         | Copilot Studio knowledge action       | `src/agents/hr_policy_agent.py`      | `src/backend/main.py:/api/lookup` + B/A    | `src/hosted_agent/server.py`          |
 | **Latency**           | ~1–2 s                               | ~10–14 s                             | ~1–2 s (lookup) / ~10–14 s (answer)        | ~10–14 s                              |
@@ -81,6 +81,47 @@ knowledge base provisioning.
 - **Strengths:** lowest latency, no LLM cost.
 - **Limitations:** no answer synthesis — Copilot Studio falls back to
   generative answers using the snippets, which can paraphrase incorrectly.
+
+> **Retrieval type: classic search.** Pattern A connects Copilot Studio to an
+> Azure AI Search **index** (index-first, single hybrid query). This is
+> [*classic search*](https://learn.microsoft.com/en-us/azure/search/search-what-is-azure-search#what-is-classic-search)
+> in Microsoft's terminology. For **agentic retrieval** over a knowledge base,
+> see **Pattern A2** below (new agent experience) or **Pattern B** (Foundry
+> Agent Service).
+
+## Pattern A2 — Copilot Studio (new experience) → Microsoft IQ → Foundry IQ
+
+In the Copilot Studio **new agent experience** (preview), an agent can connect
+**directly to a Foundry IQ knowledge base** — the same `hr-knowledge-base` this
+repo provisions — via **Microsoft IQ**, with **no Foundry prompt agent in the
+path**. This is [*agentic retrieval*](https://learn.microsoft.com/en-us/azure/search/search-what-is-azure-search#what-is-agentic-retrieval):
+the knowledge base plans sub-queries, retrieves in parallel, reranks, and
+returns merged results that the agent uses to compose its answer.
+
+- **Provision the KB (reused as-is):** `python -m src.agents.create_foundry_agent`
+  (creates the Knowledge Source + `hr-knowledge-base`; the PromptAgent is *not*
+  required for Pattern A2).
+- **Wire in Copilot Studio (new experience):** **Build → Microsoft IQ →
+  Foundry IQ → Create new connection** (choose **Microsoft Entra ID Integrated**),
+  select `hr-knowledge-base`, **Add to agent**. One Foundry IQ connection per
+  agent. See
+  [CopilotStudioIntegration.md § Pattern A2 wiring](CopilotStudioIntegration.md#pattern-a2-wiring-new-experience--microsoft-iq--foundry-iq).
+- **Strengths:** agentic retrieval quality without a prompt agent to maintain;
+  the KB is a reusable, centrally tuned asset. Tune it in Azure AI Foundry, not
+  Copilot Studio.
+- **Security:** with **Microsoft Entra ID Integrated** auth the signed-in
+  user's identity flows through, so results are **ACL-trimmed per user** (each
+  user only sees content they're authorized to access). Foundry IQ knowledge
+  bases inherit enterprise-readiness controls (CMK, network isolation, Entra ID,
+  FedRAMP/SOC2). A KB can also federate across **multiple** knowledge sources
+  in parallel.
+- **vs Pattern A:** A = classic search over an index; A2 = agentic retrieval
+  over a knowledge base.
+- **vs Pattern B:** A2 connects Copilot Studio straight to the KB; B wraps the
+  KB in a Foundry prompt agent (`tool_choice="required"`) and connects Copilot
+  Studio to the *agent* — use B when you need forced grounding / answer
+  synthesis owned in Foundry, or the classic experience.
+- **Reference:** [Connect to Foundry IQ from an agent (preview)](https://learn.microsoft.com/en-us/microsoft-copilot-studio/agents-experience/foundry-iq-connect)
 
 ## Pattern B — Foundry Agent Service + MCPTool
 
@@ -121,8 +162,24 @@ location** or a **content explanation**:
 ## Hosted Agent (Microsoft Agent Framework hosting)
 
 A self-contained container that runs `Agent` (Microsoft Agent Framework, GA)
-with `FoundryChatClient` and a `@tool search_hr_policies` function. Useful
-when you need full control of the runtime (custom auth, side-car services)
+with `FoundryChatClient`. It supports **both classic and agentic RAG**, selected
+by the `RETRIEVAL_MODE` environment variable:
+
+| `RETRIEVAL_MODE` | RAG strategy | Retrieval type |
+| ---------------- | ------------ | -------------- |
+| `tool` (default) | Custom `@tool search_hr_policies` (hybrid + semantic) | Classic search |
+| `context-semantic` | Out-of-the-box `AzureAISearchContextProvider` (runs before each turn) | Classic search |
+| `context-agentic` | `AzureAISearchContextProvider` over `hr-knowledge-base` | **Agentic retrieval** |
+
+The `context-*` modes use Agent Framework's out-of-the-box RAG context provider
+(the Python counterpart of `TextSearchProvider`): retrieval runs automatically
+before each model invocation with standardized context + citation prompts, so
+the agent doesn't call a search tool explicitly. This is what gives the Agent
+Framework path parity with the Foundry Agent Service path (both classic and
+agentic). See [`src/search/agentic_context_provider.py`](../src/search/agentic_context_provider.py)
+and [Agent Framework RAG](https://learn.microsoft.com/en-us/agent-framework/agents/rag?pivots=programming-language-python).
+
+Useful when you need full control of the runtime (custom auth, side-car services)
 or you want to keep the answering loop on your own infrastructure.
 
 - **Code:** `src/agents/hr_policy_agent_af.py`, `src/hosted_agent/server.py`,
