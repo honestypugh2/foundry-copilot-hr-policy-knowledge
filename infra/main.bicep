@@ -35,6 +35,12 @@ param principalId string = ''
 @description('Optional Entra app registration (client) ID to protect the backend Container App with Microsoft Entra authentication. Leave empty for public ingress (demo).')
 param backendAuthClientId string = ''
 
+@description('Region for Azure AI Search. Defaults to the main location; override when the main region is out of Search capacity.')
+param searchLocation string = ''
+
+@description('Full backend container image reference (ACR). When empty, a placeholder image is used and azd updates it on deploy.')
+param backendImage string = ''
+
 // ---------- Resource Group ----------
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: 'rg-${resourcePrefix}-${environmentName}'
@@ -55,6 +61,8 @@ module resources './bicep/main.bicep' = {
     searchSku: searchSku
     principalId: principalId
     backendAuthClientId: backendAuthClientId
+    searchLocation: searchLocation
+    backendImage: backendImage
   }
 }
 

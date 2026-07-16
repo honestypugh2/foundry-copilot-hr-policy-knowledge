@@ -1,23 +1,26 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
 name: foundry-copilot-hr-policy-knowledge
 metadata:
-  template: foundry-copilot-hr-policy-knowledge
-infra:
-  provider: bicep
-  path: infra
+    template: foundry-copilot-hr-policy-knowledge
 services:
-  # FastAPI backend — hosts Pattern C (/api/lookup) and Pattern B2 (/api/chat).
-  # azd builds the image, pushes it to ACR, and updates the Container App.
-  backend:
-    project: .
-    language: python
-    host: containerapp
-    docker:
-      path: src/backend/Dockerfile
-      context: .
-  # Foundry Hosted Agent (Agent Framework, Responses protocol). Deployed via the
-  # azd ai agent extension (run: `azd ext install azure.ai.agents`). Reads
-  # src/hosted_agent/agent.yaml as its deployment descriptor.
-  hr-policy-agent:
-    project: src/hosted_agent
-    host: azure.ai.agent
+    backend:
+        project: .
+        host: containerapp
+        language: python
+        docker:
+            path: src/backend/Dockerfile
+            context: .
+            remoteBuild: true
+    hr-policy-agent:
+        project: src/hosted_agent
+        host: azure.ai.agent
+        language: ""
+        config:
+            container:
+                resources:
+                    cpu: "0.5"
+                    memory: 1Gi
+infra:
+    provider: bicep
+    path: infra

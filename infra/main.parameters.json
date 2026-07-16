@@ -12,7 +12,7 @@
       "value": "hr-policy-kb"
     },
     "openAIDeploymentName": {
-      "value": "gpt-4.1"
+      "value": "gpt-5-mini"
     },
     "gpt5DeploymentName": {
       "value": "gpt-5"
@@ -28,6 +28,12 @@
     },
     "backendAuthClientId": {
       "value": "${AZURE_BACKEND_AUTH_CLIENT_ID=}"
+    },
+    "searchLocation": {
+      "value": "${AZURE_SEARCH_LOCATION=}"
+    },
+    "backendImage": {
+      "value": "${AZURE_BACKEND_IMAGE=}"
     }
   }
 }

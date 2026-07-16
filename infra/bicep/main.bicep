@@ -38,6 +38,12 @@ param principalId string
 @description('Optional Entra app registration (client) ID used to protect the backend Container App with Microsoft Entra authentication (Container Apps built-in auth). Leave empty for public ingress (demo).')
 param backendAuthClientId string = ''
 
+@description('Region for Azure AI Search. Defaults to the main location; override when the main region is out of Search capacity.')
+param searchLocation string = ''
+
+@description('Full backend container image reference (ACR). When empty, a placeholder image is used and azd updates it on deploy.')
+param backendImage string = ''
+
 // ---------- Naming ----------
 var abbrs = loadJsonContent('./abbreviations.json')
 var uniqueSuffix = uniqueString(resourceGroup().id)
@@ -74,7 +80,7 @@ resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-pre
 }
 
 // ============================================================================
-// 3. GPT-4.1 Deployment (chat / inference)
+// 3. Chat / inference deployment (gpt-5-mini)
 // ============================================================================
 resource gpt41Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = {
   parent: aiServices
@@ -86,8 +92,8 @@ resource gpt41Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
   properties: {
     model: {
       format: 'OpenAI'
-      name: 'gpt-4.1'
-      version: '2025-04-14'
+      name: 'gpt-5-mini'
+      version: '2025-08-07'
     }
   }
 }
@@ -135,9 +141,11 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
 // ============================================================================
 // 6. Azure AI Search (semantic ranker enabled for hybrid search)
 // ============================================================================
+var searchLoc = empty(searchLocation) ? location : searchLocation
 resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = {
   name: '${abbrs.searchSearchServices}${resourceToken}'
-  location: location
+  location: searchLoc
+  identity: { type: 'SystemAssigned' }
   sku: { name: searchSku }
   properties: {
     replicaCount: 1
@@ -248,11 +256,40 @@ resource containerAppsEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
+// User-assigned managed identity dedicated to pulling the backend image from
+// ACR. A UAMI is created and granted AcrPull BEFORE the Container App exists,
+// which breaks the classic chicken-and-egg problem with system-assigned
+// identities: a system MI only exists after the app is created, but the app
+// needs AcrPull to pull its image, and if the initial pull fails the app can be
+// recreated with a NEW system MI — orphaning the (immutable) AcrPull grant and
+// causing "ACR token exchange 401 / Operation expired". The UAMI's grant is
+// stable and never orphaned, so the first revision can always pull.
+resource acrPullIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${abbrs.managedIdentityUserAssignedIdentities}acrpull-${uniqueSuffix}'
+  location: location
+}
+
+resource acrPullIdentityRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, acrPullIdentity.id, '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+  scope: containerRegistry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+    principalId: acrPullIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: '${abbrs.appContainerApps}backend-${uniqueSuffix}'
   location: location
-  identity: { type: 'SystemAssigned' }
+  identity: {
+    type: 'SystemAssigned, UserAssigned'
+    userAssignedIdentities: {
+      '${acrPullIdentity.id}': {}
+    }
+  }
   tags: { 'azd-service-name': 'backend' }
+  dependsOn: [ acrPullIdentityRole ]
   properties: {
     managedEnvironmentId: containerAppsEnv.id
     configuration: {
@@ -265,16 +302,16 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
       registries: [
         {
           server: containerRegistry.properties.loginServer
-          identity: 'system'
+          identity: acrPullIdentity.id
         }
       ]
     }
     template: {
       containers: [
         {
-          // Placeholder image; azd replaces it with the built backend image.
+          // Real backend image when provided; placeholder otherwise (azd updates on deploy).
           name: 'backend'
-          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          image: !empty(backendImage) ? backendImage : 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           resources: {
             cpu: json('0.5')
             memory: '1Gi'
@@ -284,6 +321,10 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_SEARCH_INDEX_NAME', value: 'hr-policy-index' }
             { name: 'AZURE_AI_PROJECT_ENDPOINT', value: '${aiServices.properties.endpoint}/api/projects/${aiProject.name}' }
             { name: 'AZURE_AI_MODEL_DEPLOYMENT_NAME', value: openAIDeploymentName }
+            { name: 'AZURE_OPENAI_ENDPOINT', value: aiServices.properties.endpoint }
+            { name: 'AZURE_OPENAI_DEPLOYMENT_NAME', value: openAIDeploymentName }
+            { name: 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT', value: embeddingDeploymentName }
+            { name: 'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT', value: docIntelligence.properties.endpoint }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
             { name: 'ENABLE_TRACING', value: 'true' }
             { name: 'PORT', value: '8000' }
@@ -423,17 +464,6 @@ resource userFoundryProjectManagerRole 'Microsoft.Authorization/roleAssignments@
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 var acrPushRoleId = '8311e382-0749-4cb8-b61a-304f252e45ec'
 
-// AcrPull for the backend Container App MI (pull its own image from ACR).
-resource backendAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(containerRegistry.id, backendApp.id, acrPullRoleId)
-  scope: containerRegistry
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
-    principalId: backendApp.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
 // AcrPull for the Foundry PROJECT MI — the platform pulls the hosted-agent image.
 resource projectAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(containerRegistry.id, aiProject.id, acrPullRoleId)
@@ -486,6 +516,59 @@ resource backendAIUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', azureAIUserRoleId)
     principalId: backendApp.identity.principalId
     principalType: 'ServicePrincipal'
+  }
+}
+
+// ---- Indexing identities (Azure AI Search managed identity) ----
+// The integrated-vectorization pipeline authenticates from the Search service
+// to other resources using the Search service's system-assigned identity:
+//   - AzureOpenAIEmbeddingSkill (index time) + AzureOpenAIVectorizer (query time)
+//     call the embedding model → Cognitive Services OpenAI User on AI Services.
+//   - DocumentIntelligenceLayoutSkill calls the AI multi-service account →
+//     Cognitive Services User on AI Services.
+//   - The indexer reads source blobs → Storage Blob Data Reader on Storage
+//     (also enables switching the data source from connection string to MI).
+var cognitiveServicesUserRoleId = 'a97b65f3-24c7-4388-baec-2e87135dc908'
+var storageBlobDataReaderRoleId = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'
+
+resource searchOpenAIUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(aiServices.id, search.id, cognitiveServicesOpenAIUserRoleId)
+  scope: aiServices
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesOpenAIUserRoleId)
+    principalId: search.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource searchCognitiveUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(aiServices.id, search.id, cognitiveServicesUserRoleId)
+  scope: aiServices
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesUserRoleId)
+    principalId: search.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource searchStorageReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storage.id, search.id, storageBlobDataReaderRoleId)
+  scope: storage
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataReaderRoleId)
+    principalId: search.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Cognitive Services User — demo USER calls Document Intelligence directly for
+// client-side (Option 1) indexing and other AI Services data-plane operations.
+resource userCognitiveUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId)) {
+  name: guid(resourceGroup().id, principalId, cognitiveServicesUserRoleId)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesUserRoleId)
+    principalId: principalId
+    principalType: 'User'
   }
 }
 

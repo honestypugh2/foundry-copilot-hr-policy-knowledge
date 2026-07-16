@@ -115,9 +115,6 @@ Two endpoints carry most of the load:
 ```bash
 # Pure Agent Framework UI
 cd src/frontend && npm install && npm run dev          # http://localhost:5173
-
-# Copilot Studio web chat embed
-cd src/frontend-copilot-studio && npm install && npm run dev   # http://localhost:5174
 ```
 
 ## 7. Wire up Copilot Studio

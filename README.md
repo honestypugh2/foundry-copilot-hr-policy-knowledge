@@ -134,6 +134,13 @@ uv run python scripts/index_knowledge_base_docintel_chunking.py
 uv run python scripts/index_knowledge_base_integrated_vectorization.py
 ```
 
+> **Blob upload is handled for you.** Option 2 uploads the documents to the
+> `ask-hr-knowledge` blob container automatically (its first step; run just that
+> stage with `--upload-only`). Option 1 doesn't use blob storage at all — it
+> pushes chunks straight into the index. You only need
+> [`scripts/upload_to_blob.py`](scripts/upload_to_blob.py) if you want to
+> pre-stage blobs manually (e.g. before running `--create-pipeline-only`).
+
 Local-only extraction (no Azure upload):
 
 ```bash
@@ -185,14 +192,11 @@ Endpoints:
 | `GET`  | `/api/copilot-studio/token`        | Direct Line token (web chat embed)   |
 | `POST` | `/api/copilot-studio/chat`         | Proxy to Copilot Studio bot          |
 
-### 6. (Optional) Run the React frontends
+### 6. (Optional) Run the React frontend
 
 ```bash
 # Pure Agent Framework UI
 cd src/frontend && npm install && npm run dev          # http://localhost:5173
-
-# Copilot Studio web chat embed
-cd src/frontend-copilot-studio && npm install && npm run dev  # http://localhost:5174
 ```
 
 ### 7. Wire up Copilot Studio
@@ -290,7 +294,6 @@ services with `azd provision`.
 │   ├── search/                       # Hybrid + integrated-vectorization clients
 │   ├── copilot_studio/service.py     # Direct-to-Engine API
 │   ├── frontend/                     # React 19 + TypeScript chat UI
-│   ├── frontend-copilot-studio/      # React 19 + Copilot Studio Web Chat embed
 │   └── hosted_agent/                 # agent.yaml + server.py + Dockerfile
 ├── scripts/                          # Indexing + utilities
 │   ├── index_knowledge_base_docintel_chunking.py      # Option 1

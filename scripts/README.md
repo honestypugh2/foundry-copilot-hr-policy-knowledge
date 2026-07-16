@@ -79,6 +79,16 @@ uv run python scripts/index_knowledge_base_docintel_chunking.py          # dev/t
 uv run python -m src.agents.create_foundry_agent
 ```
 
+> **Do I need to upload documents to blob first? No.**
+> - **Option 2 (integrated vectorization)** uploads the docs to the
+>   `ask-hr-knowledge` container **automatically** as its first step (or run just
+>   that stage with `--upload-only`), then builds the indexer/skillset.
+> - **Option 1 (client-side chunking)** doesn't touch blob storage — it pushes
+>   chunks straight into `hr-policy-index`.
+> - [`upload_to_blob.py`](upload_to_blob.py) is only for **manually pre-staging
+>   blobs** — e.g. before `--create-pipeline-only`, or to upload via managed
+>   identity without running the full pipeline.
+
 Useful flags: `--local-only` (skip Azure Document Intelligence),
 `--data-dir data/knowledge_base_lab` (index the lab corpus),
 `--upload-only` / `--create-pipeline-only` (integrated vectorization stages).

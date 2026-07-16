@@ -731,46 +731,39 @@ For production, consider running both patterns:
 
 ---
 
-## Web Chat embed frontend
+## Consuming the published agent
 
-This project includes a dedicated React frontend
-([`src/frontend-copilot-studio/`](../src/frontend-copilot-studio/))
-that embeds the Copilot Studio agent using the Bot Framework Web Chat
-SDK.
+Copilot Studio agents are consumed through Copilot Studio's **own
+channels** — no custom web app is required. After publishing the agent
+(**Publish**, then **Channels**):
 
-### Running the frontend
+| Channel                   | Use it for                                                                   |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| **Demo website**          | A ready-to-share test site Copilot Studio generates for you. Best for demos. |
+| **Microsoft Teams**       | Employees ask HR questions directly in Teams chat.                           |
+| **Microsoft 365 Copilot** | Surface the agent in the flow of work as an M365 Copilot agent.              |
+| **Custom website**        | Paste the generated Web Chat snippet into any existing page.                 |
 
-```bash
-cd src/frontend-copilot-studio
-npm install
-npm run dev
-# http://localhost:5174
-```
+This is how Copilot Studio agents are normally consumed, so a
+hand-rolled Direct Line web app isn't needed for demos or production.
 
-### Two chat modes
+### Optional: Direct Line helper endpoints
 
-| Mode             | Description                                                                                                                                  |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Web Chat embed** | Full Bot Framework Web Chat widget connected via Direct Line token. Supports rich cards, adaptive cards, and all Copilot Studio features. |
-| **Backend proxy**  | Simple chat UI that routes messages through the FastAPI backend (`/api/copilot-studio/chat`). See *Direct Line proxy* below.              |
-
-### Direct Line proxy (`/api/copilot-studio/token` + `/api/copilot-studio/chat`)
-
-The FastAPI backend exposes two helper endpoints implemented in
+For custom or proxied integrations, the FastAPI backend still exposes
+two Direct Line helpers implemented in
 [`src/copilot_studio/service.py`](../src/copilot_studio/service.py):
 
 - `GET /api/copilot-studio/token` issues a short-lived Direct Line
-  token, used to bootstrap the Web Chat embed without exposing the
+  token, used to bootstrap a custom Web Chat embed without exposing the
   long-lived secret to the browser.
 - `POST /api/copilot-studio/chat` proxies a single message to the
   Copilot Studio bot through Direct Line and returns the structured
   response.
 
-> **Use the proxy when you want to route chat through the FastAPI
-> backend (e.g. for auth, audit logging, or rate limiting). Otherwise
-> embed Web Chat directly using the Direct Line token endpoint** —
-> the proxy adds latency and an extra failure point that aren't useful
-> for plain user chat.
+> **Use the proxy only when you need to route chat through the FastAPI
+> backend (e.g. for auth, audit logging, or rate limiting).** For plain
+> user chat, prefer a Copilot Studio channel above — the proxy adds
+> latency and an extra failure point.
 
 ### Environment variables
 
