@@ -296,7 +296,13 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
       activeRevisionsMode: 'Single'
       ingress: {
         external: true
-        targetPort: 8000
+        // The real backend listens on 8000; the public placeholder
+        // (containerapps-helloworld) listens on 80. Match the port to whichever
+        // image is deployed so the FIRST provision (placeholder, before the
+        // real image exists in ACR) passes its health probe instead of hanging
+        // for 20 min ("Operation expired"). A second provision with
+        // AZURE_BACKEND_IMAGE set switches both the image and the port to 8000.
+        targetPort: !empty(backendImage) ? 8000 : 80
         transport: 'auto'
       }
       registries: [
