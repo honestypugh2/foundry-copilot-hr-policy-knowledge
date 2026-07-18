@@ -206,9 +206,15 @@ class IntegratedVectorizationSearchService:
 
     def _get_openai_client(self):
         if self._openai_client is None and OPENAI_AVAILABLE and self.openai_endpoint:
+            # AzureOpenAI expects the base resource endpoint; strip any
+            # /openai or /openai/v1 suffix present in AZURE_OPENAI_ENDPOINT
+            # (the client appends /openai/deployments/... itself).
+            aoai_endpoint = self.openai_endpoint
+            if "/openai" in aoai_endpoint:
+                aoai_endpoint = aoai_endpoint.split("/openai")[0]
             if self.openai_key and not self.openai_key.startswith("your_"):
                 self._openai_client = AzureOpenAI(
-                    azure_endpoint=self.openai_endpoint,
+                    azure_endpoint=aoai_endpoint,
                     api_version=self.openai_api_version,
                     api_key=self.openai_key,
                 )
@@ -220,7 +226,7 @@ class IntegratedVectorizationSearchService:
                     "https://cognitiveservices.azure.com/.default",
                 )
                 self._openai_client = AzureOpenAI(
-                    azure_endpoint=self.openai_endpoint,
+                    azure_endpoint=aoai_endpoint,
                     api_version=self.openai_api_version,
                     azure_ad_token_provider=token_provider,
                 )
@@ -423,6 +429,12 @@ class IntegratedVectorizationSearchService:
                 name=_SEARCH_CONFIG.get("parent_key_field", "policy_parent_id"),
                 type="Edm.String",
                 filterable=True,
+            ),
+            SimpleField(
+                name="category",
+                type="Edm.String",
+                filterable=True,
+                facetable=True,
             ),
             SearchField(
                 name=self._vector_field,

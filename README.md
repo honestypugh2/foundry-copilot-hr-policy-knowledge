@@ -141,6 +141,15 @@ uv run python scripts/index_knowledge_base_integrated_vectorization.py
 > [`scripts/upload_to_blob.py`](scripts/upload_to_blob.py) if you want to
 > pre-stage blobs manually (e.g. before running `--create-pipeline-only`).
 
+> **Option 2 specifics.** Uploads attach `parent_title` / `policy_number` /
+> `category` (derived from each filename, matching Option 1) as blob metadata, so
+> both options populate the same index fields. The skillset attaches the AI
+> Services account via the Search service's **managed identity** — required to
+> enrich more than the free tier's 20 documents per run; the **Cognitive Services
+> User** role is granted by the Bicep. Legacy binary `.doc` and `.xlsx` are not
+> supported by the Document Intelligence Layout skill and are skipped/tolerated.
+
+
 Local-only extraction (no Azure upload):
 
 ```bash

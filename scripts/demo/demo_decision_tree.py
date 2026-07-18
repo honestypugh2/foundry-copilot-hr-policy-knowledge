@@ -277,7 +277,7 @@ async def _run(
 
 def main(argv: list[str] | None = None) -> int:
     load_dotenv()
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else "")
     parser.add_argument("--content", default=SAMPLE_CONTENT_QUESTION,
                         help="Content question for Acts 1, 2, 4")
     parser.add_argument("--locator", default=SAMPLE_LOCATOR_QUESTION,

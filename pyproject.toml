@@ -33,6 +33,7 @@ dependencies = [
     "pytest>=9.0.2",
     "pytest-asyncio>=1.4.0a1",
     "pytest-cov>=7.0.0",
+    "olefile>=0.47",
     "python-docx>=1.2.0",
     "python-dotenv>=1.2.2",
     "requests>=2.32.5",

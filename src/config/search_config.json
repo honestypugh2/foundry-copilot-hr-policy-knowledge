@@ -101,7 +101,7 @@
     "indexer": {
         "data_source_name": "hr-policy-index-blob-ds",
         "name": "hr-policy-index-indexer",
-        "api_version": "2024-07-01",
+        "api_version": "2025-05-01-preview",
         "batch_size": 1,
         "data_to_extract": "contentAndMetadata",
         "parsing_mode": "default",

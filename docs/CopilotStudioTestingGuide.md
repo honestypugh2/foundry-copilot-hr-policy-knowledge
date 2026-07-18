@@ -76,7 +76,7 @@ assigned automatically by the Bicep when `AZURE_PRINCIPAL_ID` is set:
 flowchart LR
     User[Employee / Teams] --> CS[Copilot Studio HR Bot]
     CS --> Router{Generative orchestrator routes per turn}
-    Router -- Content question --> KB[Knowledge Source<br/>hr-policy-index<br/><i>Pattern A</i>]
+    Router -- Content question--> KB[Knowledge Source<br/>hr-policy-index<br/><i>Pattern A</i>]
     Router -- Force-grounded content --> FoundryB[Tool: HRPolicyAgent<br/>PromptAgent + MCPTool<br/><i>Pattern B</i>]
     Router -- Content via self-hosted runtime --> Hosted[Tool: hr-policy-agent<br/>Agent Framework container<br/><i>Hosted</i>]
     Router -- Locator question --> Lookup[REST tool: lookupHRPolicyDocument<br/>POST /api/lookup<br/><i>Pattern C</i>]

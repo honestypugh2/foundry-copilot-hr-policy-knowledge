@@ -33,6 +33,12 @@ except ImportError:
     DOCX_AVAILABLE = False
     logger.warning("python-docx not installed, Word document processing limited")
 
+try:
+    import olefile
+    OLEFILE_AVAILABLE = True
+except ImportError:
+    OLEFILE_AVAILABLE = False
+
 
 class DocumentIngestionAgent:
     """
@@ -71,7 +77,11 @@ class DocumentIngestionAgent:
         ext = path.suffix.lower()
         logger.info(f"Processing document: {path.name} (type: {ext})")
 
-        if self.use_azure and DOCINT_AVAILABLE and ext in (".docx", ".pdf"):
+        # Azure Document Intelligence (prebuilt-layout) handles PDF and modern
+        # Office formats. Route everything through it when enabled; legacy
+        # binary .doc falls back to antiword inside _process_with_azure.
+        di_types = (".pdf", ".docx", ".doc", ".xlsx", ".pptx")
+        if self.use_azure and DOCINT_AVAILABLE and ext in di_types:
             return self._process_with_azure(file_path)
         elif ext == ".doc":
             # Old binary .doc format: Azure DI doesn't support it properly,
@@ -130,7 +140,10 @@ class DocumentIngestionAgent:
 
         except Exception as e:
             logger.warning(f"Azure processing failed: {e}. Falling back to local processing.")
-            if Path(file_path).suffix.lower() == ".docx" and DOCX_AVAILABLE:
+            ext = Path(file_path).suffix.lower()
+            if ext == ".doc":
+                return self._process_doc_with_antiword(file_path)
+            if ext == ".docx" and DOCX_AVAILABLE:
                 return self._process_docx_locally(file_path)
             return self._process_text_file(file_path)
 
@@ -186,8 +199,48 @@ class DocumentIngestionAgent:
             logger.warning("antiword not installed. Install with: sudo apt-get install antiword")
         except Exception as e:
             logger.warning(f"antiword failed for {file_path}: {e}")
+        # antiword unavailable/failed — try pure-python OLE extraction
+        ole_result = self._extract_legacy_doc_with_olefile(file_path)
+        if ole_result:
+            return ole_result
         # Last resort — will produce garbled output for binary .doc files
         return self._process_text_file(file_path)
+
+    def _extract_legacy_doc_with_olefile(self, file_path: str) -> dict[str, Any] | None:
+        """Extract readable text from a legacy binary .doc via its OLE WordDocument stream.
+
+        Pure-python fallback for when antiword is not installed. Recovers
+        printable text runs; loses fine structure but yields clean, searchable
+        content that Document Intelligence cannot extract from legacy binaries.
+        """
+        if not OLEFILE_AVAILABLE or not olefile.isOleFile(file_path):
+            return None
+        try:
+            ole = olefile.OleFileIO(file_path)
+            if not ole.exists("WordDocument"):
+                ole.close()
+                return None
+            data = ole.openstream("WordDocument").read()
+            ole.close()
+            # Legacy .doc stores document text as either 8-bit (cp1252) or
+            # 16-bit (UTF-16LE) character runs. Extract printable runs from
+            # both decodings and keep whichever recovers more readable text.
+            text_8bit = " ".join(re.findall(r"[\x20-\x7e]{5,}", data.decode("latin-1", "replace")))
+            text_16bit = " ".join(re.findall(r"[\x20-\x7e]{5,}", data.decode("utf-16-le", "replace")))
+            text = text_8bit if len(text_8bit) >= len(text_16bit) else text_16bit
+            if len(text) < 50:
+                return None
+            return {
+                "text": text,
+                "page_count": 1,
+                "word_count": len(text.split()),
+                "char_count": len(text),
+                "tables": [],
+                "extraction_method": "olefile_worddocument",
+            }
+        except Exception as e:
+            logger.warning(f"olefile extraction failed for {file_path}: {e}")
+            return None
 
     def _process_text_file(self, file_path: str) -> dict[str, Any]:
         """Process a plain text file."""

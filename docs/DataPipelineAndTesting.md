@@ -66,10 +66,13 @@ The `DocumentIngestionAgent` class extracts text from HR policy documents using 
 
 | Priority | Method | File Types | Details |
 |----------|--------|------------|---------|
-| 1 | Azure Document Intelligence | All (OCR-capable) | `prebuilt-layout` model, handles tables & images |
+| 1 | Azure Document Intelligence | `.pdf`, `.docx`, `.doc`, `.xlsx`, `.pptx` | `prebuilt-layout` model, handles tables & images |
 | 2 | python-docx | `.docx` | Local parsing, no Azure dependency |
-| 3 | antiword | `.doc` | Binary Word format via `antiword` CLI |
-| 4 | Plain text | `.txt` | Direct file read |
+| 3 | antiword | `.doc` | Legacy binary Word format via `antiword` CLI |
+| 4 | olefile (pure-Python) | `.doc` | Fallback when `antiword` is unavailable — recovers printable text runs from the OLE `WordDocument` stream (handles both cp1252 and UTF-16LE encodings); `extraction_method: olefile_worddocument` |
+| 5 | Plain text | `.txt` | Direct file read |
+
+> **Legacy `.doc` note:** Azure Document Intelligence and its server-side Layout skill reject legacy binary `.doc` files (`InvalidContent`). Option 1 recovers their text with the `antiword` → `olefile` fallback chain; Option 2 skips them at the indexer (see below).
 
 **Usage:**
 ```python
@@ -308,13 +311,31 @@ sequenceDiagram
 | -------------------- | -------------------- | ----------------------------------- | ---------------------------------------------------- |
 | Container            | Blob Storage         | `ask-hr-knowledge`                  | Source of truth for raw HR policy documents          |
 | Data source          | Azure AI Search      | `hr-policy-index-blob-ds`           | Connection from Search to the blob container         |
-| Skillset             | Azure AI Search      | `hr-policy-doc-layout-skillset`     | DocumentIntelligenceLayoutSkill + AzureOpenAIEmbeddingSkill |
+| Skillset             | Azure AI Search      | `hr-policy-doc-layout-skillset`     | DocumentIntelligenceLayoutSkill + AzureOpenAIEmbeddingSkill; AI Services attached via the Search service's managed identity |
 | Index                | Azure AI Search      | `hr-policy-index`                   | Vector field `policy_vector` (1536) + semantic config `hr-semantic-config` |
 | Indexer              | Azure AI Search      | `hr-policy-index-indexer`           | Runs the skillset; auto-tracks blob changes          |
 | Synonym map          | Azure AI Search      | `hr-glossary-synonyms`              | HR vernacular → formal terms                         |
 | Vectorizer           | Azure AI Search      | `hr-azure-openai-vectorizer`        | Query-time embedding via Azure OpenAI                |
 
 All names are configurable via `src/config/search_config.json`.
+
+> **AI Services attachment (required past 20 documents).** The skillset attaches
+> the AI Services account so the `DocumentIntelligenceLayoutSkill` can enrich
+> more than the free tier's **20 documents per run**. Because enterprise
+> policy commonly disables local (key) auth, the attachment uses the Search
+> service's **system-assigned managed identity** (`AIServicesByIdentity`), which
+> needs the **Cognitive Services User** role on the AI Services account — granted
+> automatically by the Bicep (`infra/bicep/main.bicep`). Without an attached
+> resource the indexer stops at 20 docs with a `transientFailure` and retries
+> indefinitely.
+>
+> **Skillset API version.** The `DocumentIntelligenceLayoutSkill` properties
+> require a preview REST API version for the skillset — set via
+> `indexer.api_version` (`2025-05-01-preview`) in `search_config.json`.
+>
+> **Unsupported formats.** Legacy binary `.doc` is excluded at the indexer
+> (`excludedFileNameExtensions`), and `.xlsx` is not supported by the Layout
+> skill; these are expected, tolerated failures (`maxFailedItems=-1`).
 
 ```
 HR Policy Documents
@@ -351,12 +372,12 @@ hr-policy-index (auto-populated)
 
 | Function | Purpose |
 |----------|---------|
-| `upload_documents(data_dir)` | Upload files to Blob Storage |
+| `upload_documents(data_dir)` | Upload files to Blob Storage, attaching `parent_title` / `policy_number` / `category` (derived from the filename, matching Option 1) as blob metadata |
 | `create_synonym_map()` | Create `hr-glossary-synonyms` from `HR_GLOSSARY` |
 | `create_index()` | Create the search index with vector + semantic config |
-| `create_data_source()` | Create blob data source connection |
-| `create_skillset()` | Create skillset with Document Layout + Embedding skills |
-| `create_indexer()` | Create indexer that ties data source → skillset → index |
+| `create_data_source()` | Create blob data source connection (keyless via managed identity when shared-key access is disabled) |
+| `create_skillset()` | Create skillset with Document Layout + Embedding skills; attaches the AI Services account via managed identity (`AIServicesByIdentity`) |
+| `create_indexer()` | Create indexer that ties data source → skillset → index; excludes legacy `.doc` and tolerates unsupported-file failures (`maxFailedItems=-1`) |
 | `run(data_dir, upload_only, create_pipeline_only)` | Main entry point |
 
 **Usage:**
@@ -378,6 +399,8 @@ python scripts/index_knowledge_base_integrated_vectorization.py --create-pipelin
 - Minimal code maintenance — Azure manages the pipeline
 
 **Key difference from Option 1:** Glossary enrichment is handled entirely by the synonym map at query time, not by appending terms to content. The `DocumentIntelligenceLayoutSkill` provides structure-aware chunking that respects document headings and paragraph boundaries, unlike the fixed-size character splitting in Option 1.
+
+**Metadata parity with Option 1:** `parent_title`, `policy_number`, and `category` are derived from the filename (same helpers as Option 1) and attached as blob metadata during upload. The blob indexer surfaces them at `/document/<field>`, and the index projection maps them onto every chunk — so both options populate the same fields.
 
 ---
 

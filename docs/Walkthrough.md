@@ -54,6 +54,11 @@ pipeline server-side (chunking and embedding happen in Azure AI Search).
 uv run python scripts/index_knowledge_base_integrated_vectorization.py
 ```
 
+> Option 2 attaches the AI Services account to the skillset via the Search
+> service's managed identity (needed to enrich more than 20 documents per run).
+> `azd up` grants the required **Cognitive Services User** role automatically; if
+> you provisioned manually, assign it to the Search identity first.
+
 Alternative — client-side chunking (useful for dev/test or bespoke
 preprocessing):
 

@@ -40,11 +40,16 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+from dotenv import load_dotenv
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 from src.config.search_config import search_cfg
 
@@ -127,6 +132,36 @@ def _get_credential():
         return DefaultAzureCredential()
 
 
+def _use_managed_identity() -> bool:
+    return os.getenv("USE_MANAGED_IDENTITY", "true").lower() == "true"
+
+
+def _storage_resource_id() -> str:
+    """Build the storage account resource ID for keyless (managed identity) auth.
+
+    Used for the indexer data source when shared-key access is disabled. The
+    account name comes from AZURE_STORAGE_ACCOUNT_URL; the subscription and
+    resource group are parsed from a known resource ID (AZURE_AI_PROJECT_RESOURCE_ID).
+    An explicit AZURE_STORAGE_RESOURCE_ID overrides both.
+    """
+    explicit = os.getenv("AZURE_STORAGE_RESOURCE_ID")
+    if explicit:
+        return explicit
+
+    account_url = os.getenv("AZURE_STORAGE_ACCOUNT_URL", "")
+    account = account_url.split("://", 1)[-1].split(".", 1)[0] if "://" in account_url else ""
+
+    ref_id = os.getenv("AZURE_AI_PROJECT_RESOURCE_ID", "")
+    m = re.search(r"/subscriptions/([^/]+)/resourceGroups/([^/]+)/", ref_id, re.IGNORECASE)
+    if not (account and m):
+        return ""
+    sub, rg = m.group(1), m.group(2)
+    return (
+        f"/subscriptions/{sub}/resourceGroups/{rg}"
+        f"/providers/Microsoft.Storage/storageAccounts/{account}"
+    )
+
+
 def upload_documents(data_dir: str) -> int:
     """Upload HR policy documents to Azure Blob Storage."""
     if not BLOB_SDK_AVAILABLE:
@@ -136,16 +171,19 @@ def upload_documents(data_dir: str) -> int:
     conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
     account_url = os.getenv("AZURE_STORAGE_ACCOUNT_URL")
 
-    if conn_str:
-        blob_service = BlobServiceClient.from_connection_string(conn_str)
-    elif account_url:
+    # Prefer managed identity (keyless) when requested or when no connection
+    # string is available. Storage accounts with shared-key access disabled
+    # (common enterprise policy) reject connection-string / account-key auth.
+    if account_url and (_use_managed_identity() or not conn_str):
         try:
             cred = AzureCliCredential()
         except Exception:
             cred = DefaultAzureCredential()
         blob_service = BlobServiceClient(account_url=account_url, credential=cred)
+    elif conn_str:
+        blob_service = BlobServiceClient.from_connection_string(conn_str)
     else:
-        logger.error("Set AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_URL")
+        logger.error("Set AZURE_STORAGE_ACCOUNT_URL (managed identity) or AZURE_STORAGE_CONNECTION_STRING")
         return 0
 
     container_client = blob_service.get_container_client(CONTAINER_NAME)
@@ -154,6 +192,19 @@ def upload_documents(data_dir: str) -> int:
         logger.info("Created container '%s'", CONTAINER_NAME)
     except Exception:
         pass  # Container already exists
+
+    # Reuse Option 1's filename-derived metadata so integrated vectorization
+    # populates parent_title / policy_number / category on every chunk. These
+    # are attached as blob custom metadata; the blob indexer surfaces them at
+    # /document/<key>, which the index projection maps onto each chunk.
+    from src.document_processing.document_ingestion import (
+        categorize_policy,
+        extract_policy_number,
+    )
+
+    def _ascii(value: str) -> str:
+        # Blob metadata values must be ASCII (HTTP header safe).
+        return value.encode("ascii", "ignore").decode("ascii").strip()
 
     data_path = Path(data_dir)
     uploaded = 0
@@ -169,9 +220,20 @@ def upload_documents(data_dir: str) -> int:
             continue
 
         blob_name = file_path.name
-        logger.info("  Uploading: %s", blob_name)
+
+        # Derive metadata from the filename (matches Option 1 exactly).
+        policy_number = extract_policy_number(file_path.stem)
+        parent_title = _ascii(file_path.stem)
+        category = categorize_policy(file_path.stem)
+        metadata = {"parent_title": parent_title, "category": category}
+        if policy_number:
+            metadata["policy_number"] = policy_number
+
+        logger.info("  Uploading: %s (policy=%s, category=%s)", blob_name, policy_number or "-", category)
         with open(file_path, "rb") as f:
-            container_client.upload_blob(name=blob_name, data=f, overwrite=True)
+            container_client.upload_blob(
+                name=blob_name, data=f, overwrite=True, metadata=metadata
+            )
         uploaded += 1
 
     logger.info("Uploaded %d documents to container '%s'", uploaded, CONTAINER_NAME)
@@ -319,9 +381,28 @@ def create_index() -> None:
 
 
 def create_data_source() -> None:
-    """Create Azure Blob Storage data source connection."""
+    """Create Azure Blob Storage data source connection.
+
+    Uses the keyless ``ResourceId=...`` form when managed identity is enabled (or
+    when no account key is present), so the Search service authenticates to blob
+    storage with its system-assigned identity (granted Storage Blob Data Reader).
+    This is required when the storage account disables shared-key access.
+    """
     search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT", "")
     conn_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "")
+
+    keyless = _use_managed_identity() or "AccountKey=" not in conn_str
+    if keyless:
+        resource_id = _storage_resource_id()
+        if not resource_id:
+            logger.error(
+                "Cannot build keyless data source: set AZURE_STORAGE_RESOURCE_ID "
+                "or AZURE_STORAGE_ACCOUNT_URL + AZURE_AI_PROJECT_RESOURCE_ID"
+            )
+            return
+        ds_connection = f"ResourceId={resource_id};"
+    else:
+        ds_connection = conn_str
 
     indexer_client = SearchIndexerClient(
         endpoint=search_endpoint, credential=_get_credential()
@@ -330,12 +411,13 @@ def create_data_source() -> None:
     data_source = SearchIndexerDataSourceConnection(
         name=DATA_SOURCE_NAME,
         type="azureblob",
-        connection_string=conn_str,
+        connection_string=ds_connection,
         container=SearchIndexerDataContainer(name=CONTAINER_NAME),
     )
 
     indexer_client.create_or_update_data_source_connection(data_source)
-    logger.info("Data source '%s' created for container '%s'", DATA_SOURCE_NAME, CONTAINER_NAME)
+    auth = "managed identity" if keyless else "connection string"
+    logger.info("Data source '%s' created for container '%s' (%s auth)", DATA_SOURCE_NAME, CONTAINER_NAME, auth)
 
 
 def create_skillset() -> None:
@@ -372,14 +454,14 @@ def create_skillset() -> None:
     skills = []
 
     # Skill 1: Document Intelligence Layout
-    skills.append({
+    output_format = layout_skill_cfg.get("output_format", "text") if layout_skill_cfg else "text"
+    layout_skill = {
         "@odata.type": "#Microsoft.Skills.Util.DocumentIntelligenceLayoutSkill",
         "name": layout_skill_cfg.get("name", "document-intelligence-layout") if layout_skill_cfg else "document-intelligence-layout",
         "description": "Analyze document structure using Azure Document Intelligence",
         "context": "/document",
         "outputMode": "oneToMany",
-        "outputFormat": layout_skill_cfg.get("output_format", "text") if layout_skill_cfg else "text",
-        "markdownHeaderDepth": layout_skill_cfg.get("markdown_header_depth", "h3") if layout_skill_cfg else "h3",
+        "outputFormat": output_format,
         "chunkingProperties": {
             "unit": chunking_props.get("unit", "characters"),
             "maximumLength": chunking_props.get("maximum_length", 2000),
@@ -391,7 +473,13 @@ def create_skillset() -> None:
         "outputs": [
             {"name": "text_sections", "targetName": "text_sections"}
         ],
-    })
+    }
+    # markdownHeaderDepth is only valid when outputFormat is 'markdown'
+    if output_format == "markdown":
+        layout_skill["markdownHeaderDepth"] = (
+            layout_skill_cfg.get("markdown_header_depth", "h3") if layout_skill_cfg else "h3"
+        )
+    skills.append(layout_skill)
 
     # Skill 2: Azure OpenAI Embedding (settings from the single `embedding` block)
     emb_deployment = search_cfg.embedding_deployment
@@ -430,13 +518,35 @@ def create_skillset() -> None:
         },
     }
 
-    # Cognitive services for billing
+    # Cognitive services attachment for skillset billing / enrichment.
+    # Without an attached AI Services resource the skillset is capped at 20 free
+    # document enrichments. The AI Services account has local auth (keys) disabled,
+    # so attach via the Search service's managed identity (keyless). Falls back to
+    # a key only if one is explicitly provided.
     cognitive_services = None
     if cognitive_key and not cognitive_key.startswith("your_"):
         cognitive_services = {
             "@odata.type": "#Microsoft.Azure.Search.CognitiveServicesByKey",
             "key": cognitive_key,
         }
+    else:
+        ai_services_url = os.getenv("AZURE_AI_SERVICES_ENDPOINT", "").strip()
+        if not ai_services_url:
+            # Derive the AI Services subdomain URL from the AI project/account id.
+            resource_id = os.getenv("AZURE_AI_PROJECT_RESOURCE_ID", "")
+            m = re.search(r"/accounts/([^/]+)", resource_id)
+            if m:
+                ai_services_url = f"https://{m.group(1)}.cognitiveservices.azure.com/"
+        if ai_services_url:
+            cognitive_services = {
+                "@odata.type": "#Microsoft.Azure.Search.AIServicesByIdentity",
+                "subdomainUrl": ai_services_url.rstrip("/") + "/",
+                # null identity => use the Search service's system-assigned identity
+                "identity": None,
+            }
+            logger.info(
+                "Attaching AI Services via managed identity: %s", ai_services_url
+            )
 
     # Build skillset payload
     skillset_payload = {
@@ -484,10 +594,18 @@ def create_indexer() -> None:
         skillset_name=SKILLSET_NAME,
         parameters=IndexingParameters(
             batch_size=search_cfg.indexer_batch_size,
+            # Tolerate unsupported/legacy files (e.g. legacy .doc, .xlsx) so one
+            # bad file does not abort the whole run. Supported docx/pdf still index.
+            max_failed_items=-1,
+            max_failed_items_per_batch=-1,
             configuration=IndexingParametersConfiguration(
                 data_to_extract=search_cfg.indexer_data_to_extract,
                 parsing_mode=search_cfg.indexer_parsing_mode,
                 allow_skillset_to_read_file_data=search_cfg.indexer_allow_skillset_to_read_file_data,
+                # Legacy binary .doc is not supported by the Document Intelligence
+                # Layout skill and its failures are classified as transient, which
+                # puts the indexer into an endless retry loop. Skip them entirely.
+                excluded_file_name_extensions=".doc",
             ),
         ),
         field_mappings=[

@@ -41,6 +41,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from dotenv import load_dotenv
+
+load_dotenv(PROJECT_ROOT / ".env")
+
 from src.config.search_config import search_cfg
 from src.document_processing.document_ingestion import DocumentIngestionAgent, extract_policy_number, categorize_policy
 from src.document_processing.chunking import fixed_size_chunking
@@ -79,7 +83,9 @@ def run(data_dir: str, local_only: bool = False) -> None:
 
     # 1. Initialize services
     search_service = IntegratedVectorizationSearchService()
-    ingestion_agent = DocumentIngestionAgent()
+    # use_azure=True routes Office/PDF documents through Azure Document Intelligence
+    # (prebuilt-layout). Disabled only in --local-only mode.
+    ingestion_agent = DocumentIngestionAgent(use_azure=not local_only)
 
     if not local_only and not search_service.is_configured:
         logger.error("Azure AI Search not configured. Set AZURE_SEARCH_ENDPOINT.")
@@ -109,12 +115,23 @@ def run(data_dir: str, local_only: bool = False) -> None:
         logger.info("Processing: %s", file_path.name)
 
         # 4a. Extract text via Document Intelligence
-        result = ingestion_agent.process_document(str(file_path))
+        try:
+            result = ingestion_agent.process_document(str(file_path))
+        except Exception as e:  # noqa: BLE001 - never let one bad file halt the run
+            logger.error("  Skipping (extraction failed): %s -> %s", file_path.name, e)
+            continue
         if not result or not result.get("text"):
             logger.warning("  Skipping (no text extracted): %s", file_path.name)
             continue
 
         raw_text = result["text"]
+        # Quality gate: skip documents that extracted mostly non-text bytes
+        # (e.g. an unsupported binary that fell through to raw-byte decoding).
+        printable = sum(1 for c in raw_text if c.isalnum() or c.isspace()) / max(len(raw_text), 1)
+        if printable < 0.6:
+            logger.warning("  Skipping (low text quality %.2f): %s", printable, file_path.name)
+            continue
+
         policy_number = extract_policy_number(str(file_path))
         category = categorize_policy(str(file_path))
         parent_title = file_path.stem
