@@ -28,7 +28,7 @@ variable "resource_prefix" {
 variable "openai_deployment_name" {
   description = "Azure OpenAI chat model deployment name"
   type        = string
-  default     = "gpt-4.1"
+  default     = "gpt-5-mini"
 }
 
 variable "gpt5_deployment_name" {

@@ -41,7 +41,7 @@ az ad signed-in-user show --query id -o tsv
 | `environment_name` | string | _(required)_ | Environment name (e.g. `demo`) |
 | `location` | string | `eastus` | Azure region |
 | `resource_prefix` | string | `hr-policy-kb` | Prefix for resource naming |
-| `openai_deployment_name` | string | `gpt-4.1` | GPT-4.1 deployment name |
+| `openai_deployment_name` | string | `gpt-5-mini` | GPT-5-mini deployment name |
 | `embedding_deployment_name` | string | `text-embedding-3-small` | Embedding model deployment name |
 | `search_sku` | string | `basic` | AI Search SKU (`basic` or `standard`) |
 | `principal_id` | string | `""` | User/SP object ID for RBAC; leave empty to skip |
@@ -52,7 +52,7 @@ az ad signed-in-user show --query id -o tsv
 |--------|-------------|
 | `resource_group_name` | Resource group name |
 | `openai_endpoint` | AI Foundry / OpenAI endpoint URL |
-| `openai_deployment_name` | GPT-4.1 deployment name |
+| `openai_deployment_name` | GPT-5-mini deployment name |
 | `embedding_deployment_name` | Embedding deployment name |
 | `ai_foundry_resource_name` | AI Foundry account name |
 | `search_endpoint` | AI Search endpoint URL |

@@ -38,7 +38,7 @@ file the FastAPI backend uses.
 | `AZURE_SEARCH_API_KEY` | A, C, Hosted | Optional — `DefaultAzureCredential` is used as fallback |
 | `AZURE_SEARCH_INDEX_NAME` | All | Defaults to `hr-policy-index` |
 | `AZURE_AI_PROJECT_ENDPOINT` | B, Hosted | Foundry project endpoint |
-| `AZURE_OPENAI_DEPLOYMENT_NAME` | B, Hosted | Defaults to `gpt-4.1` |
+| `AZURE_OPENAI_DEPLOYMENT_NAME` | B, Hosted | Defaults to `gpt-5-mini` |
 
 The `hr-policy-index` must already be populated. From the repo root:
 

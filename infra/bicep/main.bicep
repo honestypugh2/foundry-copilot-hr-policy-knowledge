@@ -2,7 +2,7 @@
 // HR Policy Knowledge Agent - Demo Resources (Resource Group scope)
 // Deploys ONLY the services needed for a demo:
 //   1. Azure AI Foundry (AIServices) + Project
-//   2. GPT-4.1 deployment (chat/inference)
+//   2. GPT-5-mini deployment (chat/inference)
 //   3. GPT-5 deployment (advanced reasoning)
 //   4. text-embedding-3-small deployment (vector embeddings)
 //   5. Azure AI Search (semantic ranker enabled)

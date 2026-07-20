@@ -14,7 +14,7 @@ Both deploy the same set of resources into a single resource group.
 | # | Service | Purpose |
 |---|---------|---------|
 | 1 | **Azure AI Foundry** (AIServices) + Project | Unified cognitive services account |
-| 2 | **GPT-4.1** deployment | Chat / inference (GlobalStandard, 100 capacity) |
+| 2 | **GPT-5-mini** deployment | Chat / inference (GlobalStandard) |
 | 3 | **text-embedding-3-small** deployment | Vector embeddings for hybrid search (Standard, 120 capacity) |
 | 4 | **Azure AI Search** | Hybrid search index with semantic ranker (`free` tier) |
 | 5 | **Azure Document Intelligence** | Document parsing (prebuilt-layout, S0) |
@@ -55,7 +55,7 @@ When `principalId` / `principal_id` is provided, these roles are granted at reso
 
 ## Prerequisites
 
-- Azure subscription with access to Azure OpenAI (GPT-4.1) and AI Search
+- Azure subscription with access to Azure OpenAI (GPT-5-mini) and AI Search
 - Azure CLI (`az`) logged in, or Terraform CLI with `azurerm` provider configured
 - For Bicep: Azure Developer CLI (`azd`) recommended
 - For Terraform: version >= 1.5.0

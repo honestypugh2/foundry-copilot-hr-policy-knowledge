@@ -20,18 +20,26 @@ This repo supports three main paths. Pick the one that matches your scenario:
 
 > **Not sure which?** Start with **Path 1** (Pattern A). It's zero-code, demonstrates value in minutes, and you can layer Foundry Agent Service on top later without re-indexing.
 
+> **Two more patterns** round out the palette: **Pattern C** (a sub-second
+> deterministic document-locator on `/api/lookup`) and **Pattern A2** (Copilot
+> Studio's *new agent experience* connecting straight to a **Foundry IQ**
+> knowledge base via Microsoft IQ — agentic retrieval with no prompt agent). Both
+> are detailed in [docs/RetrievalPatterns.md](docs/RetrievalPatterns.md).
+
 ---
 
 ## Decision Tree — Pick a Pattern
 
 ```mermaid
 flowchart TD
-    Start([New HR Q&A scenario]) --> Q1{Need answer synthesis?}
+    Start([ New HR Q&A scenario]) --> Q1{Need answer synthesis?}
     Q1 -- No, just locate document --> QL{Docs in a citation-friendly KB? SharePoint, AI Search w/ blob_url}
     QL -- Yes --> Native["★ Native Copilot Studio citations Pattern A KB + click-through link no extra code"]
     QL -- "No — need sub-second latency, URL in body verbatim, or auditable output" --> C[Pattern C: Dual-Tool Routing POST /api/lookup]
     Q1 -- Yes --> Q2{Need an LLM agent?}
-    Q2 -- "No, hybrid search is enough" --> A["★ Pattern A: Direct Knowledge Base Copilot Studio → AI Search (default)"]
+    Q2 -- "No, hybrid search is enough" --> QK{Classic index search or agentic KB retrieval?}
+    QK -- Classic search --> A["★ Pattern A: Direct Knowledge Base Copilot Studio → AI Search (default)"]
+    QK -- Agentic retrieval over KB --> A2["Pattern A2: Copilot Studio new experience → Microsoft IQ → Foundry IQ"]
     Q2 -- Yes --> Q3{Self-host the runtime?}
     Q3 -- No --> B[Pattern B: Foundry Agent Service prompt agent + MCPTool]
     Q3 -- Yes --> H[Hosted Agent runtime Microsoft Agent Framework hosting]
@@ -116,9 +124,9 @@ Key environment variables (see `.env.example`):
 AZURE_AI_PROJECT_ENDPOINT=https://<project>.services.ai.azure.com/api/projects/<project>
 AZURE_SEARCH_ENDPOINT=https://<search>.search.windows.net
 AZURE_OPENAI_ENDPOINT=https://<openai>.openai.azure.com
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-5-mini
 AGENT_SERVICE=agent-framework  # default. Set to "foundry" only when running Pattern B
-ORCHESTRATOR_PATTERN=A         # documentation hint — see docs/RetrievalPatterns.md
+ORCHESTRATOR_PATTERN=A         # controls /api/chat routing — see docs/RetrievalPatterns.md
 SEARCH_MODE=integrated_vectorization
 ```
 
@@ -170,7 +178,7 @@ uv run python -m src.agents.create_foundry_agent
 ```
 
 Creates: Knowledge Source → Knowledge Base → MCP connection → PromptAgent
-(`HRPolicyAgent`, `gpt-4.1`, `tool_choice="required"`).
+(`HRPolicyAgent`, `gpt-5-mini`, `tool_choice="required"`).
 
 Verify or clean up:
 
@@ -259,7 +267,7 @@ azd env set AZURE_PRINCIPAL_ID $(az ad signed-in-user show --query id -o tsv)
 azd up
 ```
 
-`azd up` provisions: AI Foundry + project, gpt-4.1 / gpt-5 / embeddings,
+`azd up` provisions: AI Foundry + project, gpt-5-mini / gpt-5 / embeddings,
 Azure AI Search, Document Intelligence, Storage (`ask-hr-knowledge` container),
 **Azure Container Registry**, a **Container Apps environment + FastAPI backend**
 (Pattern C `/api/lookup` + Pattern B2 `/api/chat`), **Log Analytics + Application

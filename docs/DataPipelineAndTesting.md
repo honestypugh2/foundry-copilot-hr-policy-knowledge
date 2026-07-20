@@ -425,7 +425,7 @@ src/agents/create_foundry_agent.py
         │       └── MCP connection (project managed identity)
         │
         └── 4. create_foundry_agent()
-                └── HRPolicyAgent (gpt-4.1) + knowledge_base_retrieve MCP tool
+                └── HRPolicyAgent (gpt-5-mini) + knowledge_base_retrieve MCP tool
 ```
 
 **Agent configuration** is driven by `src/config/search_config.json`:
@@ -436,7 +436,7 @@ src/agents/create_foundry_agent.py
 | `agentic_retrieval.knowledge_base_name` | Knowledge base name (`hr-knowledge-base`) |
 | `agentic_retrieval.output_mode` | Retrieval output mode (`EXTRACTIVE`) |
 | `agentic_retrieval.retrieval_reasoning_effort` | Reasoning effort (`medium`) |
-| `foundry_agent.model` | LLM model (`gpt-4.1`) |
+| `foundry_agent.model` | LLM model (`gpt-5-mini`) |
 | `foundry_agent.retrieval_instructions` | Detailed retrieval guidelines |
 | `foundry_agent.answer_instructions` | Detailed answer generation guidelines |
 

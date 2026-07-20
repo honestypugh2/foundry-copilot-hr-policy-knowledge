@@ -74,7 +74,7 @@ project = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=DefaultAzureCred
 project.agents.create_version(
     agent_name="HRPolicyAgent",
     definition=PromptAgentDefinition(
-        model="gpt-4.1",
+        model="gpt-5-mini",
         instructions=AGENT_INSTRUCTIONS,
         tools=[MCPTool(
             server_label="hr-knowledge",
@@ -110,7 +110,7 @@ def search_hr_policies(query: str) -> list[dict]:
 
 chat_client = FoundryChatClient(
     project_endpoint=PROJECT_ENDPOINT,
-    model="gpt-4.1",
+    model="gpt-5-mini",
     credential=DefaultAzureCredential(),
 )
 agent = chat_client.as_agent(

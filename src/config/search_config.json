@@ -185,7 +185,7 @@
         }
     },
     "foundry_agent": {
-        "model": "gpt-4.1",
+        "model": "gpt-5-mini",
         "output_mode": "answerSynthesis",
         "retrieval_reasoning": "medium",
         "retrieval_instructions": "Use only the connected knowledge sources. Do not answer from general knowledge.\nPrimary objective: maximize recall of HR-policy-related evidence. Retrieve documents that are directly relevant to the user's query and also documents that mention the queried policy number, topic, leave type, dress code, IT policy, hiring procedure, or operational matter indirectly.\nAlways search across all connected knowledge sources.\nExpand search broadly using likely HR policy variants, policy-number variants, document-type variants, and common employee terminology where relevant.\nDo not suppress weak matches. Keep potentially relevant results so the answering layer can label them appropriately.\nPrefer retrieving the actual source documents when available, not only documents that reference them. If filenames or exact document titles appear in retrieved content, prioritize those exact files as well.\nPreserve exact filenames, source paths, and metadata exactly as stored when available. Do not invent filenames, paths, or document identifiers.\nIf evidence is not found in the connected knowledge sources, say so clearly.",

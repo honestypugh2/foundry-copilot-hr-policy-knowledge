@@ -143,6 +143,14 @@ class HRPolicySearchService:
     - Full-text search with glossary expansion
     - Semantic search (when index is configured with semantic config)
     - Local fallback search for demo mode
+
+    Legacy schema note: this service builds and queries a **distinct legacy
+    index schema** (``title`` / ``content`` / ``content_vector``), paired with
+    ``src/indexing/reindex.py``. It backs ``SEARCH_MODE=legacy`` only. The
+    default path uses ``IntegratedVectorizationSearchService`` with the shared
+    ``search_config.json`` schema (``policy`` / ``parent_title`` /
+    ``policy_vector``). The two index shapes are **not interchangeable** — an
+    index built for one will not answer queries from the other.
     """
 
     # Sourced from the single embedding block in search_config.json.

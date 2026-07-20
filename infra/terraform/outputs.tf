@@ -14,8 +14,8 @@ output "openai_endpoint" {
 }
 
 output "openai_deployment_name" {
-  description = "GPT-4.1 deployment name"
-  value       = azurerm_cognitive_deployment.gpt41.name
+  description = "GPT-5-mini deployment name"
+  value       = azurerm_cognitive_deployment.gpt5mini.name
 }
 
 output "gpt5_deployment_name" {

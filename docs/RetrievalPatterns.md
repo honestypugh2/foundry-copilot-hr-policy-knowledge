@@ -1,8 +1,8 @@
 # Retrieval Patterns
 
-This project supports three retrieval patterns plus a Hosted Agent runtime
-(Microsoft Agent Framework hosting). Choose one based on **who orchestrates
-the search** and **how results reach Copilot Studio**.
+This project supports four retrieval patterns (A, A2, B, C) plus a Hosted Agent
+runtime (Microsoft Agent Framework hosting). Choose one based on **who
+orchestrates the search** and **how results reach Copilot Studio**.
 
 > Naming note: "Hosted Agent" here means the **Agent Framework hosting**
 > pattern (GA — see [Step 7: Host Your Agent](https://learn.microsoft.com/en-us/agent-framework/get-started/hosting?pivots=programming-language-python)).
@@ -22,7 +22,9 @@ flowchart TD
     QL -- Yes --> Native[★ Native Copilot Studio citations Pattern A KB + click-through link no extra code]
     QL -- "No — need sub-second latency, URL in body verbatim, or auditable output" --> C[Pattern C:Dual-Tool Routing]
     Q1 -- Yes --> Q2{Need an LLM agent?}
-    Q2 -- No, hybrid search is enough --> A[Pattern A: Direct Knowledge Base]
+    Q2 -- No, hybrid search is enough --> QK{Classic index search or agentic KB retrieval?}
+    QK -- Classic search --> A[Pattern A: Direct Knowledge Base]
+    QK -- Agentic retrieval over KB --> A2[Pattern A2: Copilot Studio new experience Microsoft IQ Foundry IQ]
     Q2 -- Yes, full agentic retrieval --> Q3{Self-host the runtime?}
     Q3 -- No --> B[Pattern B: Foundry Agent Service prompt agent + MCPTool ]
     Q3 -- Yes --> H[Hosted Agent runtime Microsoft Agent Framework hosting]
@@ -51,7 +53,7 @@ flowchart TD
 | Aspect                | Pattern A — Direct KB ★              | Pattern B — Foundry Agent + MCP      | Pattern C — Dual-Tool Routing              | Hosted Agent (Agent Framework)        |
 | --------------------- | ------------------------------------ | ------------------------------------ | ------------------------------------------ | ------------------------------------- |
 | **Orchestrator**      | Copilot Studio                       | Foundry Agent Service                | Copilot Studio (router)                    | Agent Framework runtime container      |
-| **LLM call**          | None (extractive only)               | Yes (`gpt-4.1`)                      | Yes for content; none for lookup           | Yes (`gpt-4.1` via FoundryChatClient) |
+| **LLM call**          | None (extractive only)               | Yes (`gpt-5-mini`)                      | Yes for content; none for lookup           | Yes (`gpt-5-mini` via FoundryChatClient) |
 | **Search**            | Azure AI Search KB (REST)            | KB MCP tool inside agent             | `/api/lookup` (no LLM) + KB MCP            | Tool: `search_hr_policies` (`@tool`)  |
 | **Code path**         | Copilot Studio knowledge action       | `src/agents/hr_policy_agent.py`      | `src/backend/main.py:/api/lookup` + B/A    | `src/hosted_agent/server.py`          |
 | **Latency**           | ~1–2 s                               | ~10–14 s                             | ~1–2 s (lookup) / ~10–14 s (answer)        | ~10–14 s                              |

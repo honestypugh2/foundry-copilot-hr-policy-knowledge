@@ -39,7 +39,7 @@ PROJECT_ENDPOINT = os.environ.get(
 )
 MODEL = os.environ.get(
     "AZURE_AI_MODEL_DEPLOYMENT_NAME",
-    os.environ.get("FOUNDRY_MODEL", os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4.1")),
+    os.environ.get("FOUNDRY_MODEL", os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-5-mini")),
 )
 AZURE_SEARCH_ENDPOINT = os.environ.get("AZURE_SEARCH_ENDPOINT", "")
 AZURE_SEARCH_INDEX = os.environ.get(

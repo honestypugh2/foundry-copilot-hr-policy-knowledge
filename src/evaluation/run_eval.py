@@ -114,7 +114,7 @@ def _apply_llm_graders(
 
     model_config = {
         "azure_endpoint": os.getenv("AZURE_OPENAI_ENDPOINT", ""),
-        "azure_deployment": os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4.1"),
+        "azure_deployment": os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-5-mini"),
         "api_version": os.getenv("AZURE_OPENAI_API_VERSION", "2024-06-01"),
     }
     if os.getenv("AZURE_OPENAI_API_KEY"):

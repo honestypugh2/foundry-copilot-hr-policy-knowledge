@@ -49,5 +49,5 @@ def test_build_memory_definition_default_models(monkeypatch):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.delenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", raising=False)
     definition = ms.build_memory_definition()
-    assert definition.chat_model == "gpt-4.1"
+    assert definition.chat_model == "gpt-5-mini"
     assert definition.embedding_model == "text-embedding-3-small"

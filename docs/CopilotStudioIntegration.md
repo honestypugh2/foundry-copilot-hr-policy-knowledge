@@ -63,7 +63,7 @@ knowledge source — lives in
 | ------------------------ | -------------------------------------- | ----------------------------------------- |
 | **How it works**         | Copilot Studio queries `hr-policy-index` directly via its native Azure AI Search connector. Hybrid (text + vector + semantic) search via integrated vectorization. Copilot Studio's built-in LLM synthesizes the answer. | Copilot Studio invokes a Foundry Agent via **Agents → Add an agent → Connect to an external agent → Microsoft Foundry (Preview)** (or a **REST API tool**). The agent uses agentic retrieval for AI-planned query routing, sub-query decomposition, and source attribution with custom retrieval + answer instructions. |
 | **Search type**          | Text + vector + semantic ranker (single query) | Agentic retrieval (query planning + sub-queries + semantic ranking + answer synthesis) |
-| **Answer synthesis**     | Copilot Studio built-in LLM            | Foundry Agent (`gpt-4.1`) with custom instructions |
+| **Answer synthesis**     | Copilot Studio built-in LLM            | Foundry Agent (`gpt-5-mini`) with custom instructions |
 | **Custom instructions**  | Limited (Copilot Studio Instructions field) | Full retrieval + answer instructions in `search_config.json` |
 | **Source attribution**   | URL-based citations (`metadata_storage_path`) | Rich per-fact citations with policy numbers via agent instructions |
 | **Latency**              | ~1–2 s                                | ~10–14 s                                |
@@ -94,7 +94,7 @@ Employee (Teams / Web) ──► Copilot Studio Agent
             Knowledge Source     Foundry Agent Tool
             (Azure AI Search)      │
                     │              ▼
-                    │         Foundry Agent (gpt-4.1)
+                    │         Foundry Agent (gpt-5-mini)
                     │              │
                     │         MCP Tool: knowledge_base_retrieve
                     │              │
@@ -473,7 +473,7 @@ This creates:
 1. **Knowledge Source** (`hr-knowledge-source`) → points to `hr-policy-index`.
 2. **Knowledge Base** (`hr-knowledge-base`) → wraps knowledge source(s).
 3. **MCP connection** in the Foundry project (managed identity).
-4. **Foundry Agent** (`HRPolicyAgent`, `gpt-4.1`) with the
+4. **Foundry Agent** (`HRPolicyAgent`, `gpt-5-mini`) with the
    `knowledge_base_retrieve` MCP tool and `tool_choice="required"`.
 
 Verify all resources exist:
@@ -564,7 +564,7 @@ If you prefer explicit routing instead of generative orchestration:
 <a id="hosted-agent-wiring"></a>
 ## Hosted Agent wiring — Self-hosted container as a Tool
 
-This path runs the same answer loop as Pattern B — `gpt-4.1` synthesising
+This path runs the same answer loop as Pattern B — `gpt-5-mini` synthesising
 over an Azure AI Search retrieval tool — but inside your own container
 ([`src/hosted_agent/server.py`](../src/hosted_agent/server.py)). Use it
 when you need custom auth, sidecar services, or full control of the

@@ -17,7 +17,7 @@ param location string
 param resourcePrefix string = 'hr-policy-kb'
 
 @description('Azure OpenAI chat model deployment name')
-param openAIDeploymentName string = 'gpt-4.1'
+param openAIDeploymentName string = 'gpt-5-mini'
 
 @description('Azure OpenAI GPT-5 deployment name')
 param gpt5DeploymentName string = 'gpt-5'
