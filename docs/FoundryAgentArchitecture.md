@@ -118,7 +118,7 @@ endpoint exposes other tools (e.g. listing) — pinning to
 3. Cite the policy number and full title inline.
 
 These three together produce answers in the form
-`Closed-toe shoes are required. [Policy 52005 — Operational Matters: Uniform Dress Code]`.
+`Closed-toe shoes are required. [Policy 60010 — Operational Matters: Uniform Dress Code]`.
 
 ---
 

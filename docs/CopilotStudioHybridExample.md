@@ -50,17 +50,17 @@ flowchart LR
 > ```json
 > {
 >   "documents": [{
->     "policy_number": "52005",
+>     "policy_number": "60010",
 >     "parent_title": "Operational Matters: Uniform Dress Code",
->     "blob_url": "https://stxxx.blob.core.windows.net/ask-hr-knowledge/52005-uniform-dress-code.docx",
->     "metadata_storage_name": "52005-uniform-dress-code.docx",
+>     "blob_url": "https://stxxx.blob.core.windows.net/ask-hr-knowledge/60010-uniform-dress-code.docx",
+>     "metadata_storage_name": "60010-uniform-dress-code.docx",
 >     "score": 4.7
 >   }]
 > }
 > ```
 >
 > **Copilot Studio renders adaptive card:**
-> > **Policy 52005 — Operational Matters: Uniform Dress Code**
+> > **Policy 60010 — Operational Matters: Uniform Dress Code**
 > > [Open document]
 
 ### Turn 2 — Content question (same conversation)
@@ -68,17 +68,17 @@ flowchart LR
 > **User:** What footwear is allowed?
 >
 > **Copilot Studio routing:** matches *Content question* intent (and
-> retains `Policy 52005` from Turn 1's slot).
+> retains `Policy 60010` from Turn 1's slot).
 > Calls `askHRPolicy({"message": "What footwear is allowed under the
-> Uniform Dress Code (Policy 52005)?"})`.
+> Uniform Dress Code (Policy 60010)?"})`.
 >
 > **Backend (`/api/chat`):** ~12 s. Foundry Agent invokes the MCP
-> `knowledge_base_retrieve` tool, retrieves §3 of Policy 52005, and
+> `knowledge_base_retrieve` tool, retrieves §3 of Policy 60010, and
 > returns:
 > ```json
 > {
->   "answer": "Closed-toe, slip-resistant shoes are required for all uniformed staff. Open-toed sandals, flip-flops, and athletic sneakers are not permitted in customer-facing areas. [Policy 52005 - Operational Matters: Uniform Dress Code]",
->   "policy_references": ["Policy 52005 - Operational Matters: Uniform Dress Code"],
+>   "answer": "Closed-toe, slip-resistant shoes are required for all uniformed staff. Open-toed sandals, flip-flops, and athletic sneakers are not permitted in customer-facing areas. [Policy 60010 - Operational Matters: Uniform Dress Code]",
+>   "policy_references": ["Policy 60010 - Operational Matters: Uniform Dress Code"],
 >   "confidence": 0.85
 > }
 > ```
@@ -90,7 +90,7 @@ flowchart LR
 >
 > **Copilot Studio routing:** the system message says *"call askHRPolicy
 > first; then call lookupHRPolicyDocument only if no inline citation is
-> returned."* Inline `[Policy 51350 - …]` citation is present, so the
+> returned."* Inline `[Policy 50010 - …]` citation is present, so the
 > copilot follows up with `lookupHRPolicyDocument` and renders a
 > document card alongside the textual answer.
 

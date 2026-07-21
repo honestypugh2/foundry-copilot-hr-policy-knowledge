@@ -146,12 +146,12 @@ Each chunk document is enriched with metadata extracted from SharePoint and the 
 {
   "chunk_id": "<doc-id>_chunk_001",
   "content": "Extracted text for this chunk...",
-  "title": "50715 - Hours Worked and Pay Administration: Holiday Pay",
-  "policy_number": "50715",
+  "title": "30010 - Hours Worked and Pay Administration: Holiday Pay",
+  "policy_number": "30010",
   "category": "Hours Worked and Pay Administration",
   "source_library": "ASK HR Knowledge",
   "sharepoint_site": "https://<tenant>.sharepoint.com/sites/HRPolicies",
-  "file_name": "50715 - Hours Worked and Pay Administration_ Holiday Pay.docx",
+  "file_name": "30010 - Hours Worked and Pay Administration_ Holiday Pay.docx",
   "last_modified": "2026-02-15T10:30:00Z",
   "doc_type": "Policy",
   "acl_hints": ["All Employees"]

@@ -34,10 +34,10 @@ data/
 ├── knowledge_base/            # Production knowledge base
 │   └── ASK HR Knowledge/      # HR policy documents (.docx, .doc, .txt)
 ├── knowledge_base_lab/        # Lab/dev documents for testing
-│   ├── 50715 - Hours Worked and Pay Administration_ Holiday Pay (23641_4)/
-│   ├── 51350 - Types of Leave_ Paid Time Off (PTO) (23472_2)/
-│   ├── 52005 - Operational Matters_ Uniform Dress Code (2583_19)/
-│   └── ...                    # ~18 policy directories
+│   ├── 30010 - Hours Worked and Pay Administration_ Holiday Pay (1007_0)/
+│   ├── 50010 - Types of Leave_ Paid Time Off (PTO) (1010_0)/
+│   ├── 60010 - Operational Matters_ Uniform Dress Code (1013_0)/
+│   └── ...                    # ~29 policy directories
 └── uploads/                   # Staging area
 ```
 
@@ -79,7 +79,7 @@ The `DocumentIngestionAgent` class extracts text from HR policy documents using 
 from src.document_processing.document_ingestion import DocumentIngestionAgent
 
 agent = DocumentIngestionAgent(use_azure=True)
-result = agent.process_document("data/knowledge_base_lab/51350 - .../policy.docx")
+result = agent.process_document("data/knowledge_base_lab/50010 - .../policy.docx")
 # Returns: {
 #     "text": "Full extracted text...",
 #     "page_count": 3,
@@ -95,7 +95,7 @@ result = agent.process_document("data/knowledge_base_lab/51350 - .../policy.docx
 | Function | Purpose |
 |----------|---------|
 | `generate_document_id(file_path)` | Deterministic MD5-based document ID from file path |
-| `extract_policy_number(filename)` | Extracts 5–6 digit policy number (e.g., `"51350"`) from filename |
+| `extract_policy_number(filename)` | Extracts 5–6 digit policy number (e.g., `"50010"`) from filename |
 | `categorize_policy(filename)` | Maps filename keywords to categories: `hiring`, `leave`, `career_path`, `compensation`, `operational`, `ethics`, `safety`, `general` |
 
 ### 2. Chunking
@@ -147,7 +147,7 @@ from src.search.search_service import enrich_content_with_glossary
 
 enriched = enrich_content_with_glossary(
     content="Employees receive 10 days of PTO annually.",
-    title="51350 - Types of Leave_ Paid Time Off"
+    title="50010 - Types of Leave_ Paid Time Off"
 )
 # Appends: "\n\n--- HR Glossary Terms ---\nPTO: Paid Time Off\n..."
 ```
@@ -487,7 +487,7 @@ Tests the extraction helpers without requiring Azure credentials.
 
 | Test Class | Tests | What It Validates |
 |------------|-------|-------------------|
-| `TestExtractPolicyNumber` | 4 tests | Policy number extraction from filenames: standard format (`51350`), five-digit, six-digit (`101100`), no-number fallback |
+| `TestExtractPolicyNumber` | 4 tests | Policy number extraction from filenames: standard format (`50010`), five-digit, six-digit (`900100`), no-number fallback |
 | `TestCategorizePolicy` | 6 tests | Category assignment from filenames: `leave`, `hiring`, `ethics`, `safety`, `compensation`, `general` (fallback) |
 | `TestGenerateDocumentId` | 2 tests | Deterministic IDs (same input → same ID), uniqueness (different inputs → different IDs) |
 

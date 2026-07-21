@@ -21,18 +21,18 @@ def test_is_refusal_detects_standard_message():
         "I could not find this information in the HR policy documents. "
         "Please contact your HR representative for assistance."
     )
-    assert not is_refusal("Per Policy 51350, full-time employees accrue PTO.")
+    assert not is_refusal("Per Policy 50010, full-time employees accrue PTO.")
 
 
 def test_policy_number_cited_whole_token_only():
-    assert policy_number_cited("See Policy 51350 - PTO.", [], "51350")
-    # 5135 must not match inside 51350
-    assert not policy_number_cited("See Policy 51350 - PTO.", [], "5135")
+    assert policy_number_cited("See Policy 50010 - PTO.", [], "50010")
+    # 5001 must not match inside 50010
+    assert not policy_number_cited("See Policy 50010 - PTO.", [], "5001")
 
 
 def test_policy_number_cited_in_citations():
-    citations = [{"policy_number": "52005", "title": "Uniform Dress Code"}]
-    assert policy_number_cited("The dress code is defined here.", citations, "52005")
+    citations = [{"policy_number": "60010", "title": "Uniform Dress Code"}]
+    assert policy_number_cited("The dress code is defined here.", citations, "60010")
 
 
 def test_title_mentioned_threshold():
@@ -42,12 +42,12 @@ def test_title_mentioned_threshold():
 
 def test_grade_case_positive():
     result = {
-        "answer": "Per Policy 51350 - Types of Leave: Paid Time Off (PTO), you accrue PTO.",
-        "citations": [{"policy_number": "51350"}],
+        "answer": "Per Policy 50010 - Types of Leave: Paid Time Off (PTO), you accrue PTO.",
+        "citations": [{"policy_number": "50010"}],
     }
     expected = {
         "test_case": "pto-accrual",
-        "expected_policy_number": "51350",
+        "expected_policy_number": "50010",
         "expected_policy_title": "Types of Leave: Paid Time Off (PTO)",
     }
     graded = grade_case(result, expected)
@@ -63,7 +63,7 @@ def test_grade_case_wrongful_refusal_fails():
     }
     expected = {
         "test_case": "pto-accrual",
-        "expected_policy_number": "51350",
+        "expected_policy_number": "50010",
         "expected_policy_title": "Paid Time Off",
     }
     graded = grade_case(result, expected)
@@ -97,12 +97,12 @@ def test_grade_case_hallucinated_answer_for_out_of_scope_fails():
 def test_summarize_aggregates():
     results = [
         grade_case(
-            {"answer": "Policy 51350 covers PTO.", "citations": [{"n": "51350"}]},
-            {"test_case": "a", "expected_policy_number": "51350", "expected_policy_title": "PTO"},
+            {"answer": "Policy 50010 covers PTO.", "citations": [{"n": "50010"}]},
+            {"test_case": "a", "expected_policy_number": "50010", "expected_policy_title": "PTO"},
         ),
         grade_case(
             {"answer": "no idea", "citations": []},
-            {"test_case": "b", "expected_policy_number": "52005", "expected_policy_title": "Dress Code"},
+            {"test_case": "b", "expected_policy_number": "60010", "expected_policy_title": "Dress Code"},
         ),
     ]
     summary = summarize(results)

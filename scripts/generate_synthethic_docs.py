@@ -1,30 +1,38 @@
 """
-Regenerate CDFV2-Encrypted .docx files with synthetic HR policy content.
+Regenerate the HR policy knowledge base with fully synthetic content.
 
-Scans data/knowledge_base_lab/ for .docx files that are CDFV2 Encrypted
-(not valid OOXML), generates plausible HR policy content based on the
-filename, and overwrites the encrypted file with a proper .docx.
+This wipes and rebuilds both data sets with sanitized file names (real
+internal PolicyTech document IDs replaced by synthetic sequential codes) and
+freshly generated, non-confidential HR policy content:
+
+    data/knowledge_base/ASK HR Knowledge/   (flat set)
+    data/knowledge_base_lab/<name>/<name>   (folder-per-document lab set)
+
+The original documents contained real, encrypted content and author metadata;
+every file produced here is synthetic. The naming convention
+``{policy_number} - {title} ({synthetic_id}).{ext}`` is preserved, along with
+the original mix of formats (.docx, .doc, .pdf, .xlsx).
 
 Usage:
-    uv run python src/scripts/regenerate_encrypted_docx.py
-    uv run python src/scripts/regenerate_encrypted_docx.py --dry-run
+    uv run python scripts/generate_synthethic_docs.py
+    uv run python scripts/generate_synthethic_docs.py --dry-run
 """
 
 import argparse
 import logging
 import re
-import subprocess
-import sys
+import shutil
 from pathlib import Path
 
 from docx import Document
-from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "knowledge_base_lab"
+ROOT = Path(__file__).resolve().parents[1]
+KB_FLAT = ROOT / "data" / "knowledge_base" / "ASK HR Knowledge"
+KB_LAB = ROOT / "data" / "knowledge_base_lab"
 
 # ---------------------------------------------------------------------------
 # Content templates keyed by topic patterns found in filenames
@@ -307,19 +315,60 @@ POLICY_CONTENT = {
 }
 
 
-def _match_policy(filename: str) -> dict | None:
-    """Return the best-matching content template for a filename."""
-    name_lower = filename.lower()
+# ---------------------------------------------------------------------------
+# Sanitized document catalog
+#
+# Each entry is the sanitized file *stem* and its extension. The original
+# ``{policy_number} - {title} ({internal_id})`` naming convention is kept, but
+# the real internal PolicyTech IDs have been replaced with synthetic
+# sequential codes (1001_0 .. 1029_0) and the vendor name has been removed.
+# ---------------------------------------------------------------------------
+
+CATALOG: list[tuple[str, str]] = [
+    ("900100 - Blood Borne Pathogens Introduction (1001_0)", ".doc"),
+    ("900200 - Blood Borne Pathogens Methods of Compliance (1002_0)", ".doc"),
+    ("10000 - Code of Ethics and Related Matters (1003_0)", ".docx"),
+    ("20010 - Hiring_ Pre-employment Medical Examinations (1004_0)", ".docx"),
+    ("20020 - Hiring_ Rehiring of Retirees Without Advertising (1005_0)", ".docx"),
+    ("20030 - Hiring_ Probationary Period (1006_0)", ".docx"),
+    ("30010 - Hours Worked and Pay Administration_ Holiday Pay (1007_0)", ".docx"),
+    ("40010 - Career Path_ HR Generalist (1008_0)", ".docx"),
+    ("40020 - Career Path_ Data Management (DM) (1009_0)", ".docx"),
+    ("50010 - Types of Leave_ Paid Time Off (PTO) (1010_0)", ".docx"),
+    ("50020 - Types of Leave_ Paid Time Off (PTO) - Part-time (1011_0)", ".docx"),
+    ("50030 - Short-Term Disability (1012_0)", ".docx"),
+    ("60010 - Operational Matters_ Uniform Dress Code (1013_0)", ".docx"),
+    ("60020 - Operational Matters_ Non-Uniform Dress Code (1014_0)", ".docx"),
+    ("70010 - Information Technology Acceptable Use Policy (1015_0)", ".docx"),
+    ("70020 - IT Information Security Policy (1016_0)", ".docx"),
+    ("70030 - Emergency Notification System Policy (1017_0)", ".doc"),
+    ("70040 - Computer Replacement Policy (1018_0)", ".doc"),
+    ("70050 - Information Systems Roles and Responsibilities (1019_0)", ".docx"),
+    ("70060 - Generative Artificial Intelligence (AI) & Large Language Models (LLM) Policy (1020_0)", ".docx"),
+    ("70070 - Mobile Device and Use Policy (1021_0)", ".docx"),
+    ("Configuration Management Policy (1022_0)", ".docx"),
+    ("Cyber Security Committee Charter (1023_0)", ".docx"),
+    ("FS_ 201 - SOP Uniforms_Polos (1024_0)", ".docx"),
+    ("Information Technology Mission Statement (1025_0)", ".doc"),
+    ("Integrated Technology Master Plan (1026_0)", ".pdf"),
+    ("Manager Toolkit (1027_0)", ".docx"),
+    ("Policy Documents Index (1028_0)", ".xlsx"),
+    ("SOP - Uniform Issuance (1029_0)", ".docx"),
+]
+
+
+def _match_policy(name: str) -> dict | None:
+    """Return the best-matching content template for a file name/stem."""
+    name_lower = name.lower()
     for pattern, content in POLICY_CONTENT.items():
         if re.search(pattern, name_lower):
             return content
     return None
 
 
-def _parse_title(filename: str) -> tuple[str, str]:
-    """Extract policy number and title from filename like '51350 - Types of Leave...'."""
-    stem = Path(filename).stem
-    # Remove trailing (12345_N) version info
+def _parse_title(stem: str) -> tuple[str, str]:
+    """Extract policy number and title from a stem like '50010 - Types of Leave... (1010_0)'."""
+    # Remove trailing (12345_N) synthetic id
     stem = re.sub(r"\s*\(\d+_\d+\)\s*$", "", stem)
     m = re.match(r"^(\d+)\s*[-–]\s*(.+)$", stem)
     if m:
@@ -327,98 +376,200 @@ def _parse_title(filename: str) -> tuple[str, str]:
     return "", stem.strip()
 
 
-def generate_docx(filepath: Path, dry_run: bool = False) -> bool:
-    """Generate a proper .docx file with synthetic HR policy content."""
-    filename = filepath.name
-    policy_number, title = _parse_title(filename)
-    content = _match_policy(filename)
-
+def _build_content(stem: str) -> tuple[str, str, dict]:
+    """Return (policy_number, display_title, content) for a catalog stem."""
+    policy_number, title = _parse_title(stem)
+    display_title = title.replace("_", ":")
+    content = _match_policy(stem)
     if not content:
-        logger.warning("No template match for '%s' — generating generic content", filename)
         content = {
-            "purpose": f"To establish policies and procedures related to {title}.",
+            "purpose": f"To establish policies and procedures related to {display_title}.",
             "scope": "This policy applies to all employees of the organization.",
             "sections": [
-                ("Policy Statement", f"The organization maintains standards and procedures for {title} in accordance with applicable laws, regulations, and industry best practices."),
-                ("Responsibilities", f"Department heads and supervisors are responsible for ensuring compliance with {title} requirements within their areas of responsibility."),
-                ("Procedures", f"Detailed procedures for {title} are maintained by the responsible department and reviewed annually."),
+                ("Policy Statement", f"The organization maintains standards and procedures for {display_title} in accordance with applicable laws, regulations, and industry best practices."),
+                ("Responsibilities", f"Department heads and supervisors are responsible for ensuring compliance with {display_title} requirements within their areas of responsibility."),
+                ("Procedures", f"Detailed procedures for {display_title} are maintained by the responsible department and reviewed annually."),
                 ("Compliance", "Violations of this policy may result in disciplinary action up to and including termination of employment."),
             ],
         }
+    return policy_number, display_title, content
 
-    if dry_run:
-        logger.info("[DRY RUN] Would regenerate: %s", filepath)
-        return True
 
+# ---------------------------------------------------------------------------
+# Per-format writers
+# ---------------------------------------------------------------------------
+
+def write_docx(filepath: Path, stem: str) -> None:
+    """Write a proper OOXML .docx file with synthetic HR policy content."""
+    policy_number, title, content = _build_content(stem)
     doc = Document()
-
-    # Title
     heading = f"Policy {policy_number} — {title}" if policy_number else title
     doc.add_heading(heading, level=0)
-
-    # Purpose
     doc.add_heading("Purpose", level=1)
     doc.add_paragraph(content["purpose"])
-
-    # Scope
     doc.add_heading("Scope", level=1)
     doc.add_paragraph(content["scope"])
-
-    # Sections
     for section_title, section_body in content["sections"]:
         doc.add_heading(section_title, level=2)
         doc.add_paragraph(section_body)
-
-    # Footer
     doc.add_paragraph("")
     footer = doc.add_paragraph()
     footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    footer.add_run(
-        f"This document is the property of the organization. "
-        f"Policy {policy_number}. " if policy_number else ""
-    ).italic = True
-
+    note = f"This is a synthetic sample document. Policy {policy_number}." if policy_number else "This is a synthetic sample document."
+    footer.add_run(note).italic = True
     doc.save(str(filepath))
-    logger.info("Regenerated: %s", filepath)
-    return True
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Regenerate CDFV2-encrypted .docx with synthetic content")
-    parser.add_argument("--dry-run", action="store_true", help="List files that would be regenerated")
+def _content_as_text(stem: str) -> str:
+    """Render a policy as clean plain text."""
+    policy_number, title, content = _build_content(stem)
+    lines: list[str] = []
+    lines.append(f"Policy {policy_number} — {title}" if policy_number else title)
+    lines.append("")
+    lines.append("Purpose")
+    lines.append(content["purpose"])
+    lines.append("")
+    lines.append("Scope")
+    lines.append(content["scope"])
+    lines.append("")
+    for section_title, section_body in content["sections"]:
+        lines.append(section_title)
+        lines.append(section_body)
+        lines.append("")
+    note = f"This is a synthetic sample document. Policy {policy_number}." if policy_number else "This is a synthetic sample document."
+    lines.append(note)
+    return "\n".join(lines) + "\n"
+
+
+def write_doc(filepath: Path, stem: str) -> None:
+    """Write a legacy-.doc placeholder as clean UTF-8 text.
+
+    A real Word 97-2003 binary requires LibreOffice/antiword, which are not
+    available in this environment. The ingestion pipeline's text fallback reads
+    these cleanly, and the file keeps its ``.doc`` extension so the multi-format
+    pipeline is still exercised.
+    """
+    filepath.write_text(_content_as_text(stem), encoding="utf-8")
+
+
+def write_pdf(filepath: Path, stem: str) -> None:
+    """Write a real PDF with synthetic content using reportlab."""
+    from reportlab.lib.pagesizes import LETTER
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+
+    policy_number, title, content = _build_content(stem)
+    styles = getSampleStyleSheet()
+    story = []
+    heading = f"Policy {policy_number} — {title}" if policy_number else title
+    story.append(Paragraph(heading, styles["Title"]))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("Purpose", styles["Heading2"]))
+    story.append(Paragraph(content["purpose"], styles["BodyText"]))
+    story.append(Paragraph("Scope", styles["Heading2"]))
+    story.append(Paragraph(content["scope"], styles["BodyText"]))
+    for section_title, section_body in content["sections"]:
+        story.append(Spacer(1, 6))
+        story.append(Paragraph(section_title, styles["Heading3"]))
+        story.append(Paragraph(section_body, styles["BodyText"]))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("This is a synthetic sample document.", styles["Italic"]))
+    SimpleDocTemplate(str(filepath), pagesize=LETTER).build(story)
+
+
+def write_xlsx(filepath: Path) -> None:
+    """Write a synthetic policy index spreadsheet using openpyxl."""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    assert ws is not None
+    ws.title = "Policy Index"
+    ws.append(["Policy Number", "Title", "Category", "Format", "Status"])
+    for stem, ext in CATALOG:
+        policy_number, title, _ = _build_content(stem)
+        category = categorize(stem)
+        ws.append([policy_number or "—", title, category, ext.lstrip("."), "Active"])
+    wb.save(str(filepath))
+
+
+def categorize(stem: str) -> str:
+    lower = stem.lower()
+    if "hiring" in lower or "probation" in lower or "rehiring" in lower:
+        return "Hiring"
+    if "leave" in lower or "pto" in lower or "disability" in lower:
+        return "Leave & Benefits"
+    if "career" in lower:
+        return "Career Path"
+    if "hours" in lower or "pay" in lower or "holiday" in lower:
+        return "Compensation"
+    if "uniform" in lower or "dress" in lower or "operational" in lower or "sop" in lower:
+        return "Operations"
+    if "ethics" in lower or "code of" in lower:
+        return "Governance"
+    if "blood" in lower or "pathogen" in lower or "safety" in lower:
+        return "Health & Safety"
+    if any(k in lower for k in ("technology", "security", "mobile", "computer", "information", "cyber", "configuration", "ai", "llm")):
+        return "Information Technology"
+    return "General"
+
+
+def write_document(filepath: Path, stem: str, ext: str) -> None:
+    if ext == ".docx":
+        write_docx(filepath, stem)
+    elif ext == ".doc":
+        write_doc(filepath, stem)
+    elif ext == ".pdf":
+        write_pdf(filepath, stem)
+    elif ext == ".xlsx":
+        write_xlsx(filepath)
+    else:
+        raise ValueError(f"Unsupported extension: {ext}")
+
+
+def _reset_dir(path: Path, dry_run: bool) -> None:
+    """Remove all existing contents of a directory (originals) and recreate it."""
+    if dry_run:
+        logger.info("[DRY RUN] Would clear: %s", path)
+        return
+    if path.exists():
+        shutil.rmtree(path)
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Regenerate the HR knowledge base with synthetic content")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be generated without writing")
     args = parser.parse_args()
 
-    if not DATA_DIR.exists():
-        logger.error("Data directory not found: %s", DATA_DIR)
-        sys.exit(1)
+    logger.info("Sanitizing and regenerating %d document(s) into two data sets", len(CATALOG))
 
-    encrypted = []
-    for docx_path in sorted(DATA_DIR.rglob("*.docx")):
-        result = subprocess.run(["file", "-b", str(docx_path)], capture_output=True, text=True)
-        if "CDFV2 Encrypted" in result.stdout:
-            encrypted.append(docx_path)
+    # Wipe originals (real, encrypted, PII-bearing files) from both sets.
+    _reset_dir(KB_FLAT, args.dry_run)
+    _reset_dir(KB_LAB, args.dry_run)
 
-    # Also check .xlsx
-    for xlsx_path in sorted(DATA_DIR.rglob("*.xlsx")):
-        result = subprocess.run(["file", "-b", str(xlsx_path)], capture_output=True, text=True)
-        if "CDFV2 Encrypted" in result.stdout:
-            encrypted.append(xlsx_path)
+    generated = 0
+    for stem, ext in CATALOG:
+        filename = f"{stem}{ext}"
 
-    logger.info("Found %d CDFV2 Encrypted file(s)", len(encrypted))
+        # Flat set: data/knowledge_base/ASK HR Knowledge/<file>
+        flat_path = KB_FLAT / filename
+        # Lab set: data/knowledge_base_lab/<stem>/<file>
+        lab_path = KB_LAB / stem / filename
 
-    regenerated = 0
-    skipped = 0
-    for filepath in encrypted:
-        if filepath.suffix == ".xlsx":
-            logger.info("Skipping .xlsx (not a policy document): %s", filepath.name)
-            skipped += 1
+        if args.dry_run:
+            logger.info("[DRY RUN] Would generate: %s", flat_path)
+            logger.info("[DRY RUN] Would generate: %s", lab_path)
+            generated += 2
             continue
-        if generate_docx(filepath, dry_run=args.dry_run):
-            regenerated += 1
-        else:
-            skipped += 1
 
-    logger.info("Done — %d regenerated, %d skipped", regenerated, skipped)
+        write_document(flat_path, stem, ext)
+        lab_path.parent.mkdir(parents=True, exist_ok=True)
+        write_document(lab_path, stem, ext)
+        logger.info("Generated: %s (%s)", filename, ext)
+        generated += 2
+
+    logger.info("Done — %d file(s) %s", generated, "planned" if args.dry_run else "written")
 
 
 if __name__ == "__main__":

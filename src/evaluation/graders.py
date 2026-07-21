@@ -71,7 +71,7 @@ def policy_number_cited(
 ) -> bool:
     """Check the expected policy number appears in the answer or a citation.
 
-    Matches the number as a whole token so ``5135`` does not match ``51350``.
+    Matches the number as a whole token so ``5001`` does not match ``50010``.
     """
     expected = (expected_policy_number or "").strip()
     if not expected:

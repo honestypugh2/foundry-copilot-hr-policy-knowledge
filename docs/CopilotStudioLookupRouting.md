@@ -53,7 +53,7 @@ required.
 | Need                                                                                  | Native citation path        | Pattern C |
 | ------------------------------------------------------------------------------------- | --------------------------- | --------- |
 | **Sub-second latency** on locator queries (no LLM synthesis pass)                     | ❌ ~10–14 s every time      | ✅ ~1–2 s |
-| **URL in the answer body verbatim**, not in a citation footer the user must click     | ❌ Citation card only       | ✅ "The file is at `https://…/51350.docx`" |
+| **URL in the answer body verbatim**, not in a citation footer the user must click     | ❌ Citation card only       | ✅ "The file is at `https://…/50010.docx`" |
 | **Deterministic / auditable** — must return exactly this `blob_url`, never paraphrased | ⚠️ LLM can drop or reshape citations | ✅ Index field returned verbatim |
 | **Zero LLM cost** on high-volume locator traffic                                      | ❌ Full synthesis every time | ✅ No tokens spent |
 | **Source isn't a citation-friendly KB** (raw blob without URL field, custom store)    | ❌ Connector can't surface a link | ✅ Custom REST tool composes the link |
@@ -195,11 +195,11 @@ signal the planner has.
 | - | ----------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------- |
 | 1 | Where is the PTO policy stored?                                   | `lookupHRPolicyDocument`       | `blob_url` + filename, ~1–2 s, no prose summary                |
 | 2 | What's the file path for the Holiday Pay policy?                  | `lookupHRPolicyDocument`       | `metadata_storage_path` returned verbatim                      |
-| 3 | Give me the link to the Code of Ethics document                   | `lookupHRPolicyDocument`       | `blob_url` for policy 31000                                    |
-| 4 | How much PTO do I accrue per year?                                | Knowledge source / `askHRPolicy` | Cited answer from PTO policy 51350, **no** lookup tool call    |
+| 3 | Give me the link to the Code of Ethics document                   | `lookupHRPolicyDocument`       | `blob_url` for policy 10000                                    |
+| 4 | How much PTO do I accrue per year?                                | Knowledge source / `askHRPolicy` | Cited answer from PTO policy 50010, **no** lookup tool call    |
 | 5 | Who is eligible for holiday pay?                                  | Knowledge source / `askHRPolicy` | Cited answer, no lookup tool call                              |
 | 6 | Tell me about the Code of Ethics and where I can find it          | Knowledge source **then** tool | Content answer + appended link                                 |
-| 7 | Where can I download the Blood Borne Pathogens intro?             | `lookupHRPolicyDocument`       | `blob_url` for policy 101100                                   |
+| 7 | Where can I download the Blood Borne Pathogens intro?             | `lookupHRPolicyDocument`       | `blob_url` for policy 900100                                   |
 
 If a content question (4 / 5) wrongly calls the lookup tool, **tighten
 instruction rule #2** and re-confirm the tool's operation description

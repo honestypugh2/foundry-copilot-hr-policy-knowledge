@@ -125,7 +125,7 @@ These steps are shared by every pattern. Do them once.
    You are an HR policy assistant. Answer questions ONLY using the provided HR
    policy documents.
 
-   - Always cite the specific policy number (e.g., Policy 51350).
+   - Always cite the specific policy number (e.g., Policy 50010).
    - If a policy doesn't cover the question, say so clearly.
    - Never provide legal advice.
    - Use professional, clear language.
@@ -387,8 +387,8 @@ User: How much PTO do part-time employees accrue?
 
 **Expected** (~1–2 s):
 
-- Answer paragraph paraphrased from Policy 51355.
-- A citation card linking to `51355-paid-time-off-part-time.docx` in
+- Answer paragraph paraphrased from Policy 50020.
+- A citation card linking to `50020-paid-time-off-part-time.docx` in
   blob storage.
 - **Activity trace:** invocation of the `hr-policy-index` knowledge source.
 
@@ -401,7 +401,7 @@ User: How much vacation do I get?
 **Expected:**
 
 - Agent maps "vacation" → "Paid Time Off" via the index synonym map
-  (`hr-glossary-synonyms`) and answers from Policy 51350.
+  (`hr-glossary-synonyms`) and answers from Policy 50010.
 - Citation card still resolves to the PTO policy file.
 
 #### A3. Off-topic refusal
@@ -435,9 +435,9 @@ User: How much PTO do part-time employees accrue?
 
 **Expected** (~1–2 s):
 
-- Answer paragraph paraphrased from Policy 51355.
+- Answer paragraph paraphrased from Policy 50020.
 - Citation card resolves to the SharePoint file, e.g.
-  `https://<tenant>.sharepoint.com/sites/HRPolicies/Shared Documents/Policies/51355-paid-time-off-part-time.docx`.
+  `https://<tenant>.sharepoint.com/sites/HRPolicies/Shared Documents/Policies/50020-paid-time-off-part-time.docx`.
   Clicking opens the doc in SharePoint with the user’s normal
   permissions.
 - **Activity trace:** invocation of the SharePoint Knowledge Source
@@ -507,7 +507,7 @@ User: How much PTO do part-time employees accrue?
 
 - Inline citation in answer body, e.g.
   `Part-time employees accrue PTO at a prorated rate based on hours
-  worked. [Policy 51355 – Types of Leave: Paid Time Off (PTO) – Part-time]`
+  worked. [Policy 50020 – Types of Leave: Paid Time Off (PTO) – Part-time]`
 - **Activity trace:** `HRPolicyAgent` tool invocation (or `askHRPolicy`
   if you used Option B2).
 
@@ -519,7 +519,7 @@ User: How do PTO accrual and the probationary period interact?
 
 **Expected:**
 
-- Citations to both Policy 51350 (PTO) and Policy 50455 (Probationary Period).
+- Citations to both Policy 50010 (PTO) and Policy 20030 (Probationary Period).
 - Foundry's MCP tool decomposes the query into sub-queries
   (`tool_choice="required"` forces at least one retrieval).
 
@@ -557,7 +557,7 @@ User: Where is the PTO policy stored?
 **Expected** (~1–2 s):
 
 - Answer text includes the verbatim blob URL, e.g.
-  `The file is at https://stxxx.blob.core.windows.net/ask-hr-knowledge/51350-paid-time-off.docx`
+  `The file is at https://stxxx.blob.core.windows.net/ask-hr-knowledge/50010-paid-time-off.docx`
 - **Activity trace:** `lookupHRPolicyDocument` invocation (not the knowledge source).
 
 #### C2. File-path phrasing
@@ -568,7 +568,7 @@ User: What's the file path for the Holiday Pay policy?
 
 **Expected:**
 
-- Returns `metadata_storage_path` verbatim for Policy 50715.
+- Returns `metadata_storage_path` verbatim for Policy 30010.
 - No summary of holiday pay content.
 
 #### C3. Download phrasing
@@ -579,7 +579,7 @@ User: Give me the link to the Code of Ethics document
 
 **Expected:**
 
-- `blob_url` for Policy 31000 returned verbatim.
+- `blob_url` for Policy 10000 returned verbatim.
 
 #### C4. Negative test — content question must NOT call the lookup tool
 
@@ -609,7 +609,7 @@ User: What is the dress code policy?
 
 **Expected** (~10–14 s):
 
-- Cited answer from Policy 52005 (Uniform) or 52010 (Non-Uniform).
+- Cited answer from Policy 60010 (Uniform) or 60020 (Non-Uniform).
 - **Activity trace:** `hr-policy-agent` tool invocation.
 - Container logs (Foundry portal → Agents → `hr-policy-agent` → Logs)
   show the `search_hr_policies` `@tool` call and the search query
@@ -645,7 +645,7 @@ User: Tell me about the Code of Ethics and where I can find the source document.
 
 **Expected** (~12–15 s):
 
-- Cited summary of Policy 31000 (from Pattern A knowledge source **or**
+- Cited summary of Policy 10000 (from Pattern A knowledge source **or**
   Pattern B / Hosted agent, whichever you wired).
 - Appended sentence with the verbatim blob URL from
   `lookupHRPolicyDocument`.
@@ -667,7 +667,7 @@ User: Where is that document?
 
 **Expected:**
 
-- Turn 1: content answer with `[Policy 51350 – …]` citation.
+- Turn 1: content answer with `[Policy 50010 – …]` citation.
 - Turn 2: planner uses Turn 1 context to call `lookupHRPolicyDocument`
   with the resolved policy number / title, returning the blob URL.
 

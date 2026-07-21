@@ -10,13 +10,13 @@ from src.document_processing.document_ingestion import (
 
 class TestExtractPolicyNumber:
     def test_standard_format(self):
-        assert extract_policy_number("51350 - Types of Leave_ Paid Time Off (PTO).docx") == "51350"
+        assert extract_policy_number("50010 - Types of Leave_ Paid Time Off (PTO).docx") == "50010"
 
     def test_five_digit(self):
-        assert extract_policy_number("50715 - Hours Worked.docx") == "50715"
+        assert extract_policy_number("30010 - Hours Worked.docx") == "30010"
 
     def test_six_digit(self):
-        assert extract_policy_number("101100 - Blood Borne Pathogens.doc") == "101100"
+        assert extract_policy_number("900100 - Blood Borne Pathogens.doc") == "900100"
 
     def test_no_number(self):
         assert extract_policy_number("General Guidelines.docx") == ""

@@ -39,21 +39,21 @@ reads the whole file as a system message.
 
 | Policy # | Title                                                      |
 | -------- | ---------------------------------------------------------- |
-| 31000    | Code of Ethics and Related Matters                         |
-| 50410    | Hiring: Pre-employment Medical Examinations                |
-| 50435    | Hiring: Rehiring of Retirees Without Advertising           |
-| 50455    | Hiring: Probationary Period                                |
-| 50715    | Hours Worked and Pay Administration: Holiday Pay           |
-| 50815    | Career Path: HR Generalist                                 |
-| 50855    | Career Path: Data Management (DM)                          |
-| 51350    | Types of Leave: Paid Time Off (PTO)                        |
-| 51355    | Types of Leave: Paid Time Off (PTO) — Part-time            |
-| 51370    | Short-Term Disability                                      |
-| 52005    | Operational Matters: Uniform Dress Code                    |
-| 52010    | Operational Matters: Non-Uniform Dress Code                |
-| 87100    | Information Technology: Acceptable Use Policy              |
-| 101100   | Blood Borne Pathogens — Introduction                       |
-| 101205   | Blood Borne Pathogens — Methods of Compliance              |
+| 10000    | Code of Ethics and Related Matters                         |
+| 20010    | Hiring: Pre-employment Medical Examinations                |
+| 20020    | Hiring: Rehiring of Retirees Without Advertising           |
+| 20030    | Hiring: Probationary Period                                |
+| 30010    | Hours Worked and Pay Administration: Holiday Pay           |
+| 40010    | Career Path: HR Generalist                                 |
+| 40020    | Career Path: Data Management (DM)                          |
+| 50010    | Types of Leave: Paid Time Off (PTO)                        |
+| 50020    | Types of Leave: Paid Time Off (PTO) — Part-time            |
+| 50030    | Short-Term Disability                                      |
+| 60010    | Operational Matters: Uniform Dress Code                    |
+| 60020    | Operational Matters: Non-Uniform Dress Code                |
+| 70060    | Information Technology: Acceptable Use Policy              |
+| 900100   | Blood Borne Pathogens — Introduction                       |
+| 900200   | Blood Borne Pathogens — Methods of Compliance              |
 
 ---
 
@@ -68,4 +68,4 @@ reads the whole file as a system message.
   **Lookup** as a follow-up.
 
 When citing, always preserve the exact policy number and full title, e.g.
-`Policy 51350 — Types of Leave: Paid Time Off (PTO)`.
+`Policy 50010 — Types of Leave: Paid Time Off (PTO)`.

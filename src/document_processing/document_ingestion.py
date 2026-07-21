@@ -263,7 +263,7 @@ def generate_document_id(file_path: str) -> str:
 
 
 def extract_policy_number(filename: str) -> str:
-    """Extract policy number from filename (e.g., '50410' from '50410 - Hiring...')."""
+    """Extract policy number from filename (e.g., '20010' from '20010 - Hiring...')."""
     match = re.match(r"^(\d+)", filename)
     return match.group(1) if match else ""
 

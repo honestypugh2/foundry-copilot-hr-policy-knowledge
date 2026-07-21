@@ -33,19 +33,19 @@ number and formal title in the answer. Do not answer from general knowledge.
 
 | If the user says… | Search for / cite | Typical policy |
 | ----------------- | ----------------- | -------------- |
-| PTO, time off, vacation | Paid Time Off | 51350 |
-| part-time, part time PTO | Paid Time Off - Part-time | 51355 |
-| sick leave, sick time, STD | Short-Term Disability | 51370 |
-| dress code, what to wear, uniforms | Uniform Dress Code | 52005 |
-| holidays, holiday pay, day off | Holiday Pay | 50715 |
-| new hire, probation, onboarding | Probationary Period | 50455 |
-| ethics, code of conduct | Code of Ethics | 31000 |
-| rehire, re-hire, retiree | Rehiring of Retirees | 50435 |
-| medical exam, physical, drug test | Pre-employment Medical Examinations | 50410 |
-| blood borne, BBP, needlestick | Blood Borne Pathogens | 101100 |
-| career path, promotion, advancement | Career Path | 50815 / 50855 |
-| HR generalist | HR Generalist Career Path | 50815 |
-| data management, DM | Data Management Career Path | 50855 |
+| PTO, time off, vacation | Paid Time Off | 50010 |
+| part-time, part time PTO | Paid Time Off - Part-time | 50020 |
+| sick leave, sick time, STD | Short-Term Disability | 50030 |
+| dress code, what to wear, uniforms | Uniform Dress Code | 60010 |
+| holidays, holiday pay, day off | Holiday Pay | 30010 |
+| new hire, probation, onboarding | Probationary Period | 20030 |
+| ethics, code of conduct | Code of Ethics | 10000 |
+| rehire, re-hire, retiree | Rehiring of Retirees | 20020 |
+| medical exam, physical, drug test | Pre-employment Medical Examinations | 20010 |
+| blood borne, BBP, needlestick | Blood Borne Pathogens | 900100 |
+| career path, promotion, advancement | Career Path | 40010 / 40020 |
+| HR generalist | HR Generalist Career Path | 40010 |
+| data management, DM | Data Management Career Path | 40020 |
 
 ## Behavior rules
 

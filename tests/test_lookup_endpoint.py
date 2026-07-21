@@ -37,11 +37,11 @@ async def test_lookup_returns_canonical_metadata_fields(client: AsyncClient):
     that mirror the reference repo's ``file_metadata_lookup`` tool.
     """
     fake_hit = {
-        "policy_number": "51350",
+        "policy_number": "50010",
         "parentTitle": "Types of Leave: Paid Time Off (PTO)",
-        "fileName": "51350 - Types of Leave_ Paid Time Off (PTO) (23472_2).pdf",
-        "filePath": "https://example.blob.core.windows.net/hr-policies/51350.pdf",
-        "blob_url": "https://example.blob.core.windows.net/hr-policies/51350.pdf",
+        "fileName": "50010 - Types of Leave_ Paid Time Off (PTO) (1010_0).pdf",
+        "filePath": "https://example.blob.core.windows.net/hr-policies/50010.pdf",
+        "blob_url": "https://example.blob.core.windows.net/hr-policies/50010.pdf",
         "score": 12.34,
     }
 
@@ -65,7 +65,7 @@ async def test_lookup_returns_canonical_metadata_fields(client: AsyncClient):
 
     doc = body["documents"][0]
     # All six canonical metadata fields are present and pass-through.
-    assert doc["policy_number"] == "51350"
+    assert doc["policy_number"] == "50010"
     assert doc["parent_title"] == "Types of Leave: Paid Time Off (PTO)"
     assert doc["metadata_storage_name"].endswith(".pdf")
     assert doc["metadata_storage_path"].startswith("https://")

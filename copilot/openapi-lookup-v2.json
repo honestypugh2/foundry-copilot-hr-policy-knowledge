@@ -27,7 +27,7 @@
               "properties": {
                 "message": {
                   "type": "string",
-                  "description": "The search query to find the document. Include policy number and/or document title (e.g. 'PTO policy 51350', 'Code of Ethics 31000', 'uniform dress code')."
+                  "description": "The search query to find the document. Include policy number and/or document title (e.g. 'PTO policy 50010', 'Code of Ethics 10000', 'uniform dress code')."
                 }
               }
             }

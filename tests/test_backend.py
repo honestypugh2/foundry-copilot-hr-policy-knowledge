@@ -58,8 +58,8 @@ async def test_chat_endpoint(client: AsyncClient, monkeypatch):
     with patch("src.backend.main.orchestrator") as mock_orch:
         mock_orch.answer_question_async = AsyncMock(return_value={
             "answer": "PTO policy allows 15 days per year.",
-            "citations": [{"title": "PTO Policy", "policy_number": "51350", "excerpt": "..."}],
-            "policy_references": ["Policy 51350 - PTO"],
+            "citations": [{"title": "PTO Policy", "policy_number": "50010", "excerpt": "..."}],
+            "policy_references": ["Policy 50010 - PTO"],
             "confidence": 0.85,
             "matched_glossary_terms": [{"vernacular": "pto", "formal": "Paid Time Off"}],
         })
