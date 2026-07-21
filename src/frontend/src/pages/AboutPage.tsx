@@ -19,7 +19,7 @@ export default function AboutPage() {
         <h3 className="font-semibold text-lg text-gray-700">Overview</h3>
         <p className="text-sm text-gray-600 leading-relaxed">
           This demo showcases an AI-powered HR policy assistant built with
-          Azure AI Foundry, Azure AI Search, Azure Document Intelligence, and
+          Microsoft Foundry, Azure AI Search, Azure Document Intelligence, and
           the Microsoft Agent Framework. It answers employee questions by
           retrieving and reasoning over internal HR policy documents.
         </p>
@@ -126,7 +126,7 @@ export default function AboutPage() {
       <section className="bg-white border rounded-lg p-6 space-y-3">
         <h3 className="font-semibold text-lg text-gray-700">Tech Stack</h3>
         <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-          <span>Azure AI Foundry (azure-ai-projects)</span>
+          <span>Microsoft Foundry (azure-ai-projects)</span>
           <span>Microsoft Agent Framework</span>
           <span>Azure AI Search</span>
           <span>Azure Document Intelligence</span>

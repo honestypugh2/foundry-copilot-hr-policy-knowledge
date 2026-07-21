@@ -32,7 +32,7 @@ so the guide's existing image links resolve.
 | 15 | `15-activity-trace.png` | Test pane **Activity** tab showing which tool/knowledge source was invoked for the last turn | "Verify routing" sections |
 | 16 | `16-foundry-portal-agents.png` | Foundry portal **Agents** tab listing both `HRPolicyAgent` (Pattern B) and `hr-policy-agent` (Hosted) | Step E (Hosted Agent) |
 | 17 | `17-connection-error.png` | "Let's get you connected first" error in Test pane | Troubleshooting |
-| 18 | `18-manage-connections.png` | **Manage connections** page with the Azure AI Foundry Agent Service connection | Troubleshooting |
+| 18 | `18-manage-connections.png` | **Manage connections** page with the Microsoft Foundry Agent Service connection | Troubleshooting |
 
 ## Capture tips
 

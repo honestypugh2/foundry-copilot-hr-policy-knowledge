@@ -1,9 +1,13 @@
+<p align="center">
+  <img src="docs/images/banner.png" alt="Ask HR — HR Policy Knowledge Agent. Grounded answers from internal HR policy documents built on Microsoft Foundry, Azure AI Search, Microsoft Agent Framework, and Copilot Studio. Retrieval patterns: A Direct KB, B Foundry Agent, C Doc Locator, and Hosted Agent." width="100%">
+</p>
+
 # HR Policy Knowledge Agent
 
 > **⚠️ DISCLAIMER:** This repository is intended for **development, experimentation, and learning purposes only**. It is **not designed for production workloads**. Before deploying any AI-powered solution to production, consult the [Microsoft Azure Well-Architected Framework (WAF)](https://learn.microsoft.com/en-us/azure/well-architected/) and the [Azure AI services security baseline](https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/azure-ai-services-security-baseline) for guidance on reliability, security, cost optimization, operational excellence, and performance efficiency. Production deployments should incorporate proper authentication, monitoring, data governance, content safety filters, and compliance controls aligned to your organization's requirements.
 
 > **Ask HR** — An AI-powered assistant that answers employee questions
-> using internal HR policy documents. Built on Azure AI Foundry, Azure
+> using internal HR policy documents. Built on Microsoft Foundry, Azure
 > AI Search, Microsoft Agent Framework (GA), and Copilot Studio.
 
 ---

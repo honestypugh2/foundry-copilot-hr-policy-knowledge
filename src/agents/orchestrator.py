@@ -291,7 +291,7 @@ class HRPolicyWorkflowOrchestrator:
         #       Microsoft Agent Framework SDK with FoundryChatClient + @tool
         #       (matches dealer_agent.py / compliance_agent.py pattern)
         #   "foundry"                   -> src.agents.hr_policy_agent.HRPolicyAgent
-        #       Azure AI Foundry Agent Service via chat_client.as_agent(...)
+        #       Microsoft Foundry Agent Service via chat_client.as_agent(...)
         raw_service = (
             agent_service
             or os.getenv("AGENT_SERVICE", "agent-framework")

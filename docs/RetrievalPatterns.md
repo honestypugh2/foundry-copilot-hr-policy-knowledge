@@ -109,7 +109,7 @@ returns merged results that the agent uses to compose its answer.
   agent. See
   [CopilotStudioIntegration.md § Pattern A2 wiring](CopilotStudioIntegration.md#pattern-a2-wiring-new-experience--microsoft-iq--foundry-iq).
 - **Strengths:** agentic retrieval quality without a prompt agent to maintain;
-  the KB is a reusable, centrally tuned asset. Tune it in Azure AI Foundry, not
+  the KB is a reusable, centrally tuned asset. Tune it in Microsoft Foundry, not
   Copilot Studio.
 - **Security:** with **Microsoft Entra ID Integrated** auth the signed-in
   user's identity flows through, so results are **ACL-trimmed per user** (each

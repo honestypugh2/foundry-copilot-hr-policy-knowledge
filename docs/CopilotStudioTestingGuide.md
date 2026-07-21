@@ -20,7 +20,7 @@ docs:
 
 ## ⚠️ CRITICAL: Same-Tenant Requirement
 
-Copilot Studio and Microsoft Foundry (Azure AI Foundry) **must be in the
+Copilot Studio and Microsoft Foundry **must be in the
 same Microsoft Entra ID tenant** for Patterns B and Hosted to work.
 Cross-tenant calls between Copilot Studio's Foundry-agent connector and
 your Foundry project are not supported.
@@ -28,7 +28,7 @@ your Foundry project are not supported.
 Before you start, verify:
 
 - Your Copilot Studio environment is in the same tenant as your Azure subscription.
-- Your Azure AI Foundry project is in that same tenant.
+- Your Microsoft Foundry project is in that same tenant.
 - You are signed into both services with the same organisational account.
 
 Pattern A and Pattern C work cross-tenant (they call Azure AI Search /
@@ -729,7 +729,7 @@ Tick these off in order. Skip rows for patterns you're not wiring.
 | Foundry agent tool dropdown is empty | PromptAgent not published, or different tenant | Run `uv run python -m src.agents.create_foundry_agent --verify-only`; confirm tenant alignment |
 | Pattern B / Hosted returns 401 in Activity trace | RBAC not assigned to project managed identity | Assign **Search Index Data Reader** to the Foundry project's managed identity on the search service |
 | REST tool returns 401 even with key | Auth set to **Header** with the default header name instead of **Query** | Use `code` in **Query**, or **Header** with parameter name `x-functions-key` (the default `Authorization` header name returns 401) |
-| Connection error: *"Let's get you connected first"* | Copilot Studio connection to Foundry Agent Service expired | **Open connection manager → Azure AI Foundry Agent Service → Connect**, then **Retry** in the chat |
+| Connection error: *"Let's get you connected first"* | Copilot Studio connection to Foundry Agent Service expired | **Open connection manager → Microsoft Foundry Agent Service → Connect**, then **Retry** in the chat |
 | Pattern C fires on content questions | Tool description too generic, or router instructions weak | Restore `description` text in `openapi-lookup-v2.json` verbatim; tighten rule #2 in Step D instructions |
 | Hosted Agent answers without calling `search_hr_policies` | System prompt rule 1 ignored by the model | Lower temperature in `FoundryChatClient` config, or move the "MUST call search_hr_policies first" rule to the top of `HR_POLICY_SYSTEM_PROMPT` |
 | Hybrid turn only returns content, no appended link | Router instruction rule #3 omitted, or Pattern C tool not in scope | Re-apply Step D instructions; verify `lookupHRPolicyDocument` is in the Tools list |

@@ -1,7 +1,7 @@
 // ============================================================================
 // HR Policy Knowledge Agent - Demo Resources (Resource Group scope)
 // Deploys ONLY the services needed for a demo:
-//   1. Azure AI Foundry (AIServices) + Project
+//   1. Microsoft Foundry (AIServices) + Project
 //   2. GPT-5-mini deployment (chat/inference)
 //   3. GPT-5 deployment (advanced reasoning)
 //   4. text-embedding-3-small deployment (vector embeddings)
@@ -50,7 +50,7 @@ var uniqueSuffix = uniqueString(resourceGroup().id)
 var resourceToken = toLower('${resourcePrefix}-${uniqueSuffix}')
 
 // ============================================================================
-// 1. Azure AI Foundry (AIServices) — unified cognitive services account
+// 1. Microsoft Foundry (AIServices) — unified cognitive services account
 // ============================================================================
 resource aiServices 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: '${abbrs.cognitiveServicesAccounts}${resourceToken}'

@@ -408,7 +408,7 @@ python scripts/index_knowledge_base_integrated_vectorization.py --create-pipelin
 
 **Script:** `src/agents/create_foundry_agent.py`
 
-Creates Azure AI Foundry resources for agentic retrieval. This pattern wraps the same `hr-policy-index` in a Foundry Knowledge Base and connects it to a Foundry Agent via an MCP tool.
+Creates Microsoft Foundry resources for agentic retrieval. This pattern wraps the same `hr-policy-index` in a Foundry Knowledge Base and connects it to a Foundry Agent via an MCP tool.
 
 > **Prerequisite:** The index must already be populated via Pattern 1 (Option 1 or Option 2).
 

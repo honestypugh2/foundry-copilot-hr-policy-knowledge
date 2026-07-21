@@ -23,7 +23,7 @@ Advantages over Pattern 1 (direct Knowledge Source):
 
 Prerequisites:
     - Azure AI Search index populated (run Pattern 1 Option 1 or 2 first)
-    - Azure AI Foundry project with managed identity
+    - Microsoft Foundry project with managed identity
     - RBAC: Search Index Data Reader on project managed identity
     - RBAC: Search Service Contributor on your user identity
 

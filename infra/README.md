@@ -13,7 +13,7 @@ Both deploy the same set of resources into a single resource group.
 
 | # | Service | Purpose |
 |---|---------|---------|
-| 1 | **Azure AI Foundry** (AIServices) + Project | Unified cognitive services account |
+| 1 | **Microsoft Foundry** (AIServices) + Project | Unified cognitive services account |
 | 2 | **GPT-5-mini** deployment | Chat / inference (GlobalStandard) |
 | 3 | **text-embedding-3-small** deployment | Vector embeddings for hybrid search (Standard, 120 capacity) |
 | 4 | **Azure AI Search** | Hybrid search index with semantic ranker (`free` tier) |

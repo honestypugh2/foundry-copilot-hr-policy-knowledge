@@ -4,7 +4,7 @@
 #
 # Demo-only services:
 #   1. Resource Group
-#   2. Azure AI Foundry (AIServices) + Project
+#   2. Microsoft Foundry (AIServices) + Project
 #   3. GPT-5-mini deployment
 #   4. GPT-5 deployment
 #   5. text-embedding-3-small deployment
@@ -33,7 +33,7 @@ resource "azurerm_resource_group" "rg" {
 }
 
 # ============================================================================
-# 2. Azure AI Foundry (AIServices) — unified cognitive services account
+# 2. Microsoft Foundry (AIServices) — unified cognitive services account
 # ============================================================================
 resource "azurerm_ai_services" "ai_services" {
   name                  = "cog-${local.resource_token}"

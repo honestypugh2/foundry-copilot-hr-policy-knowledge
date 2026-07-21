@@ -161,7 +161,7 @@ async def health():
             details="Endpoint configured" if di_ok else "No endpoint set",
         ),
         "ai_foundry": ServiceStatus(
-            name="Azure AI Foundry",
+            name="Microsoft Foundry",
             status="available" if ai_foundry_ok else "unavailable",
             details="Project endpoint configured" if ai_foundry_ok else "No project endpoint",
         ),

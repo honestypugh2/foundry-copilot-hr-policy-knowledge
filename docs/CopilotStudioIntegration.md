@@ -25,7 +25,7 @@ a Teams bot or web chat.
 > Those phrases now refer to Patterns A and B respectively.
 >
 > **Pattern B vs. Hosted Agent.** Both publish a Foundry-visible agent
-> that Copilot Studio adds via the same **Tools → Azure AI Foundry
+> that Copilot Studio adds via the same **Tools → Microsoft Foundry
 > agent** picker. The only difference is *where the agent's request
 > loop runs* — Pattern B is Foundry-managed; Hosted Agent runs in your
 > own container ([`src/hosted_agent/`](../src/hosted_agent/)). Copilot
@@ -80,7 +80,7 @@ knowledge source — lives in
 | Power Platform environment      | (your environment ID)                                                |
 | Azure AI Search index           | `hr-policy-index` (deployed via this project)                        |
 | Azure AI Search access (Entra ID) | Data connection with **Entra ID** auth; grant **Search Index Data Reader** to the Copilot Studio agent identity (and the Foundry project managed identity for Pattern B) |
-| Azure AI Foundry project        | Required for **Pattern B** only                                      |
+| Microsoft Foundry project       | Required for **Pattern B** only                                      |
 | RBAC: Search Index Data Reader  | Assigned to the Foundry project managed identity (Pattern B only)    |
 
 ## Architecture
@@ -207,7 +207,7 @@ needs **no Foundry prompt agent** in the path.
 > `python -m src.agents.create_foundry_agent` (it creates the Knowledge Source
 > and `hr-knowledge-base`; the PromptAgent it also creates is not required for
 > Pattern A2). Copilot Studio and the Foundry project must share the same Entra
-> tenant, and you must have access to the knowledge base in Azure AI Foundry.
+> tenant, and you must have access to the knowledge base in Microsoft Foundry.
 
 1. Open your agent (new experience) and select the **Build** tab.
 2. In the components panel, select **Microsoft IQ** → **Foundry IQ**.
@@ -223,7 +223,7 @@ needs **no Foundry prompt agent** in the path.
    **Foundry IQ retrieval** step appears.
 
 > **One Foundry IQ connection per agent.** Tune retrieval (sources, instructions,
-> ranking) in **Azure AI Foundry**, not Copilot Studio. Removing the connection
+> ranking) in **Microsoft Foundry**, not Copilot Studio. Removing the connection
 > in Copilot Studio doesn't delete the knowledge base in Foundry.
 >
 > **Why Microsoft Entra ID Integrated matters (security trimming).** With
@@ -242,7 +242,7 @@ needs **no Foundry prompt agent** in the path.
 > knowledge sources; agentic retrieval plans sub-queries and federates across
 > them in parallel, then reranks the merged results. This repo provisions a
 > single source (`hr-knowledge-source`), but you can add more sources to
-> `hr-knowledge-base` in Azure AI Foundry without changing the Copilot Studio
+> `hr-knowledge-base` in Microsoft Foundry without changing the Copilot Studio
 > wiring.
 >
 > **When to use A2 vs B.** A2 connects Copilot Studio straight to the KB
@@ -781,7 +781,7 @@ two Direct Line helpers implemented in
 - [Azure AI Search knowledge in Copilot Studio](https://learn.microsoft.com/en-us/microsoft-copilot-studio/knowledge-azure-ai-search)
 - [Add a Foundry agent to Copilot Studio](https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-agent-foundry-agent)
 - [Azure AI Search integrated vectorization](https://learn.microsoft.com/en-us/azure/search/vector-search-integrated-vectorization)
-- [Microsoft Copilot Studio + Azure AI Foundry lab — 2.4](https://github.com/microsoft/Copilot-Studio-and-Azure)
+- [Microsoft Copilot Studio + Microsoft Foundry lab — 2.4](https://github.com/microsoft/Copilot-Studio-and-Azure)
 - [Advanced Querying with AI Search in Copilot Studio](https://github.com/Azure/Copilot-Studio-and-Azure/blob/main/labs/2.1-ai-search-advanced/2.1-ai-search-advanced.md)
 - [Azure-Samples/Copilot-Studio-with-Azure-AI-Search](https://github.com/Azure-Samples/Copilot-Studio-with-Azure-AI-Search)
 - Reference repo: [honestypugh2/foundry-copilot-search-validate](https://github.com/honestypugh2/foundry-copilot-search-validate)
