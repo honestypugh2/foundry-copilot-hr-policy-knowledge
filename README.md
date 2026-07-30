@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/banner.png" alt="Ask HR — HR Policy Knowledge Agent. Grounded answers from internal HR policy documents built on Microsoft Foundry, Azure AI Search, Microsoft Agent Framework, and Copilot Studio. Retrieval patterns: A Direct KB, B Foundry Agent, C Doc Locator, and Hosted Agent." width="100%">
+  <img src="docs/images/banner-generic.png" alt="Ask HR — HR Policy Knowledge Agent. Grounded answers from internal HR policy documents built on Microsoft Foundry, Azure AI Search, Microsoft Agent Framework, and Copilot Studio. Retrieval patterns: A Direct KB, B Foundry Agent, C Doc Locator, and Hosted Agent." width="100%">
 </p>
 
 # HR Policy Knowledge Agent
