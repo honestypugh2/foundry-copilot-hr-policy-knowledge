@@ -319,7 +319,7 @@ class HRPolicyAgent:
     # Local fallback
     # ------------------------------------------------------------------
     async def _local_answer(self, question: str) -> dict[str, Any]:
-        """No-LLM fallback: return raw search results with citations."""
+        """No-model fallback: return raw search results with citations."""
         results = self.search_service.search(question, top=3)
 
         if not results:

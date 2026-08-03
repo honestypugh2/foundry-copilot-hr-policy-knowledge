@@ -184,7 +184,7 @@ async def health():
 
 
 def _pattern_a_answer(question: str) -> dict:
-    """Pattern A — direct hybrid search, no LLM, no Foundry agent.
+    """Pattern A — direct hybrid search, no backend model or Foundry agent.
 
     Mirrors what Copilot Studio's native Knowledge Source connector does
     against ``hr-policy-index`` (full-text + vector + semantic ranker via
@@ -192,7 +192,7 @@ def _pattern_a_answer(question: str) -> dict:
     the same routing decision can be tested from non-Copilot-Studio
     callers (frontend, Pattern C composite flows).
 
-    No LLM call \u2014 the answer is a deterministic concatenation of the top
+    No backend model call: the answer is a deterministic concatenation of the top
     hits with their policy numbers and titles. Use Pattern B
     (``ORCHESTRATOR_PATTERN=B``) when you want force-grounded synthesis.
     """
@@ -242,11 +242,12 @@ async def chat(request: ChatRequest):
 
     Routing is controlled by ``ORCHESTRATOR_PATTERN`` (default ``A``):
 
-    - **A** \u2014 Direct hybrid search via integrated vectorization, no LLM,
-      no Foundry agent. ~1\u20132 s. Mirrors the Copilot Studio Knowledge
-      Source connector behavior.
-    - **B** \u2014 Foundry Agent Service prompt agent + MCPTool with
-      ``tool_choice="required"`` for force-grounded synthesis. ~10\u201314 s.
+        - **A**: Direct hybrid search via integrated vectorization, with no
+            backend model or Foundry agent. Illustrative latency is ~1-2 s. It
+            mirrors the connector's retrieval, not Copilot Studio's answer generation.
+        - **B**: Foundry Agent Service prompt agent + MCPTool with
+            ``tool_choice="required"`` for force-grounded synthesis. Illustrative
+            latency is ~10-14 s.
 
     Pattern C (``/api/lookup``) is always available regardless of this
     setting. See [docs/RetrievalPatterns.md](../../docs/RetrievalPatterns.md).
@@ -285,7 +286,7 @@ async def chat(request: ChatRequest):
 
 
 # ========================================================================== #
-#  LOOKUP — fast policy locator (no LLM, no MCP)                             #
+#  LOOKUP — fast policy locator (no backend model, no MCP)                   #
 # ========================================================================== #
 
 
@@ -299,8 +300,8 @@ async def lookup(request: ChatRequest):
     a direct hybrid search over the index returning metadata fields only
     (``policy_number``, ``parent_title``, ``metadata_storage_name``,
     ``metadata_storage_path``, ``blob_url``, ``score``). No MCP call, no
-    knowledge-base retrieval, no LLM synthesis. Typical latency ~1-2s vs
-    ~10-14s for ``/api/chat``.
+    knowledge-base retrieval, and no backend model synthesis. Illustrative
+    latency is ~1-2s vs ~10-14s for ``/api/chat`` and varies by environment.
 
     Used by Copilot Studio Pattern C (Dual-Tool Routing) when the user
     asks WHERE a document is located, asks for a file path, URL, link,

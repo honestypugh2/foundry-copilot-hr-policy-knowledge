@@ -152,7 +152,8 @@ Reference: [Quickstart: Create a prompt agent](https://learn.microsoft.com/en-us
 
 This repo uses the **single-agent** form: one prompt agent, one tool,
 one round-trip per turn. That is sufficient for HR policy Q&A and keeps
-latency in the ~10–14 s range.
+illustrative latency in the ~10–14 s range. Actual latency is
+environment-dependent; this figure is not a benchmark result.
 
 A multi-step orchestration (e.g. plan → search → critique → answer) is
 possible by adding more tools or chaining agents, but introduces

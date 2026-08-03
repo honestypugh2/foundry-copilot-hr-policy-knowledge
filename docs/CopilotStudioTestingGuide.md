@@ -86,7 +86,7 @@ flowchart LR
     Lookup --> Search
 ```
 
-| Path | When the planner picks it | Latency | Citation style |
+| Path | When the planner picks it | Illustrative latency | Citation style |
 | ---- | ------------------------- | ------- | -------------- |
 | **Pattern A** (Knowledge Source — Azure AI Search) | Default for content questions, no extra tools | ~1–2 s | Citation card with click-through link to blob |
 | **Pattern A-SP** (Knowledge Source — SharePoint) | Same as Pattern A but docs live in SharePoint | ~1–2 s | Citation card with deep link to the SharePoint file |
@@ -94,6 +94,9 @@ flowchart LR
 | **Hosted Agent** (Foundry Agent tool, your container) | Same as Pattern B but agent runs in your infra | ~10–14 s | Inline `[Policy XXXXX – Title]` |
 | **Pattern C** (REST tool) | Locator questions ("Where is X?", "Give me the link") | ~1–2 s | Verbatim URL in answer body |
 | **Hybrid** | Compound questions ("Tell me about X and where I can find it") | ~10–14 s | Cited content + appended link |
+
+> Latency figures are illustrative and environment-dependent, not benchmark
+> results. They include different execution boundaries depending on the path.
 
 > **You don't have to wire all four.** Pick the patterns you want to
 > demo. The most common minimal config is **Pattern A only** (or
@@ -149,7 +152,7 @@ These steps are shared by every pattern. Do them once.
 
 ---
 
-### Step B — Wire Pattern A (Direct Knowledge Base) ★
+### Step B — Wire Pattern A (Direct Index) ★
 
 The simplest path — Copilot Studio's native Azure AI Search connector.
 
@@ -374,7 +377,7 @@ source or tool was invoked — this is how you verify routing.
 
 ---
 
-### Scenario A — Pattern A (Direct Knowledge Base) ★
+### Scenario A — Pattern A (Direct Index) ★
 
 Pattern A is the default — no router instructions needed. Expect
 **citation cards** with click-through links, not inline `[Policy XXXX]`.
@@ -385,7 +388,7 @@ Pattern A is the default — no router instructions needed. Expect
 User: How much PTO do part-time employees accrue?
 ```
 
-**Expected** (~1–2 s):
+**Expected** (illustrative ~1–2 s):
 
 - Answer paragraph paraphrased from Policy 50020.
 - A citation card linking to `50020-paid-time-off-part-time.docx` in
@@ -433,7 +436,7 @@ URLs, and the planner enforces SharePoint ACLs per user.
 User: How much PTO do part-time employees accrue?
 ```
 
-**Expected** (~1–2 s):
+**Expected** (illustrative ~1–2 s):
 
 - Answer paragraph paraphrased from Policy 50020.
 - Citation card resolves to the SharePoint file, e.g.
@@ -494,8 +497,8 @@ User: How much vacation do I get?
 
 After Step C, content questions can also route through the
 `HRPolicyAgent` tool. Expect **inline citations**
-`[Policy XXXXX – Title]` instead of citation cards, and ~10–14 s
-latency.
+`[Policy XXXXX – Title]` instead of citation cards, with illustrative
+~10–14 s latency.
 
 #### B1. Force-grounded content question
 
@@ -503,7 +506,7 @@ latency.
 User: How much PTO do part-time employees accrue?
 ```
 
-**Expected** (~10–14 s):
+**Expected** (illustrative ~10–14 s):
 
 - Inline citation in answer body, e.g.
   `Part-time employees accrue PTO at a prorated rate based on hours
@@ -546,7 +549,7 @@ User: What's our parental leave policy?
 After Step D, the agent's instructions force the planner to pick
 `lookupHRPolicyDocument` for locator questions. Expect the
 **URL printed verbatim in the answer body**, not in a citation card,
-and ~1–2 s latency.
+and illustrative ~1–2 s latency.
 
 #### C1. Pure locator
 
@@ -554,7 +557,7 @@ and ~1–2 s latency.
 User: Where is the PTO policy stored?
 ```
 
-**Expected** (~1–2 s):
+**Expected** (illustrative ~1–2 s):
 
 - Answer text includes the verbatim blob URL, e.g.
   `The file is at https://stxxx.blob.core.windows.net/ask-hr-knowledge/50010-paid-time-off.docx`
@@ -607,7 +610,7 @@ Pattern B — the difference is operational, not user-facing.
 User: What is the dress code policy?
 ```
 
-**Expected** (~10–14 s):
+**Expected** (illustrative ~10–14 s):
 
 - Cited answer from Policy 60010 (Uniform) or 60020 (Non-Uniform).
 - **Activity trace:** `hr-policy-agent` tool invocation.
@@ -675,7 +678,7 @@ User: Where is that document?
 
 ## 📊 Routing Summary
 
-| User says… | Planner picks | Pattern | Latency |
+| User says… | Planner picks | Pattern | Illustrative latency |
 | ---------- | ------------- | ------- | ------- |
 | "How much PTO do I accrue?" | Knowledge Source `hr-policy-index` | **A** | ~1–2 s |
 | (Same prompt, with A-SP wired) | Knowledge Source SharePoint library | **A-SP** | ~1–2 s |

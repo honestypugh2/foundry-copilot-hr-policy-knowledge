@@ -72,7 +72,7 @@ flowchart LR
 > Calls `askHRPolicy({"message": "What footwear is allowed under the
 > Uniform Dress Code (Policy 60010)?"})`.
 >
-> **Backend (`/api/chat`):** ~12 s. Foundry Agent invokes the MCP
+> **Backend (`/api/chat`):** illustrative ~12 s. Foundry Agent invokes the MCP
 > `knowledge_base_retrieve` tool, retrieves §3 of Policy 60010, and
 > returns:
 > ```json

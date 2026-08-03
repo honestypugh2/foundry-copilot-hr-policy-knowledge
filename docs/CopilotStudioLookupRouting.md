@@ -15,10 +15,14 @@ That repo proves out the same tool inside a Foundry agent (Pattern B);
 this repo exposes it as a REST tool to Copilot Studio. Same description
 text on both sides → same routing behavior.
 
-| Destination                                     | When                                                                                        | Latency                            | How it's wired                                            |
+| Destination                                     | When                                                                                        | Illustrative latency               | How it's wired                                            |
 | ----------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------- |
-| **Azure AI Search knowledge source** (Pattern A) | Content questions — what a policy says, eligibility, amounts, deadlines, process            | ~10–14 s (RAG + model synthesis)  | Knowledge source on the agent (or `askHRPolicy` REST tool) |
+| **Azure AI Search knowledge source** (Pattern A) | Content questions — what a policy says, eligibility, amounts, deadlines, process            | ~1–2 s (classic search + Copilot Studio answer generation) | Knowledge source on the agent |
 | **`lookupHRPolicyDocument` REST tool** (Pattern C) | Location questions — where a document is stored, file path, blob URL, link, filename       | ~1–2 s (single hybrid search)     | Custom REST tool from `copilot/openapi-lookup-v2.json`     |
+
+> These figures are illustrative and environment-dependent, not benchmark
+> results. Pattern C removes a repo-owned backend model call from the lookup
+> endpoint; Copilot Studio still plans the tool call and presents its result.
 
 > **Backend pattern is independent.** This guide assumes Pattern A
 > (knowledge source) for content. If you prefer Pattern B (Foundry
@@ -46,16 +50,16 @@ required.
 | **SharePoint** (native connector)      | Content answer + a citation card with a direct SharePoint deep link to the file.                             |
 | **Azure AI Search** (Pattern A)        | Content answer + a citation card built from `metadata_storage_path` / `blob_url` (when those fields are mapped). |
 | **OneDrive / Dataverse / web URL**     | Content answer + native deep link to the source.                                                             |
-| **Pattern C** (`lookupHRPolicyDocument`) | The URL is printed in the answer body verbatim, returned in ~1–2 s with no LLM call.                       |
+| **Pattern C** (`lookupHRPolicyDocument`) | The URL is printed in the answer body verbatim; the lookup endpoint makes no backend model call.          |
 
 ### Choose Pattern C only when one of these is true
 
 | Need                                                                                  | Native citation path        | Pattern C |
 | ------------------------------------------------------------------------------------- | --------------------------- | --------- |
-| **Sub-second latency** on locator queries (no LLM synthesis pass)                     | ❌ ~10–14 s every time      | ✅ ~1–2 s |
+| **Avoid backend-agent synthesis latency**                                             | ✅ Pattern A is already illustrative ~1–2 s | ✅ Illustrative ~1–2 s; use C for its output contract, not a guaranteed speedup |
 | **URL in the answer body verbatim**, not in a citation footer the user must click     | ❌ Citation card only       | ✅ "The file is at `https://…/50010.docx`" |
 | **Deterministic / auditable** — must return exactly this `blob_url`, never paraphrased | ⚠️ LLM can drop or reshape citations | ✅ Index field returned verbatim |
-| **Zero LLM cost** on high-volume locator traffic                                      | ❌ Full synthesis every time | ✅ No tokens spent |
+| **No model synthesis in the lookup operation**                                        | ❌ Copilot Studio generates the Pattern A answer | ✅ The endpoint uses no model; Copilot Studio still plans and presents the result |
 | **Source isn't a citation-friendly KB** (raw blob without URL field, custom store)    | ❌ Connector can't surface a link | ✅ Custom REST tool composes the link |
 
 If none of those apply, **skip Pattern C** and rely on the native
@@ -193,7 +197,7 @@ signal the planner has.
 
 | # | Utterance                                                         | Expected tool                  | Notes                                                          |
 | - | ----------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------- |
-| 1 | Where is the PTO policy stored?                                   | `lookupHRPolicyDocument`       | `blob_url` + filename, ~1–2 s, no prose summary                |
+| 1 | Where is the PTO policy stored?                                   | `lookupHRPolicyDocument`       | `blob_url` + filename, illustrative ~1–2 s, no prose summary   |
 | 2 | What's the file path for the Holiday Pay policy?                  | `lookupHRPolicyDocument`       | `metadata_storage_path` returned verbatim                      |
 | 3 | Give me the link to the Code of Ethics document                   | `lookupHRPolicyDocument`       | `blob_url` for policy 10000                                    |
 | 4 | How much PTO do I accrue per year?                                | Knowledge source / `askHRPolicy` | Cited answer from PTO policy 50010, **no** lookup tool call    |
@@ -210,9 +214,11 @@ hasn't been edited to sound generic.
 ## 5. Why this is fast
 
 `POST /api/lookup` runs one hybrid search and returns metadata fields
-only — no Foundry agent, no MCP, no LLM synthesis. That's the ~1–2 s
-vs ~10–14 s difference. Content questions still go through the
-knowledge source's RAG + synthesis, which is where the latency lives.
+only — no Foundry agent, no MCP, and no backend model synthesis. Its
+illustrative latency is ~1–2 s, compared with ~10–14 s for Pattern B's
+agent synthesis. Pattern A is also illustrative ~1–2 s, so choose Pattern C
+for deterministic metadata and a verbatim URL, not a guaranteed speedup over
+the native knowledge source.
 
 ---
 

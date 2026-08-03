@@ -2,7 +2,7 @@
 HR Policy Knowledge Workflow Orchestrator
 
 Uses Agent Framework's SequentialBuilder to coordinate:
-1. QueryUnderstandingExecutor  (custom Executor — no LLM, glossary expansion)
+1. QueryUnderstandingExecutor  (custom Executor — no model call, glossary expansion)
 2. PolicyRetrievalExecutor     (custom Executor — Azure AI Search)
 3. FoundryChatClient Agent     (answer synthesis with search context)
 4. FinalAnswerExecutor         (custom Executor — extracts structured result)
@@ -54,7 +54,7 @@ from src.config.model_policy import get_chat_model
 
 
 # =============================================================================
-# STEP 1: Query Understanding Executor (no LLM)
+# STEP 1: Query Understanding Executor (no model call)
 # =============================================================================
 
 if WORKFLOW_AVAILABLE:
@@ -103,7 +103,7 @@ if WORKFLOW_AVAILABLE:
             )
 
     # =============================================================================
-    # STEP 2: Policy Retrieval Executor (Azure AI Search — no LLM)
+    # STEP 2: Policy Retrieval Executor (Azure AI Search — no model call)
     # =============================================================================
 
     class PolicyRetrievalExecutor(Executor):
@@ -248,13 +248,13 @@ class HRPolicyWorkflowOrchestrator:
         → FinalAnswerExecutor (custom — terminal)
 
     ┌─────────────────────────┐
-    │  QueryUnderstanding     │  ← Custom Executor (NO LLM)
+    │  QueryUnderstanding     │  ← Custom Executor (NO MODEL CALL)
     │  Executor               │    Glossary expansion, term mapping
     └───────────┬─────────────┘
                 │
                 ▼
     ┌─────────────────────────┐
-    │  PolicyRetrieval        │  ← Custom Executor (NO LLM)
+    │  PolicyRetrieval        │  ← Custom Executor (NO MODEL CALL)
     │  Executor               │    Azure AI Search hybrid query
     └───────────┬─────────────┘
                 │

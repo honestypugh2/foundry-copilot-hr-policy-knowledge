@@ -9,7 +9,7 @@ This page is the cross-walk: each lab → our pattern(s) → what we add on top.
 > [RetrievalPatterns.md](RetrievalPatterns.md), with one deliberate
 > deviation (Lab 2.3 — we use a Logic Apps + Document Intelligence
 > pipeline instead of the SharePoint indexer for the reasons listed
-> below) and one extension (Pattern C — sub-second deterministic
+> below) and one extension (Pattern C — low-latency deterministic
 > document locator on top of Lab 2.4's Connected Agents pattern).
 
 ---
@@ -55,8 +55,9 @@ shape).
 **Where we extend:** Pattern C upgrades Option 3 from a *generic*
 custom connector into a **deterministic locator tool** — the
 `lookupHRPolicyDocument` operation returns `blob_url` /
-`metadata_storage_path` verbatim with no LLM in the path
-(~1–2 s vs ~10–14 s). The tool description mirrors the canonical
+`metadata_storage_path` verbatim with no repo-owned backend model call
+(illustrative ~1–2 s vs ~10–14 s). Copilot Studio still plans the tool call
+and presents its result. The tool description mirrors the canonical
 `file_metadata_lookup` definition from
 [honestypugh2/foundry-copilot-search-validate](https://github.com/honestypugh2/foundry-copilot-search-validate/blob/main/src/agents/orchestrator_pattern_b.py)
 so the same wording drives both Foundry-side and Copilot-Studio-side
