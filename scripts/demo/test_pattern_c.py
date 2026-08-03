@@ -6,7 +6,7 @@ The ``POST /api/lookup`` shape: a direct hybrid search over the same
 ``hr-policy-index`` that Patterns A and B use, but returning only the
 metadata fields (``policy_number``, ``parent_title``,
 ``metadata_storage_name``, ``metadata_storage_path``, ``blob_url``,
-``score``). No LLM. No Foundry agent. No MCP call.
+``score``). No backend model call. No Foundry agent. No MCP call.
 
     Locator question ──► glossary expand ──► hybrid search ──► metadata-only JSON
 
@@ -59,7 +59,7 @@ from scripts.demo._common import (
 def run(question: str) -> int:
     header(
         "Pattern C — Dual-Tool Routing (deterministic locator)",
-        "Mirrors POST /api/lookup → metadata-only JSON, no LLM",
+        "Mirrors POST /api/lookup → metadata-only JSON, no backend model",
     )
 
     if not preflight_block("Pattern C preflight", ("AZURE_SEARCH_ENDPOINT",)):
@@ -119,7 +119,7 @@ def run(question: str) -> int:
     info("Lever 2: Tool description mirrors honestypugh2/foundry-copilot-search-validate verbatim.")
     info("See docs/CopilotStudioLookupRouting.md.")
 
-    ok("Pattern C complete — sub-second, deterministic, URL-verbatim answer.")
+    ok("Pattern C complete — low-latency, deterministic, URL-verbatim answer.")
     return 0
 
 

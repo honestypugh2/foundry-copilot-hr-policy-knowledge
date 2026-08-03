@@ -1,6 +1,12 @@
 <p align="center">
-  <img src="docs/images/banner-generic.png" alt="Ask HR — HR Policy Knowledge Agent. Grounded answers from internal HR policy documents built on Microsoft Foundry, Azure AI Search, Microsoft Agent Framework, and Copilot Studio. Retrieval patterns: A Direct KB, B Foundry Agent, C Doc Locator, and Hosted Agent." width="100%">
+  <img src="docs/images/banner-generic.png" alt="Ask HR — HR Policy Knowledge Agent banner from the published article." width="100%">
 </p>
+
+> **Published-banner terminology:** The banner is retained unchanged to match
+> the published article. Its "Direct KB" label means **Pattern A: Direct
+> Index**, and "Sub-second, no LLM" should be read as **low-latency, with no
+> repo-owned backend model call**. All latency figures are illustrative and
+> environment-dependent.
 
 # HR Policy Knowledge Agent
 
@@ -24,7 +30,7 @@ This repo supports three main paths. Pick the one that matches your scenario:
 
 > **Not sure which?** Start with **Path 1** (Pattern A). It's zero-code, demonstrates value in minutes, and you can layer Foundry Agent Service on top later without re-indexing.
 
-> **Two more patterns** round out the palette: **Pattern C** (a sub-second
+> **Two more patterns** round out the palette: **Pattern C** (a low-latency
 > deterministic document-locator on `/api/lookup`) and **Pattern A2** (Copilot
 > Studio's *new agent experience* connecting straight to a **Foundry IQ**
 > knowledge base via Microsoft IQ — agentic retrieval with no prompt agent). Both
@@ -39,10 +45,10 @@ flowchart TD
     Start([ New HR Q&A scenario]) --> Q1{Need answer synthesis?}
     Q1 -- No, just locate document --> QL{Docs in a citation-friendly KB? SharePoint, AI Search w/ blob_url}
     QL -- Yes --> Native["★ Native Copilot Studio citations Pattern A KB + click-through link no extra code"]
-    QL -- "No — need sub-second latency, URL in body verbatim, or auditable output" --> C[Pattern C: Dual-Tool Routing POST /api/lookup]
+    QL -- "No — need low latency, URL in body verbatim, or auditable output" --> C[Pattern C: Dual-Tool Routing POST /api/lookup]
     Q1 -- Yes --> Q2{Need an LLM agent?}
     Q2 -- "No, hybrid search is enough" --> QK{Classic index search or agentic KB retrieval?}
-    QK -- Classic search --> A["★ Pattern A: Direct Knowledge Base Copilot Studio → AI Search (default)"]
+    QK -- Classic search --> A["★ Pattern A: Direct Index Copilot Studio → AI Search (default)"]
     QK -- Agentic retrieval over KB --> A2["Pattern A2: Copilot Studio new experience → Microsoft IQ → Foundry IQ"]
     Q2 -- Yes --> Q3{Self-host the runtime?}
     Q3 -- No --> B[Pattern B: Foundry Agent Service prompt agent + MCPTool]
@@ -56,11 +62,11 @@ flowchart TD
 > (Pattern B, managed) or in your container (Hosted Agent,
 > self-hosted).
 
-| Pattern | Code path                                       | Latency  | When                                |
+| Pattern | Code path                                       | Illustrative latency | When                                |
 | ------- | ----------------------------------------------- | -------- | ----------------------------------- |
 | **A** ★ | Copilot Studio Knowledge Source                 | ~1–2 s   | Start here — simplest setup, no agent code needed |
 | **B**   | `src/agents/hr_policy_agent.py` (PromptAgent)   | ~10–14 s | Upgrade for force-grounded answer synthesis |
-| **C**   | `src/backend/main.py:/api/lookup`               | ~1–2 s   | Sub-second doc-locator with verbatim URL — only when native citations aren't enough |
+| **C**   | `src/backend/main.py:/api/lookup`               | ~1–2 s   | Low-latency doc-locator with verbatim URL — only when native citations aren't enough |
 | Hosted  | `src/agents/hr_policy_agent_af.py` + container  | ~10–14 s | Self-hosted runtime (Agent Framework hosting, GA) |
 
 ★ **Default — start here.** Pattern A connects Copilot Studio directly to
@@ -69,11 +75,14 @@ up to Pattern B when you need force-grounded synthesis via
 `tool_choice="required"`. Set `AGENT_SERVICE=foundry` and run
 `python -m src.agents.create_foundry_agent` to provision Pattern B.
 
+> **Latency note:** These figures are illustrative and environment-dependent,
+> not benchmark results. Run the demo in your deployment to collect timings.
+
 > **Locator queries don't always need Pattern C.** Copilot Studio's
 > native knowledge-source citations (SharePoint connector, or Pattern A
 > with `blob_url` / `metadata_storage_path` mapped) already give the
 > user a click-through link to the source document. Add Pattern C only
-> when you need **sub-second latency**, **the URL in the answer body
+> when you need **low latency**, **the URL in the answer body
 > verbatim**, **deterministic / auditable output**, or your source
 > isn't a citation-friendly KB. See
 > [Pattern C vs native citations](docs/CopilotStudioLookupRouting.md#pattern-c-vs-native-citations).
@@ -203,7 +212,7 @@ Endpoints:
 | Method | Path                               | Notes                                |
 | ------ | ---------------------------------- | ------------------------------------ |
 | `POST` | `/api/chat`                        | Pattern B answer synthesis           |
-| `POST` | `/api/lookup`                      | Pattern C document locator (no LLM)  |
+| `POST` | `/api/lookup`                      | Pattern C locator (no backend model call) |
 | `GET`  | `/api/knowledge-base`              | Index metadata                       |
 | `POST` | `/api/knowledge-base/reindex`      | Full reindex                         |
 | `POST` | `/api/documents/upload`            | Upload + index a single document     |

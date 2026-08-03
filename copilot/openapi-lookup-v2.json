@@ -35,7 +35,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Lookup results — metadata fields only, no LLM synthesis",
+            "description": "Lookup results — metadata fields only, no backend model synthesis",
             "schema": {
               "type": "object",
               "properties": {

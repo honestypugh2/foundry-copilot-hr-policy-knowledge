@@ -110,10 +110,13 @@ uv run python -m src.backend.main
 
 Two endpoints carry most of the load:
 
-| Endpoint           | Pattern | Latency  | Purpose                                |
+| Endpoint           | Pattern | Illustrative latency | Purpose                                |
 | ------------------ | ------- | -------- | -------------------------------------- |
 | `POST /api/chat`   | B       | ~10–14 s | Synthesised answer with citations      |
-| `POST /api/lookup` | C       | ~1–2 s   | Document locator only (no LLM, no MCP) |
+| `POST /api/lookup` | C       | ~1–2 s   | Document locator only (no backend model, no MCP) |
+
+These latency figures are illustrative and environment-dependent, not
+benchmark results.
 
 ## 6. (Optional) Run a React frontend
 

@@ -14,7 +14,7 @@
     "/api/chat": {
       "post": {
         "summary": "Ask an HR policy question",
-        "description": "Returns a grounded answer with inline policy citations. Use this when the user asks for an explanation, definition, or content from an HR policy. Typical latency 10-14 seconds.",
+        "description": "Returns a grounded answer with inline policy citations. Use this when the user asks for an explanation, definition, or content from an HR policy. Illustrative latency is 10-14 seconds and varies by environment.",
         "operationId": "askHRPolicy",
         "parameters": [
           {

@@ -1,4 +1,4 @@
-"""Test script — Pattern A (Direct Knowledge Base) ★ default.
+"""Test script — Pattern A (Direct Index) ★ default.
 
 What this tests
 ---------------
@@ -6,7 +6,7 @@ The exact code path that backs Copilot Studio's native "Add knowledge →
 Azure AI Search" connector against ``hr-policy-index``:
 
     Question ──► glossary expansion ──► hybrid search (BM25 + vector + semantic)
-              ──► top-K hits ──► deterministic concatenation (no LLM)
+              ──► top-K hits ──► deterministic concatenation (no backend model)
 
 This mirrors what ``src/backend/main.py:/api/chat`` returns when
 ``ORCHESTRATOR_PATTERN=A`` (the project default), and what Copilot Studio
@@ -54,7 +54,7 @@ from scripts.demo._common import (
 
 def run(question: str) -> int:
     header(
-        "Pattern A — Direct Knowledge Base (★ default)",
+        "Pattern A — Direct Index (★ default)",
         "Mirrors Copilot Studio Knowledge Source → Azure AI Search",
     )
 
@@ -92,7 +92,7 @@ def run(question: str) -> int:
         return 1
     ok(f"{len(hits)} hit(s) returned")
 
-    stage("3. Compose the deterministic answer (no LLM, no Foundry)")
+    stage("3. Compose the deterministic answer (no backend model, no Foundry)")
     citations: list[dict] = []
     policy_refs: list[str] = []
     snippets: list[str] = []
@@ -119,7 +119,7 @@ def run(question: str) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     load_dotenv()
-    parser = argparse.ArgumentParser(description="Live test of Pattern A (Direct KB).")
+    parser = argparse.ArgumentParser(description="Live test of Pattern A (Direct Index).")
     parser.add_argument("--question", "-q", default=SAMPLE_CONTENT_QUESTION)
     args = parser.parse_args(argv)
     return run(args.question)

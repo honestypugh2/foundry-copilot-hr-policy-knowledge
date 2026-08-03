@@ -3,7 +3,7 @@
 This repo ships **two SDK paths** for the same HR policy agent. Choose
 one based on **where the agent runs** and **who orchestrates the tools**.
 
-| Decision factor                   | Foundry Agent Service (Pattern B, default ★) | Microsoft Agent Framework (Hosted Agent runtime) |
+| Decision factor                   | Foundry Agent Service (Pattern B)            | Microsoft Agent Framework (Hosted Agent runtime, default ★) |
 | --------------------------------- | -------------------------------------------- | ------------------------------------------------ |
 | **Runtime**                       | Managed by Azure (Foundry project)           | Self-hosted container (`src/hosted_agent/`)      |
 | **SDK**                           | `azure-ai-projects>=2.3.0`                   | `agent-framework>=1.11.0` + `agent-framework-foundry>=1.10.1` |
@@ -23,8 +23,10 @@ one based on **where the agent runs** and **who orchestrates the tools**.
 | **Foundry GA?**                   | ✅ GA                                         | ✅ GA (the *Agent Framework hosting* pattern)     |
 | **Best for**                      | "Just answer the question and cite policy"   | Self-hosted runtime, custom auth, multi-step orchestration |
 
-★ **Default in this repo.** Set `AGENT_SERVICE=foundry` (or omit — it's
-the default).
+★ **Backend service default.** Omit `AGENT_SERVICE` or set it to
+`agent-framework` to use the Agent Framework path. Set
+`AGENT_SERVICE=foundry` explicitly for Pattern B. Pattern A remains the
+recommended starting pattern and does not require either backend agent path.
 
 ---
 
@@ -52,8 +54,8 @@ The orchestrator picks the path from the `AGENT_SERVICE` env var:
 
 | `AGENT_SERVICE`              | Effective class                                         | Pattern                        |
 | ---------------------------- | ------------------------------------------------------- | ------------------------------ |
-| `foundry` (default)          | `src.agents.hr_policy_agent.HRPolicyAgent`              | Foundry Agent Service (B)      |
-| `agent-framework`            | `src.agents.hr_policy_agent_af.HRPolicyAgent`           | Hosted Agent (Agent Framework) |
+| `foundry`                    | `src.agents.hr_policy_agent.HRPolicyAgent`              | Foundry Agent Service (B)      |
+| `agent-framework` (default)  | `src.agents.hr_policy_agent_af.HRPolicyAgent`           | Hosted Agent (Agent Framework) |
 
 Both classes expose the same interface (`initialize()`,
 `answer_question_async()`, `close()`), so the FastAPI backend code is

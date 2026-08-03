@@ -16,14 +16,18 @@ real Foundry project. For the mocked unit tests, see `tests/`.
 
 ## Files
 
-| Script | Pattern | Lab origin | Latency | Needs Foundry agent? |
+| Script | Pattern | Lab origin | Illustrative latency | Needs Foundry agent? |
 | ------ | ------- | ---------- | ------- | -------------------- |
-| [`test_pattern_a.py`](test_pattern_a.py) | **A** — Direct KB (★ default) | Lab 1.4, Lab 2.1 Option 1 | ~1–2 s | No |
+| [`test_pattern_a.py`](test_pattern_a.py) | **A** — Direct Index (★ default) | Lab 1.4, Lab 2.1 Option 1 | ~1–2 s | No |
 | [`test_pattern_b.py`](test_pattern_b.py) | **B** — Foundry Agent + MCPTool | Lab 2.4 (Foundry side) | ~10–14 s | **Yes** — run `create_foundry_agent` first |
 | [`test_pattern_c.py`](test_pattern_c.py) | **C** — Dual-Tool Routing | Lab 2.1 Options 2 & 3, Lab 2.4 (quick path) | ~1–2 s | No |
 | [`test_pattern_hosted.py`](test_pattern_hosted.py) | Hosted Agent (Agent Framework GA hosting) | — | ~10–14 s | No (uses `FoundryChatClient` directly) |
 | [`demo_decision_tree.py`](demo_decision_tree.py) | All of the above | All four labs | sum of the above | Optional (auto-skips with a warning) |
 | [`_common.py`](_common.py) | shared helpers | — | — | — |
+
+> These figures are illustrative and environment-dependent, not benchmark
+> results. Each script performs a single timed run; Pattern A measures the
+> direct search path rather than Copilot Studio's end-to-end answer path.
 
 ---
 

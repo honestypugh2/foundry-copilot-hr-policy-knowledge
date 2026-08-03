@@ -14,7 +14,7 @@ a Teams bot or web chat.
 >
 > | Pattern in this repo | Section in this doc                 | Older name (Rosetta stone) |
 > | -------------------- | ----------------------------------- | -------------------------- |
-> | **Pattern A** — Direct Knowledge Base (Azure AI Search) | [Pattern A wiring](#pattern-a-wiring) | "Path 1 — Knowledge Source" |
+> | **Pattern A** — Direct Index (Azure AI Search) | [Pattern A wiring](#pattern-a-wiring) | "Path 1 — Knowledge Source" |
 > | **Pattern A-SP** — SharePoint Knowledge Source (CS native connector) | [Pattern A-SP wiring](#pattern-a-sp-wiring) | (new) |
 > | **Pattern B** — Foundry Agent Service + MCP | [Pattern B wiring](#pattern-b-wiring) | "Path 2 — Foundry Agent Action" |
 > | **Pattern C** — Dual-Tool Routing           | [CopilotStudioLookupRouting.md](CopilotStudioLookupRouting.md) | (new) |
@@ -59,16 +59,20 @@ knowledge source — lives in
 
 ## Pattern Comparison
 
-| Aspect                   | **Pattern A** — Direct Knowledge Base   | **Pattern B** — Foundry Agent Service + MCP |
+| Aspect                   | **Pattern A** — Direct Index            | **Pattern B** — Foundry Agent Service + MCP |
 | ------------------------ | -------------------------------------- | ----------------------------------------- |
 | **How it works**         | Copilot Studio queries `hr-policy-index` directly via its native Azure AI Search connector. Hybrid (text + vector + semantic) search via integrated vectorization. Copilot Studio's built-in LLM synthesizes the answer. | Copilot Studio invokes a Foundry Agent via **Agents → Add an agent → Connect to an external agent → Microsoft Foundry (Preview)** (or a **REST API tool**). The agent uses agentic retrieval for AI-planned query routing, sub-query decomposition, and source attribution with custom retrieval + answer instructions. |
 | **Search type**          | Text + vector + semantic ranker (single query) | Agentic retrieval (query planning + sub-queries + semantic ranking + answer synthesis) |
 | **Answer synthesis**     | Copilot Studio built-in LLM            | Foundry Agent (`gpt-5-mini`) with custom instructions |
 | **Custom instructions**  | Limited (Copilot Studio Instructions field) | Full retrieval + answer instructions in `search_config.json` |
 | **Source attribution**   | URL-based citations (`metadata_storage_path`) | Rich per-fact citations with policy numbers via agent instructions |
-| **Latency**              | ~1–2 s                                | ~10–14 s                                |
+| **Illustrative latency** | ~1–2 s                                | ~10–14 s                                |
 | **Setup complexity**     | Lowest — attach KB, write instructions | Higher — requires Foundry project + RBAC + `create_foundry_agent.py` |
 | **Best for**             | Simple Q&A, fast responses, "start here" demo | Complex queries, multi-source aggregation, force-grounded synthesis |
+
+> Latency figures are illustrative and environment-dependent, not benchmark
+> results. Copilot Studio's own answer generation is included in the Pattern A
+> user experience even though this repo makes no backend model call for it.
 
 ---
 
