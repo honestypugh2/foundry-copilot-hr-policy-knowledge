@@ -1,0 +1,17 @@
+// Table: Azure AI Search resource logs in AzureDiagnostics.
+// Replace timeRange. Search diagnostics and client/agent traces have different clocks/boundaries.
+let timeRange = 24h;
+let interval = 1m;
+AzureDiagnostics
+| where TimeGenerated > ago(timeRange)
+| where OperationName in (
+    "Query.Search", "Query.Suggest", "Query.Lookup", "Query.Autocomplete",
+    "Indexing.Index"
+)
+| summarize
+    queryCount = countif(OperationName startswith "Query."),
+    indexingCount = countif(OperationName == "Indexing.Index"),
+    throttledQueries = countif(OperationName startswith "Query." and resultSignature_d == 503),
+    averageQueryDurationMs = avgif(DurationMs, OperationName startswith "Query.")
+  by bin(TimeGenerated, interval)
+| order by TimeGenerated asc

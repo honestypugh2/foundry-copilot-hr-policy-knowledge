@@ -1,0 +1,47 @@
+{
+  "manifest": {
+    "schema_version": "1.0",
+    "experiment_id": "synthetic-pattern-a",
+    "created_at": "2026-08-03T12:00:00Z",
+    "git_commit": "synthetic",
+    "dirty_worktree": false,
+    "runner_version": "0.1.0",
+    "dataset_name": "synthetic-hr-gold",
+    "dataset_version": "1.0",
+    "corpus_fingerprint": "synthetic-corpus",
+    "index_fingerprint": "synthetic-index",
+    "pattern": "A",
+    "retrieval_mode": "classic-hybrid",
+    "invocation_path": "fixture",
+    "output_mode": "extractive",
+    "top": 5,
+    "warmup_count": 1,
+    "measured_repetitions": 30,
+    "concurrency": 1,
+    "timeout_seconds": 30,
+    "random_seed": 7
+  },
+  "aggregate": {
+    "schema_version": "1.0",
+    "experiment_id": "synthetic-pattern-a",
+    "count": 30,
+    "success_rate": 0.97,
+    "error_rate": 0.03,
+    "throttle_rate": 0,
+    "client_wall_time": {
+      "count": 30,
+      "minimum_ms": 80,
+      "maximum_ms": 180,
+      "mean_ms": 112,
+      "standard_deviation_ms": 21,
+      "p50_ms": 105,
+      "p95_ms": 158,
+      "p99_ms": 176
+    },
+    "provenance": {
+      "synthetic": true,
+      "quality": 0.84,
+      "estimated_variable_cost": null
+    }
+  }
+}

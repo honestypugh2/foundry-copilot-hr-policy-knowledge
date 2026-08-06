@@ -49,6 +49,9 @@ dependencies = [
 eval = [
     "azure-ai-evaluation>=1.0.0",
 ]
+load = [
+    "locust>=2.43.3",
+]
 
 [tool.uv]
 prerelease = "allow"

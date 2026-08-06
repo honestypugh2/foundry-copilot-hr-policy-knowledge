@@ -40,6 +40,7 @@ import csv
 import json
 import logging
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -91,19 +92,52 @@ async def _answer_live(rows: list[dict[str, str]]) -> dict[str, dict[str, Any]]:
     return results
 
 
+def write_llm_evaluation_dataset(
+    rows: list[dict[str, str]],
+    answers: dict[str, dict[str, Any]],
+
+    output_path: Path,
+) -> int:
+    """Write the sanitized JSONL accepted by Azure AI Evaluation."""
+    exported = []
+    for row in rows:
+        result = answers.get(row["test_case"])
+        if result is None:
+            continue
+        exported.append(
+            {
+                "test_case": row["test_case"],
+                "query": row["question"],
+                "response": str(result.get("answer", "")),
+                "context": str(result.get("context") or ""),
+                "ground_truth": row.get("reference_answer", ""),
+            }
+        )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        "".join(json.dumps(item, ensure_ascii=True) + "\n" for item in exported),
+        encoding="utf-8",
+    )
+    return len(exported)
+
+
 def _apply_llm_graders(
     rows: list[dict[str, str]],
     answers: dict[str, dict[str, Any]],
-) -> dict[str, dict[str, Any]]:
-    """Optionally score groundedness/relevance with azure-ai-evaluation.
+    *,
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    """Score groundedness/relevance through one unified SDK evaluation.
 
-    Returns a mapping ``test_case -> {evaluator: score}``. Best-effort: if the
-    package or model config is missing, returns an empty mapping.
+    The deterministic graders remain authoritative for CI and access-control
+    assertions. This optional result is supplemental and may incur model cost.
     """
     try:
         from azure.ai.evaluation import (  # type: ignore[import-not-found]
+            AzureOpenAIModelConfiguration,
             GroundednessEvaluator,
             RelevanceEvaluator,
+            evaluate as evaluate_with_sdk,
         )
     except ImportError:
         logger.warning(
@@ -112,35 +146,76 @@ def _apply_llm_graders(
         )
         return {}
 
-    model_config = {
-        "azure_endpoint": os.getenv("AZURE_OPENAI_ENDPOINT", ""),
-        "azure_deployment": os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-5-mini"),
-        "api_version": os.getenv("AZURE_OPENAI_API_VERSION", "2024-06-01"),
-    }
+    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+    if not endpoint or not deployment:
+        logger.warning(
+            "AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT_NAME are required; "
+            "skipping LLM graders."
+        )
+        return {}
+    model_config = AzureOpenAIModelConfiguration(
+        azure_endpoint=endpoint,
+        azure_deployment=deployment,
+        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-06-01"),
+    )
     if os.getenv("AZURE_OPENAI_API_KEY"):
         model_config["api_key"] = os.environ["AZURE_OPENAI_API_KEY"]
 
-    groundedness = GroundednessEvaluator(model_config)
-    relevance = RelevanceEvaluator(model_config)
+    credential = None
+    if "api_key" not in model_config:
+        from azure.identity import DefaultAzureCredential
 
-    scores: dict[str, dict[str, Any]] = {}
-    for row in rows:
-        test_case = row["test_case"]
-        result = answers.get(test_case)
-        if not result:
-            continue
-        answer = str(result.get("answer", ""))
-        context = str(result.get("context") or row.get("reference_answer", ""))
-        try:
-            scores[test_case] = {
-                "groundedness": groundedness(
-                    query=row["question"], context=context, response=answer
-                ),
-                "relevance": relevance(query=row["question"], response=answer),
+        credential = DefaultAzureCredential()
+    evaluators = {
+        "groundedness": GroundednessEvaluator(model_config, credential=credential),
+        "relevance": RelevanceEvaluator(model_config, credential=credential),
+    }
+    evaluator_config = {
+        "groundedness": {
+            "column_mapping": {
+                "query": "${data.query}",
+                "response": "${data.response}",
+                "context": "${data.context}",
             }
-        except Exception as exc:  # pragma: no cover - depends on live service
-            logger.warning("LLM grading failed for %s: %s", test_case, exc)
-    return scores
+        },
+        "relevance": {
+            "column_mapping": {
+                "query": "${data.query}",
+                "response": "${data.response}",
+            }
+        },
+    }
+    if output_path is not None:
+        dataset_path = output_path.with_suffix(".input.jsonl")
+        result_path = output_path
+        write_llm_evaluation_dataset(rows, answers, dataset_path)
+        sdk_result = evaluate_with_sdk(
+            data=dataset_path,
+            evaluators=evaluators,
+            evaluator_config=evaluator_config,
+            evaluation_name="hr-policy-benchmark",
+            output_path=result_path,
+            fail_on_evaluator_errors=False,
+        )
+    else:
+        with tempfile.TemporaryDirectory(prefix="hr-policy-eval-") as temp_dir:
+            dataset_path = Path(temp_dir) / "input.jsonl"
+            result_path = Path(temp_dir) / "results.json"
+            write_llm_evaluation_dataset(rows, answers, dataset_path)
+            sdk_result = evaluate_with_sdk(
+                data=dataset_path,
+                evaluators=evaluators,
+                evaluator_config=evaluator_config,
+                evaluation_name="hr-policy-benchmark",
+                output_path=result_path,
+                fail_on_evaluator_errors=False,
+            )
+    return {
+        "metrics": dict(sdk_result.get("metrics", {})),
+        "rows": list(sdk_result.get("rows", [])),
+        "studio_url": sdk_result.get("studio_url"),
+    }
 
 
 def evaluate(
@@ -213,9 +288,10 @@ def main(argv: list[str] | None = None) -> int:
     results = evaluate(rows, answers)
     summary = summarize(results)
 
-    llm_scores: dict[str, dict[str, Any]] = {}
+    llm_scores: dict[str, Any] = {}
     if args.llm_graders:
-        llm_scores = _apply_llm_graders(rows, answers)
+        llm_output = args.out.with_suffix(".llm-evaluation.json") if args.out else None
+        llm_scores = _apply_llm_graders(rows, answers, output_path=llm_output)
 
     _print_summary(summary)
 

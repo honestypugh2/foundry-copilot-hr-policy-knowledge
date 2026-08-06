@@ -152,3 +152,7 @@ fix_script.py
 output.txt
 
 node_modules/
+
+.github/prompts
+src/frontend/test-results/
+src/frontend/playwright-report/

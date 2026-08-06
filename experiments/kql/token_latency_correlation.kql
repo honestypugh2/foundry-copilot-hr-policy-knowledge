@@ -1,0 +1,16 @@
+// Table: Application Insights dependencies (GenAI OpenTelemetry spans).
+// Pair latency with output tokens; TTLT alone is not proof of a service regression.
+let experimentId = "<experiment-id>";
+let timeRange = 24h;
+dependencies
+| where timestamp > ago(timeRange)
+| where tostring(customDimensions["app.benchmark.experiment.id"]) == experimentId
+| where tostring(customDimensions["gen_ai.operation.name"]) == "chat"
+| extend
+    pattern = tostring(customDimensions["app.benchmark.pattern"]),
+    model = tostring(customDimensions["gen_ai.response.model"]),
+    inputTokens = tolong(customDimensions["gen_ai.usage.input_tokens"]),
+    outputTokens = tolong(customDimensions["gen_ai.usage.output_tokens"])
+| project timestamp, pattern, model, duration, inputTokens, outputTokens,
+    success, operation_Id
+| order by timestamp desc

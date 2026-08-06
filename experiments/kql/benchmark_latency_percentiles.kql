@@ -1,0 +1,19 @@
+// Table: Application Insights dependencies (GenAI OpenTelemetry spans).
+// Replace experimentId and timeRange. Duration is child-span duration, not client wall time.
+let experimentId = "<experiment-id>";
+let timeRange = 24h;
+dependencies
+| where timestamp > ago(timeRange)
+| where tostring(customDimensions["app.benchmark.experiment.id"]) == experimentId
+| extend
+    pattern = tostring(customDimensions["app.benchmark.pattern"]),
+    configurationId = tostring(customDimensions["app.benchmark.configuration.id"]),
+    operation = tostring(customDimensions["gen_ai.operation.name"])
+| summarize
+    samples = count(),
+    failures = countif(success == false),
+    p50 = percentile(duration, 50),
+    p95 = percentile(duration, 95),
+    p99 = percentile(duration, 99)
+  by pattern, configurationId, operation
+| order by pattern asc, p95 desc

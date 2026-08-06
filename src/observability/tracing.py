@@ -109,6 +109,16 @@ def enable_tracing(
         _configure_console_exporter()
 
     AIProjectInstrumentor().instrument()
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+
+    from src.observability.benchmark_correlation import (
+        BenchmarkCorrelationSpanProcessor,
+    )
+
+    provider = trace.get_tracer_provider()
+    if isinstance(provider, TracerProvider):
+        provider.add_span_processor(BenchmarkCorrelationSpanProcessor())
     _ENABLED = True
     logger.info(
         "GenAI tracing enabled (exporter=%s, content_recording=%s)",

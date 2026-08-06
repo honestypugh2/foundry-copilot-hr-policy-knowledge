@@ -62,7 +62,7 @@ resource aiServices 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = 
     customSubDomainName: '${abbrs.cognitiveServicesAccounts}${resourceToken}'
     publicNetworkAccess: 'Enabled'
     allowProjectManagement: true
-    disableLocalAuth: false
+    disableLocalAuth: true
   }
 }
 
@@ -152,6 +152,7 @@ resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = {
     partitionCount: 1
     hostingMode: 'default'
     semanticSearch: 'free'
+    disableLocalAuth: false
   }
 }
 
@@ -166,6 +167,7 @@ resource docIntelligence 'Microsoft.CognitiveServices/accounts@2025-04-01-previe
   properties: {
     customSubDomainName: '${abbrs.cognitiveServicesFormRecognizer}${resourceToken}'
     publicNetworkAccess: 'Enabled'
+    disableLocalAuth: true
   }
 }
 
@@ -223,6 +225,20 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   properties: {
     Application_Type: 'web'
     WorkspaceResourceId: logAnalytics.id
+  }
+}
+
+resource searchDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'search-operation-logs'
+  scope: search
+  properties: {
+    workspaceId: logAnalytics.id
+    logs: [
+      {
+        category: 'OperationLogs'
+        enabled: true
+      }
+    ]
   }
 }
 

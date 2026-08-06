@@ -1,0 +1,80 @@
+{
+  "manifest": {
+    "schema_version": "1.0",
+    "experiment_id": "synthetic-direct-search",
+    "created_at": "2026-08-03T12:00:00Z",
+    "git_commit": "synthetic",
+    "dirty_worktree": false,
+    "runner_version": "0.1.0",
+    "dataset_name": "synthetic-migration-smoke",
+    "dataset_version": "1.0",
+    "corpus_fingerprint": "synthetic-corpus-v1",
+    "index_fingerprint": "synthetic-index-v1",
+    "pattern": "A",
+    "retrieval_mode": "classic-hybrid",
+    "invocation_path": "direct_search_fixture",
+    "api_version": null,
+    "output_mode": "references",
+    "model_deployment": null,
+    "model_version": null,
+    "retrieval_reasoning_effort": null,
+    "semantic_configuration": "hr-semantic-config",
+    "top": 3,
+    "warmup_count": 1,
+    "measured_repetitions": 3,
+    "concurrency": 1,
+    "timeout_seconds": 30.0,
+    "random_seed": 7,
+    "pricing_profile": null
+  },
+  "aggregate": {
+    "schema_version": "1.0",
+    "experiment_id": "synthetic-direct-search",
+    "count": 6,
+    "success_rate": 1.0,
+    "error_rate": 0.0,
+    "throttle_rate": 0.0,
+    "client_wall_time": {
+      "count": 6,
+      "minimum_ms": 0.0008269998943433166,
+      "maximum_ms": 0.001034000888466835,
+      "mean_ms": 0.0008789999507522831,
+      "standard_deviation_ms": 7.899593329049401e-05,
+      "p50_ms": 0.0008275001164292917,
+      "p95_ms": 0.001008250364975538,
+      "p99_ms": 0.0010288507837685756
+    },
+    "cold_client_wall_time": null,
+    "warm_client_wall_time": null,
+    "by_category": {
+      "direct_fact": {
+        "count": 3,
+        "minimum_ms": 0.0008269998943433166,
+        "maximum_ms": 0.001034000888466835,
+        "mean_ms": 0.0008960002257178227,
+        "standard_deviation_ms": 9.758120443806439e-05,
+        "p50_ms": 0.0008269998943433166,
+        "p95_ms": 0.0010133007890544832,
+        "p99_ms": 0.0010298608685843647
+      },
+      "document_location": {
+        "count": 3,
+        "minimum_ms": 0.0008270017133327201,
+        "maximum_ms": 0.0009309987945016474,
+        "mean_ms": 0.0008619996757867435,
+        "standard_deviation_ms": 4.879144182621724e-05,
+        "p50_ms": 0.0008279985195258632,
+        "p95_ms": 0.0009206987670040689,
+        "p99_ms": 0.0009289387890021317
+      }
+    },
+    "by_stage": {},
+    "by_activity_type": {},
+    "sample_warning": "Only 6 measured samples; percentile estimates are unstable.",
+    "provenance": {
+      "manifest_schema_version": "1.0",
+      "fixture_mode": true,
+      "workload_type": "controlled_experiment"
+    }
+  }
+}

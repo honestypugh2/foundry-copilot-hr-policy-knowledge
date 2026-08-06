@@ -1,0 +1,16 @@
+[
+  {
+    "case_id": "synthetic-pto-location",
+    "query": "Where is the PTO policy?",
+    "category": "document_location",
+    "expected_behavior": "retrieve",
+    "expected_source_ids": ["SYNTH-POLICY-ALPHA"]
+  },
+  {
+    "case_id": "synthetic-ethics-fact",
+    "query": "What is the Code of Ethics?",
+    "category": "direct_fact",
+    "expected_behavior": "retrieve",
+    "expected_source_ids": ["SYNTH-POLICY-BETA"]
+  }
+]

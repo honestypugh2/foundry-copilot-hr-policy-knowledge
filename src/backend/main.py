@@ -32,6 +32,7 @@ from src.search.search_service import HRPolicySearchService, HR_GLOSSARY
 from src.document_processing.document_ingestion import DocumentIngestionAgent
 from src.copilot_studio.service import CopilotStudioService
 from src.observability import enable_tracing
+from src.benchmarking.api import router as benchmarking_router
 
 load_dotenv()
 
@@ -117,6 +118,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(benchmarking_router)
 
 
 # ========================================================================== #

@@ -1,0 +1,16 @@
+{
+  "Where is the PTO policy?": [
+    {
+      "policy_number": "SYNTH-POLICY-ALPHA",
+      "title": "Synthetic Leave Policy",
+      "score": 3.0
+    }
+  ],
+  "What is the Code of Ethics?": [
+    {
+      "policy_number": "SYNTH-POLICY-BETA",
+      "title": "Synthetic Conduct Policy",
+      "score": 2.5
+    }
+  ]
+}

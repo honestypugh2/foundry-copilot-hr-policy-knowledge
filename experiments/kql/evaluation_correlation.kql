@@ -1,0 +1,27 @@
+// Tables: Application Insights dependencies and customEvents.
+// Evaluation events correlate by response/conversation ID, not parent span ID.
+let experimentId = "<experiment-id>";
+let timeRange = 24h;
+let responses = materialize(
+    dependencies
+    | where timestamp > ago(timeRange)
+    | where tostring(customDimensions["app.benchmark.experiment.id"]) == experimentId
+    | project operation_Id,
+        responseId = tostring(customDimensions["gen_ai.response.id"]),
+        conversationId = tostring(customDimensions["gen_ai.conversation.id"]),
+        pattern = tostring(customDimensions["app.benchmark.pattern"]),
+        caseId = tostring(customDimensions["app.benchmark.case.id"])
+);
+customEvents
+| where timestamp > ago(timeRange)
+| where name == "gen_ai.evaluation.result"
+| extend
+    responseId = tostring(customDimensions["gen_ai.response.id"]),
+    conversationId = tostring(customDimensions["gen_ai.conversation.id"]),
+    evaluator = tostring(customDimensions["gen_ai.evaluation.name"]),
+    score = todouble(customDimensions["gen_ai.evaluation.score.value"]),
+    label = tostring(customDimensions["gen_ai.evaluation.score.label"])
+| join kind=inner responses on responseId, conversationId
+| project timestamp, pattern, caseId, evaluator, score, label, responseId,
+    conversationId, operation_Id
+| order by timestamp desc

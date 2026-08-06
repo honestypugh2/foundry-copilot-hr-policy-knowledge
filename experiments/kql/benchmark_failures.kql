@@ -1,0 +1,25 @@
+// Tables: Application Insights dependencies and exceptions.
+// Replace experimentId and timeRange. Query projects identifiers and classifications only.
+let experimentId = "<experiment-id>";
+let timeRange = 24h;
+let failedOperations = materialize(
+    dependencies
+    | where timestamp > ago(timeRange)
+    | where tostring(customDimensions["app.benchmark.experiment.id"]) == experimentId
+    | where success == false
+    | project operation_Id, timestamp, duration,
+        pattern = tostring(customDimensions["app.benchmark.pattern"]),
+        configurationId = tostring(customDimensions["app.benchmark.configuration.id"]),
+        caseId = tostring(customDimensions["app.benchmark.case.id"]),
+        operation = tostring(customDimensions["gen_ai.operation.name"]),
+        errorType = tostring(customDimensions["error.type"])
+);
+failedOperations
+| join kind=leftouter (
+    exceptions
+    | where timestamp > ago(timeRange)
+    | project operation_Id, exceptionType = type, outerMessage
+) on operation_Id
+| project timestamp, pattern, configurationId, caseId, operation, duration,
+    errorType, exceptionType, outerMessage, operation_Id
+| order by timestamp desc

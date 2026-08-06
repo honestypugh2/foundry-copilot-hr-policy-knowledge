@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import sys
+from types import ModuleType
 from pathlib import Path
 
 from src.evaluation.graders import (
@@ -11,7 +14,12 @@ from src.evaluation.graders import (
     summarize,
     title_mentioned,
 )
-from src.evaluation.run_eval import evaluate, load_dataset
+from src.evaluation.run_eval import (
+    _apply_llm_graders,
+    evaluate,
+    load_dataset,
+    write_llm_evaluation_dataset,
+)
 
 _DATASET = Path(__file__).resolve().parents[1] / "eval" / "datasets" / "hr_qa_testset.csv"
 
@@ -126,3 +134,89 @@ def test_dataset_loads_and_grades_perfect_reference_answers():
     summary = summarize(results)
     # Every reference answer is authored to cite its expected policy (or refuse).
     assert summary["pass_rate"] == 1.0, summary["failures"]
+
+
+def test_llm_evaluation_export_is_jsonl_without_timestamps_or_citations(tmp_path):
+    rows = load_dataset(_DATASET)[:1]
+    answers = {
+        rows[0]["test_case"]: {
+            "answer": "Synthetic answer",
+            "context": "Synthetic context",
+            "citations": [{"private": "not exported"}],
+        }
+    }
+    path = tmp_path / "evaluation.jsonl"
+    assert write_llm_evaluation_dataset(rows, answers, path) == 1
+    record = __import__("json").loads(path.read_text(encoding="utf-8"))
+    assert set(record) == {
+        "test_case",
+        "query",
+        "response",
+        "context",
+        "ground_truth",
+    }
+    assert "timestamp" not in record
+
+
+def test_llm_graders_use_one_unified_sdk_evaluation(monkeypatch, tmp_path):
+    calls: list[dict] = []
+    evaluation_module = ModuleType("azure.ai.evaluation")
+
+    class ModelConfiguration(dict):
+        def __init__(self, **kwargs):
+            super().__init__(kwargs)
+
+    class Evaluator:
+        def __init__(self, model_config, credential=None):
+            self.model_config = model_config
+            self.credential = credential
+
+    def fake_evaluate(**kwargs):
+        calls.append(kwargs)
+        records = [
+            json.loads(line)
+            for line in Path(kwargs["data"]).read_text(encoding="utf-8").splitlines()
+        ]
+        assert records[0]["query"] == "What is synthetic leave?"
+        return {
+            "metrics": {"groundedness": 4.0},
+            "rows": [{"groundedness": 4.0}],
+            "studio_url": "https://example.test/evaluation",
+        }
+
+    evaluation_module.AzureOpenAIModelConfiguration = ModelConfiguration
+    evaluation_module.GroundednessEvaluator = Evaluator
+    evaluation_module.RelevanceEvaluator = Evaluator
+    evaluation_module.evaluate = fake_evaluate
+    monkeypatch.setitem(sys.modules, "azure.ai.evaluation", evaluation_module)
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://example.test")
+    monkeypatch.setenv("AZURE_OPENAI_DEPLOYMENT_NAME", "synthetic-model")
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "synthetic-key")
+
+    output_path = tmp_path / "results.json"
+    result = _apply_llm_graders(
+        [
+            {
+                "test_case": "synthetic-leave",
+                "question": "What is synthetic leave?",
+                "reference_answer": "Synthetic reference",
+            }
+        ],
+        {
+            "synthetic-leave": {
+                "answer": "Synthetic answer",
+                "context": "Synthetic context",
+            }
+        },
+        output_path=output_path,
+    )
+
+    assert len(calls) == 1
+    assert set(calls[0]["evaluators"]) == {"groundedness", "relevance"}
+    assert calls[0]["evaluator_config"]["groundedness"]["column_mapping"] == {
+        "query": "${data.query}",
+        "response": "${data.response}",
+        "context": "${data.context}",
+    }
+    assert calls[0]["fail_on_evaluator_errors"] is False
+    assert result["metrics"] == {"groundedness": 4.0}

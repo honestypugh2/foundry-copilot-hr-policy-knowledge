@@ -1,0 +1,515 @@
+{
+  "$defs": {
+    "Capability": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Artifact Count",
+          "type": "integer"
+        },
+        "freshness": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Freshness"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "release_status": {
+          "title": "Release Status",
+          "type": "string"
+        },
+        "source_version": {
+          "title": "Source Version",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "available",
+            "unavailable",
+            "not_configured",
+            "not_authorized",
+            "not_applicable",
+            "degraded"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "status",
+        "release_status",
+        "source_version"
+      ],
+      "title": "Capability",
+      "type": "object"
+    },
+    "CapabilityResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_version": {
+          "title": "Source Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_version",
+        "capabilities"
+      ],
+      "title": "CapabilityResponse",
+      "type": "object"
+    },
+    "ComparisonResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "$ref": "#/$defs/ExperimentSummary"
+        },
+        "candidate": {
+          "$ref": "#/$defs/ExperimentSummary"
+        },
+        "compatible_scope": {
+          "title": "Compatible Scope",
+          "type": "boolean"
+        },
+        "deltas": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Delta"
+          },
+          "title": "Deltas",
+          "type": "object"
+        },
+        "incompatibility_reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Incompatibility Reasons",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "baseline",
+        "candidate",
+        "compatible_scope",
+        "deltas"
+      ],
+      "title": "ComparisonResponse",
+      "type": "object"
+    },
+    "Delta": {
+      "additionalProperties": false,
+      "properties": {
+        "absolute": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Absolute"
+        },
+        "relative": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Relative"
+        }
+      },
+      "title": "Delta",
+      "type": "object"
+    },
+    "ExperimentListResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ExperimentSummary"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ExperimentListResponse",
+      "type": "object"
+    },
+    "ExperimentSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "corpus_fingerprint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Corpus Fingerprint"
+        },
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "dataset_name": {
+          "title": "Dataset Name",
+          "type": "string"
+        },
+        "dataset_version": {
+          "title": "Dataset Version",
+          "type": "string"
+        },
+        "estimated_variable_cost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Variable Cost"
+        },
+        "experiment_id": {
+          "title": "Experiment Id",
+          "type": "string"
+        },
+        "git_commit": {
+          "title": "Git Commit",
+          "type": "string"
+        },
+        "index_fingerprint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Index Fingerprint"
+        },
+        "latency_p50_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency P50 Ms"
+        },
+        "latency_p95_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency P95 Ms"
+        },
+        "latency_p99_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency P99 Ms"
+        },
+        "model_deployment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Deployment"
+        },
+        "pattern": {
+          "title": "Pattern",
+          "type": "string"
+        },
+        "provenance": {
+          "additionalProperties": true,
+          "title": "Provenance",
+          "type": "object"
+        },
+        "quality": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quality"
+        },
+        "sample_warning": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Warning"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "security_pass_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Security Pass Rate"
+        },
+        "success_rate": {
+          "title": "Success Rate",
+          "type": "number"
+        }
+      },
+      "required": [
+        "experiment_id",
+        "pattern",
+        "dataset_name",
+        "dataset_version",
+        "git_commit",
+        "created_at",
+        "count",
+        "success_rate"
+      ],
+      "title": "ExperimentSummary",
+      "type": "object"
+    },
+    "NativeLinkResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "authoritative_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authoritative Url"
+        },
+        "release_status": {
+          "title": "Release Status",
+          "type": "string"
+        },
+        "resource_type": {
+          "title": "Resource Type",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "available",
+            "unavailable",
+            "not_configured",
+            "not_authorized",
+            "not_applicable",
+            "degraded"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "resource_type",
+        "source_id",
+        "status",
+        "release_status"
+      ],
+      "title": "NativeLinkResponse",
+      "type": "object"
+    },
+    "PatternEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "automation_boundary": {
+          "title": "Automation Boundary",
+          "type": "string"
+        },
+        "experiment_count": {
+          "minimum": 0,
+          "title": "Experiment Count",
+          "type": "integer"
+        },
+        "latest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExperimentSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pattern": {
+          "enum": [
+            "A",
+            "A2",
+            "B",
+            "C",
+            "Hosted"
+          ],
+          "title": "Pattern",
+          "type": "string"
+        },
+        "telemetry_boundary": {
+          "title": "Telemetry Boundary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pattern",
+        "automation_boundary",
+        "telemetry_boundary",
+        "experiment_count"
+      ],
+      "title": "PatternEvidence",
+      "type": "object"
+    },
+    "PatternSummaryResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "$ref": "#/$defs/PatternEvidence"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item"
+      ],
+      "title": "PatternSummaryResponse",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Schema-only wrapper used to generate frontend transport types.",
+  "properties": {
+    "capabilities": {
+      "$ref": "#/$defs/CapabilityResponse"
+    },
+    "comparison": {
+      "$ref": "#/$defs/ComparisonResponse"
+    },
+    "experiments": {
+      "$ref": "#/$defs/ExperimentListResponse"
+    },
+    "native_link": {
+      "$ref": "#/$defs/NativeLinkResponse"
+    },
+    "pattern_summary": {
+      "$ref": "#/$defs/PatternSummaryResponse"
+    }
+  },
+  "required": [
+    "capabilities",
+    "experiments",
+    "comparison",
+    "pattern_summary",
+    "native_link"
+  ],
+  "title": "BenchmarkApiContract",
+  "type": "object"
+}
