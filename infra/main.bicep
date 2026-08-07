@@ -25,6 +25,26 @@ param gpt5DeploymentName string = 'gpt-5'
 @description('Azure OpenAI embedding model deployment name')
 param embeddingDeploymentName string = 'text-embedding-3-small'
 
+@description('Search knowledge source provisioned by the postprovision data-plane hook')
+param searchKnowledgeSourceName string = 'hr-knowledge-source'
+
+@description('Search knowledge base provisioned by the postprovision data-plane hook')
+param searchKnowledgeBaseName string = 'hr-knowledge-base'
+
+@description('Model deployment used by the Search knowledge base for query planning')
+param searchKnowledgeBaseModelDeployment string = 'gpt-5-mini'
+
+@allowed(['minimal', 'low', 'medium'])
+@description('Reasoning effort used by the Search knowledge base for retrieval planning')
+param searchKnowledgeBaseReasoningEffort string = 'medium'
+
+@allowed(['answerSynthesis', 'extractiveData'])
+@description('Output mode returned by the Search knowledge base')
+param searchKnowledgeBaseOutputMode string = 'extractiveData'
+
+@description('Preview Search API version used by the knowledge base MCP endpoint')
+param searchMcpApiVersion string = '2026-05-01-preview'
+
 @description('Azure AI Search SKU')
 @allowed(['basic', 'standard'])
 param searchSku string = 'basic'
@@ -58,6 +78,12 @@ module resources './bicep/main.bicep' = {
     openAIDeploymentName: openAIDeploymentName
     gpt5DeploymentName: gpt5DeploymentName
     embeddingDeploymentName: embeddingDeploymentName
+    searchKnowledgeSourceName: searchKnowledgeSourceName
+    searchKnowledgeBaseName: searchKnowledgeBaseName
+    searchKnowledgeBaseModelDeployment: searchKnowledgeBaseModelDeployment
+    searchKnowledgeBaseReasoningEffort: searchKnowledgeBaseReasoningEffort
+    searchKnowledgeBaseOutputMode: searchKnowledgeBaseOutputMode
+    searchMcpApiVersion: searchMcpApiVersion
     searchSku: searchSku
     principalId: principalId
     backendAuthClientId: backendAuthClientId
@@ -77,6 +103,13 @@ output AZURE_AI_PROJECT_NAME string = resources.outputs.aiProjectName
 output AZURE_AI_PROJECT_ENDPOINT string = resources.outputs.projectEndpoint
 output AZURE_SEARCH_ENDPOINT string = resources.outputs.searchEndpoint
 output AZURE_SEARCH_NAME string = resources.outputs.searchName
+output AZURE_SEARCH_INDEX_NAME string = 'hr-policy-index'
+output AZURE_SEARCH_KNOWLEDGE_SOURCE_NAME string = resources.outputs.knowledgeSourceName
+output AZURE_SEARCH_KNOWLEDGE_BASE_NAME string = resources.outputs.knowledgeBaseName
+output AZURE_SEARCH_KB_MODEL_DEPLOYMENT string = resources.outputs.knowledgeBaseModelDeployment
+output AZURE_SEARCH_KB_REASONING_EFFORT string = resources.outputs.knowledgeBaseReasoningEffort
+output AZURE_SEARCH_KB_OUTPUT_MODE string = resources.outputs.knowledgeBaseOutputMode
+output AZURE_SEARCH_MCP_API_VERSION string = resources.outputs.searchMcpApiVersion
 output AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT string = resources.outputs.docIntelligenceEndpoint
 output AZURE_STORAGE_ACCOUNT string = resources.outputs.storageAccountName
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.containerRegistryLoginServer

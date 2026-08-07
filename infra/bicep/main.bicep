@@ -29,6 +29,24 @@ param gpt5DeploymentName string
 @description('Azure OpenAI embedding model deployment name')
 param embeddingDeploymentName string
 
+@description('Search knowledge source provisioned through the Search data plane')
+param searchKnowledgeSourceName string
+
+@description('Search knowledge base provisioned through the Search data plane')
+param searchKnowledgeBaseName string
+
+@description('Model deployment used by the Search knowledge base for query planning')
+param searchKnowledgeBaseModelDeployment string
+
+@description('Reasoning effort used by the Search knowledge base for retrieval planning')
+param searchKnowledgeBaseReasoningEffort string
+
+@description('Output mode returned by the Search knowledge base')
+param searchKnowledgeBaseOutputMode string
+
+@description('Preview Search API version used by the knowledge base MCP endpoint')
+param searchMcpApiVersion string
+
 @description('Azure AI Search SKU')
 param searchSku string
 
@@ -153,6 +171,11 @@ resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = {
     hostingMode: 'default'
     semanticSearch: 'free'
     disableLocalAuth: false
+    authOptions: {
+      aadOrApiKey: {
+        aadAuthFailureMode: 'http401WithBearerChallenge'
+      }
+    }
   }
 }
 
@@ -341,6 +364,12 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
           env: [
             { name: 'AZURE_SEARCH_ENDPOINT', value: 'https://${search.name}.search.windows.net' }
             { name: 'AZURE_SEARCH_INDEX_NAME', value: 'hr-policy-index' }
+            { name: 'AZURE_SEARCH_KNOWLEDGE_SOURCE_NAME', value: searchKnowledgeSourceName }
+            { name: 'AZURE_SEARCH_KNOWLEDGE_BASE_NAME', value: searchKnowledgeBaseName }
+            { name: 'AZURE_SEARCH_KB_MODEL_DEPLOYMENT', value: searchKnowledgeBaseModelDeployment }
+            { name: 'AZURE_SEARCH_KB_REASONING_EFFORT', value: searchKnowledgeBaseReasoningEffort }
+            { name: 'AZURE_SEARCH_KB_OUTPUT_MODE', value: searchKnowledgeBaseOutputMode }
+            { name: 'AZURE_SEARCH_MCP_API_VERSION', value: searchMcpApiVersion }
             { name: 'AZURE_AI_PROJECT_ENDPOINT', value: '${aiServices.properties.endpoint}/api/projects/${aiProject.name}' }
             { name: 'AZURE_AI_MODEL_DEPLOYMENT_NAME', value: openAIDeploymentName }
             { name: 'AZURE_OPENAI_ENDPOINT', value: aiServices.properties.endpoint }
@@ -606,6 +635,12 @@ output aiProjectName string = aiProject.name
 output projectEndpoint string = '${aiServices.properties.endpoint}/api/projects/${aiProject.name}'
 output searchEndpoint string = 'https://${search.name}.search.windows.net'
 output searchName string = search.name
+output knowledgeSourceName string = searchKnowledgeSourceName
+output knowledgeBaseName string = searchKnowledgeBaseName
+output knowledgeBaseModelDeployment string = searchKnowledgeBaseModelDeployment
+output knowledgeBaseReasoningEffort string = searchKnowledgeBaseReasoningEffort
+output knowledgeBaseOutputMode string = searchKnowledgeBaseOutputMode
+output searchMcpApiVersion string = searchMcpApiVersion
 output docIntelligenceEndpoint string = docIntelligence.properties.endpoint
 output storageAccountName string = storage.name
 output containerRegistryLoginServer string = containerRegistry.properties.loginServer

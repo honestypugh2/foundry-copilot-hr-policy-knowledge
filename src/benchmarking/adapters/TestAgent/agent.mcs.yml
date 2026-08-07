@@ -1,0 +1,8 @@
+mcs.metadata:
+  componentName: TestAgent
+kind: GptComponentMetadata
+instructions:
+gptCapabilities: {}
+aISettings:
+  model:
+    modelNameHint: Sonnet46

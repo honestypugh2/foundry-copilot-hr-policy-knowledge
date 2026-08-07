@@ -20,6 +20,24 @@
     "embeddingDeploymentName": {
       "value": "text-embedding-3-small"
     },
+    "searchKnowledgeSourceName": {
+      "value": "${AZURE_SEARCH_KNOWLEDGE_SOURCE_NAME=hr-knowledge-source}"
+    },
+    "searchKnowledgeBaseName": {
+      "value": "${AZURE_SEARCH_KNOWLEDGE_BASE_NAME=hr-knowledge-base}"
+    },
+    "searchKnowledgeBaseModelDeployment": {
+      "value": "${AZURE_SEARCH_KB_MODEL_DEPLOYMENT=gpt-5-mini}"
+    },
+    "searchKnowledgeBaseReasoningEffort": {
+      "value": "${AZURE_SEARCH_KB_REASONING_EFFORT=medium}"
+    },
+    "searchKnowledgeBaseOutputMode": {
+      "value": "${AZURE_SEARCH_KB_OUTPUT_MODE=extractiveData}"
+    },
+    "searchMcpApiVersion": {
+      "value": "${AZURE_SEARCH_MCP_API_VERSION=2026-05-01-preview}"
+    },
     "searchSku": {
       "value": "basic"
     },

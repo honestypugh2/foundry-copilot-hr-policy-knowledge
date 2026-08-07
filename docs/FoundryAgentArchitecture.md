@@ -5,6 +5,8 @@ and why it answers HR questions reliably.
 
 > Pattern B is the default ([RetrievalPatterns.md](RetrievalPatterns.md)).
 > Provision it with `python -m src.agents.create_foundry_agent`.
+> After provisioning, use the Pattern B and shared comparison prompts in the
+> [starter query catalog](CopilotStudioTestingGuide.md#starter-query-catalog).
 
 ---
 
@@ -80,6 +82,16 @@ sequenceDiagram
 | MCP project connection         | Foundry project      | `hr-knowledge-mcp-connection`    | `agentic_retrieval.mcp.project_connection_name` |
 | Prompt agent                   | Foundry Agent Service| `HRPolicyAgent`                  | `src/agents/hr_policy_agent.py` (`AGENT_NAME`) |
 | Index (existing prerequisite)  | Azure AI Search      | `hr-policy-index`                | `search_config.index_name`                     |
+
+---
+
+### Shared Knowledge Base Contract
+
+Patterns A2 and B reuse the same KB definition: `gpt-5-mini` query planning,
+`medium` retrieval reasoning, `extractiveData` output, and KB-level retrieval
+instructions. The KB does not synthesize an answer. Copilot Studio owns answer
+synthesis in A2; `HRPolicyAgent` owns it in Pattern B after the required MCP
+retrieval.
 
 ---
 

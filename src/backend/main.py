@@ -18,10 +18,8 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from src.models.schemas import (
-    ChatMessage,
     ChatRequest,
     ChatResponse,
     HealthResponse,
@@ -482,16 +480,8 @@ async def copilot_studio_chat(request: ChatRequest):
 
     start = time.time()
 
-    # Start conversation and send message
-    conv = await copilot_studio.start_conversation()
-    conversation_id = conv["conversationId"]
-
-    token_data = await copilot_studio.get_directline_token()
-    result = await copilot_studio.send_message(
-        conversation_id=conversation_id,
-        token=token_data["token"],
-        message=request.message,
-    )
+    result = await copilot_studio.ask(request.message)
+    conversation_id = result["conversation_id"]
 
     elapsed_ms = int((time.time() - start) * 1000)
 

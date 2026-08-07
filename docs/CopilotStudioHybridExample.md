@@ -6,6 +6,10 @@ A worked example combining all three patterns in a single copilot:
 - **Pattern B** (Foundry Agent + MCP) for grounded answer synthesis.
 - **Pattern C** (Dual-Tool Routing) for "where is the document" intents.
 
+Use the compound prompts in the
+[sample query catalog](CopilotStudioTestingGuide.md#starter-query-catalog) as
+the starting point for validating content-plus-locator routing.
+
 ---
 
 ## Architecture

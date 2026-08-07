@@ -5,6 +5,7 @@ import json
 import pytest
 
 from src.benchmarking.adapters import (
+    CopilotStudioAdapter,
     DirectKnowledgeBaseAdapter,
     FoundryAgentAdapter,
     HostedAgentAdapter,
@@ -156,3 +157,60 @@ async def test_copilot_import_requires_explicit_external_boundary(tmp_path):
     path.write_text(json.dumps({"measurement_boundary": "browser", "result": {}}) + "\n")
     with pytest.raises(ValueError, match="Copilot measurement boundary"):
         load_copilot_studio_results(path)
+
+
+async def test_copilot_studio_adapter_routes_and_measures_external_boundary(monkeypatch):
+    received_query = ""
+
+    async def ask(query: str):
+        nonlocal received_query
+        received_query = query
+        return {
+            "answer": "See the Paid Time Off policy. [Policy 50010 - Paid Time Off]",
+            "activities": [
+                {
+                    "type": "message",
+                    "channelData": {
+                        "citations": [
+                            {
+                                "policy_number": "50010",
+                                "title": "Paid Time Off",
+                                "url": "https://example.test/pto",
+                            }
+                        ]
+                    },
+                }
+            ],
+            "conversation_id": "conversation-1",
+            "activity_id": "activity-1",
+        }
+
+    clock = iter([0.0, 0.125])
+    monkeypatch.setattr(
+        "src.benchmarking.adapters.copilot_studio.perf_counter", lambda: next(clock)
+    )
+    adapter = CopilotStudioAdapter(
+        ask,
+        pattern="A2",
+        route_template="/benchmark {pattern} {query}",
+    )
+
+    result = await adapter.invoke("What is PTO?", top=5)
+
+    assert received_query == "/benchmark A2 What is PTO?"
+    assert adapter.invocation_path == "copilot_studio_direct_line:A2"
+    assert result.metrics["client_wall_time_ms"].value == pytest.approx(125)
+    assert result.metrics["service_elapsed_time_ms"].unavailable_reason == "not_exposed"
+    assert result.references[0].source_id == "50010"
+    assert result.activity[0].model_dump()["channelData"]["citations"][0]["url"]
+    assert result.conversation_id == "conversation-1"
+
+
+async def test_copilot_studio_adapter_uses_explicit_policy_citation_fallback():
+    async def ask(query: str):
+        return {"answer": "Use the leave rules. [Policy 50020 - Part-time PTO]"}
+
+    result = await CopilotStudioAdapter(ask, pattern="A").invoke("PTO?", top=5)
+
+    assert result.references[0].source_id == "50020"
+    assert result.references[0].title == "Part-time PTO"

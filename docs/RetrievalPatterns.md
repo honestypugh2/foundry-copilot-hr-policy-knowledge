@@ -24,7 +24,7 @@ flowchart TD
     Q1 -- Yes --> Q2{Need an LLM agent?}
     Q2 -- No, hybrid search is enough --> QK{Classic index search or agentic KB retrieval?}
     QK -- Classic search --> A[Pattern A: Direct Index]
-    QK -- Agentic retrieval over KB --> A2[Pattern A2: Copilot Studio new experience Microsoft IQ Foundry IQ]
+    QK -- Agentic retrieval over KB --> A2[Pattern A2: Copilot Studio GitHub Copilot harness Foundry IQ]
     Q2 -- Yes, full agentic retrieval --> Q3{Self-host the runtime?}
     Q3 -- No --> B[Pattern B: Foundry Agent Service prompt agent + MCPTool ]
     Q3 -- Yes --> H[Hosted Agent runtime Microsoft Agent Framework hosting]
@@ -81,8 +81,9 @@ and running `python -m src.agents.create_foundry_agent`.
 
 Copilot Studio queries the Azure AI Search index (`hr-policy-index`) directly
 using its built-in **Knowledge** action and classic search. No agent code in
-this repo runs in the answering path, although Copilot Studio may generate an
-answer from the retrieved snippets. This repo owns the index, skillset, and
+this repo runs in the answering path. Copilot Studio's selected model still
+synthesizes an answer from the retrieved snippets; "direct" does not mean a
+model-free Copilot Studio response. This repo owns the index, skillset, and
 indexing pipeline.
 
 - **Provision:** `python -m src.agents.create_foundry_agent --skip-agent`
@@ -99,23 +100,23 @@ indexing pipeline.
 > see **Pattern A2** below (new agent experience) or **Pattern B** (Foundry
 > Agent Service).
 
-## Pattern A2 — Copilot Studio (new experience) → Microsoft IQ → Foundry IQ
+## Pattern A2 — Copilot Studio GitHub Copilot harness → Foundry IQ
 
-In the Copilot Studio **new agent experience** (preview), an agent can connect
+In the Copilot Studio **GitHub Copilot harness**, an agent can connect
 **directly to a Foundry IQ knowledge base** — the same `hr-knowledge-base` this
-repo provisions — via **Microsoft IQ**, with **no Foundry prompt agent in the
-path**. This is [*agentic retrieval*](https://learn.microsoft.com/en-us/azure/search/search-what-is-azure-search#what-is-agentic-retrieval):
+repo provisions — as a **Foundry IQ tool**, with **no Foundry prompt agent in
+the path**. This is [*agentic retrieval*](https://learn.microsoft.com/en-us/azure/search/search-what-is-azure-search#what-is-agentic-retrieval):
 the knowledge base plans sub-queries, retrieves in parallel, reranks, and
 returns merged results that the agent uses to compose its answer.
 
 - **Provision the KB (reused as-is):** `python -m src.agents.create_foundry_agent`
   (creates the Knowledge Source + `hr-knowledge-base`; the PromptAgent is *not*
   required for Pattern A2).
-- **Wire in Copilot Studio (new experience):** **Build → Microsoft IQ →
-  Foundry IQ → Create new connection** (choose **Microsoft Entra ID Integrated**),
+- **Wire in Copilot Studio:** **Build → Tools → Foundry IQ → Create new
+  connection** (choose **Microsoft Entra ID Integrated**),
   select `hr-knowledge-base`, **Add to agent**. One Foundry IQ connection per
   agent. See
-  [CopilotStudioIntegration.md § Pattern A2 wiring](CopilotStudioIntegration.md#pattern-a2-wiring-new-experience--microsoft-iq--foundry-iq).
+  [CopilotStudioIntegration.md § Pattern A2 wiring](CopilotStudioIntegration.md#pattern-a2-wiring-github-copilot-harness--foundry-iq).
 - **Strengths:** agentic retrieval quality without a prompt agent to maintain;
   the KB is a reusable, centrally tuned asset. Tune it in Microsoft Foundry, not
   Copilot Studio.
@@ -131,7 +132,15 @@ returns merged results that the agent uses to compose its answer.
   KB in a Foundry prompt agent (`tool_choice="required"`) and connects Copilot
   Studio to the *agent* — use B when you need forced grounding / answer
   synthesis owned in Foundry, or the classic experience.
-- **Reference:** [Connect to Foundry IQ from an agent (preview)](https://learn.microsoft.com/en-us/microsoft-copilot-studio/agents-experience/foundry-iq-connect)
+- **Shared KB contract:** both paths use `gpt-5-mini` query planning, `medium`
+  retrieval reasoning, and `extractiveData` output. The KB returns merged
+  evidence rather than a synthesized answer. Copilot Studio composes the A2
+  answer; the Foundry prompt agent composes the Pattern B answer.
+- **Availability:** the Copilot Studio harness and Foundry IQ connection are
+  not currently labeled preview. Foundry IQ feature availability is mixed:
+  some `2026-04-01` API capabilities are GA, while the full Microsoft Foundry
+  and Azure portal agentic-retrieval surfaces remain preview.
+- **Reference:** [Connect to Foundry IQ from an agent](https://learn.microsoft.com/en-us/microsoft-copilot-studio/agents-experience/foundry-iq-connect)
 
 ## Pattern B — Foundry Agent Service + MCPTool
 
@@ -207,6 +216,7 @@ or you want to keep the answering loop on your own infrastructure.
 
 ## See Also
 
+- [CopilotStudioTestingGuide.md](CopilotStudioTestingGuide.md#starter-query-catalog) — corpus-grounded sample queries for each pattern
 - [BenchmarkingDecisionSystem.md](BenchmarkingDecisionSystem.md) — reproducible evidence, Microsoft asset reuse, and implementation roadmap
 - [ReactBenchmarkWorkbenchADR.md](ReactBenchmarkWorkbenchADR.md) — native operational plane versus custom decision plane
 - [Walkthrough.md](Walkthrough.md) — linear setup walkthrough

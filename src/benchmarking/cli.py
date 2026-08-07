@@ -8,6 +8,9 @@ import json
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
+
+from src.benchmarking.adapters.copilot_studio import CopilotStudioAdapter
 from src.benchmarking.adapters.direct_search import DirectSearchAdapter
 from src.benchmarking.aggregation import aggregate_results
 from src.benchmarking.models import BenchmarkCase, ExperimentManifest
@@ -40,7 +43,34 @@ def _fixture_search(path: Path):
     return search
 
 
-def _build_adapter(manifest: ExperimentManifest, fixture_responses: Path | None):
+def _build_adapter(
+    manifest: ExperimentManifest,
+    fixture_responses: Path | None,
+    *,
+    copilot_studio: bool = False,
+    route_template: str = "{query}",
+    copilot_environment_id: str | None = None,
+    copilot_agent_schema: str | None = None,
+    copilot_token_endpoint: str | None = None,
+):
+    if copilot_studio:
+        from src.copilot_studio.service import CopilotStudioService
+
+        service = CopilotStudioService(
+            environment_id=copilot_environment_id,
+            agent_schema=copilot_agent_schema,
+            token_endpoint=copilot_token_endpoint,
+        )
+        if not service.is_configured:
+            raise ValueError(
+                "Copilot Studio requires COPILOT_STUDIO_ENVIRONMENT_ID and "
+                "COPILOT_STUDIO_AGENT_SCHEMA"
+            )
+        return CopilotStudioAdapter(
+            service.ask,
+            pattern=manifest.pattern,
+            route_template=route_template,
+        )
     if manifest.pattern != "A":
         raise ValueError(
             "The CLI currently automates Pattern A only; use normalized imports "
@@ -63,8 +93,21 @@ async def run_experiment(
     output_dir: Path,
     *,
     fixture_responses: Path | None = None,
+    copilot_studio: bool = False,
+    route_template: str = "{query}",
+    copilot_environment_id: str | None = None,
+    copilot_agent_schema: str | None = None,
+    copilot_token_endpoint: str | None = None,
 ) -> None:
-    adapter = _build_adapter(manifest, fixture_responses)
+    adapter = _build_adapter(
+        manifest,
+        fixture_responses,
+        copilot_studio=copilot_studio,
+        route_template=route_template,
+        copilot_environment_id=copilot_environment_id,
+        copilot_agent_schema=copilot_agent_schema,
+        copilot_token_endpoint=copilot_token_endpoint,
+    )
     runner = BenchmarkRunner(manifest, adapter)
 
     for _ in range(manifest.warmup_count):
@@ -80,6 +123,9 @@ async def run_experiment(
         {
             "manifest_schema_version": manifest.schema_version,
             "fixture_mode": fixture_responses is not None,
+            "measurement_boundary": (
+                "copilot_studio_direct_line" if copilot_studio else adapter.invocation_path
+            ),
             "workload_type": "controlled_experiment",
         }
     )
@@ -94,6 +140,7 @@ async def run_experiment(
 
 
 def main(argv: list[str] | None = None) -> int:
+    load_dotenv()
     parser = argparse.ArgumentParser(description="Run a controlled HR policy benchmark")
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--cases", type=Path, required=True)
@@ -102,6 +149,28 @@ def main(argv: list[str] | None = None) -> int:
         "--fixture-responses",
         type=Path,
         help="Synthetic query-to-results JSON for credential-free contract testing",
+    )
+    parser.add_argument(
+        "--copilot-studio",
+        action="store_true",
+        help="Run the manifest pattern end to end through the configured Copilot Studio agent",
+    )
+    parser.add_argument(
+        "--route-template",
+        default="{query}",
+        help="Optional Copilot routing prompt containing {query}; real per-pattern agents should use the default",
+    )
+    parser.add_argument(
+        "--copilot-environment-id",
+        help="Power Platform environment ID for this agent (overrides .env)",
+    )
+    parser.add_argument(
+        "--copilot-agent-schema",
+        help="Schema name of the real Copilot Studio agent for this run (overrides .env)",
+    )
+    parser.add_argument(
+        "--copilot-token-endpoint",
+        help="Mobile-channel token endpoint for the real agent (overrides .env)",
     )
     args = parser.parse_args(argv)
 
@@ -117,6 +186,11 @@ def main(argv: list[str] | None = None) -> int:
             cases,
             args.output_dir,
             fixture_responses=args.fixture_responses,
+            copilot_studio=args.copilot_studio,
+            route_template=args.route_template,
+            copilot_environment_id=args.copilot_environment_id,
+            copilot_agent_schema=args.copilot_agent_schema,
+            copilot_token_endpoint=args.copilot_token_endpoint,
         )
     )
     return 0

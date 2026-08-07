@@ -1,0 +1,51 @@
+[
+  {
+    "case_id": "ethics-exact",
+    "query": "What is policy 10000, Code of Ethics and Related Matters?",
+    "category": "exact_lookup",
+    "expected_behavior": "Answer from policy 10000 and cite that policy.",
+    "expected_source_ids": ["10000"]
+  },
+  {
+    "case_id": "pto-direct-fact",
+    "query": "What does the full-time Paid Time Off policy cover?",
+    "category": "direct_fact",
+    "expected_behavior": "Answer from policy 50010 and cite that policy.",
+    "expected_source_ids": ["50010"]
+  },
+  {
+    "case_id": "pto-disambiguation",
+    "query": "Which PTO policy applies to me?",
+    "category": "disambiguation",
+    "expected_behavior": "Ask whether the employee is full-time or part-time before choosing between policies 50010 and 50020.",
+    "expected_source_ids": []
+  },
+  {
+    "case_id": "pto-part-time-location",
+    "query": "Where can I find the part-time PTO policy?",
+    "category": "document_location",
+    "expected_behavior": "Return the authoritative source for policy 50020.",
+    "expected_source_ids": ["50020"]
+  },
+  {
+    "case_id": "pto-comparison",
+    "query": "Compare the full-time and part-time PTO policies.",
+    "category": "multi_policy_synthesis",
+    "expected_behavior": "Distinguish policies 50010 and 50020 and cite both.",
+    "expected_source_ids": ["50010", "50020"]
+  },
+  {
+    "case_id": "leave-synonym",
+    "query": "What policy covers time away from work because I am temporarily unable to work?",
+    "category": "paraphrase_synonym",
+    "expected_behavior": "Resolve the request to Short-Term Disability policy 50030 and cite it.",
+    "expected_source_ids": ["50030"]
+  },
+  {
+    "case_id": "out-of-domain-weather",
+    "query": "What will the weather be tomorrow?",
+    "category": "adversarial_out_of_domain",
+    "expected_behavior": "Decline or redirect because weather is outside the HR policy corpus.",
+    "expected_source_ids": []
+  }
+]

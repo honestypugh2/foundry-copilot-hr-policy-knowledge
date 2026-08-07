@@ -24,16 +24,16 @@ This repo supports three main paths. Pick the one that matches your scenario:
 
 | # | Path | Start here | What you'll build |
 | - | ---- | ---------- | ----------------- |
-| 1 | **Copilot Studio alone** (Pattern A) | [docs/Walkthrough.md — Steps 1–3, then Step 7 (Pattern A)](docs/Walkthrough.md) | Copilot Studio queries Azure AI Search directly — no agent code needed. Fastest setup (~15 min after index is populated). |
-| 2 | **Foundry Agent alone** (Pattern B) | [docs/Walkthrough.md — Steps 1–5](docs/Walkthrough.md), then test with `python -m scripts.demo.test_pattern_b` | A PromptAgent with MCPTool + `tool_choice="required"` for force-grounded synthesis. No Copilot Studio required for testing. |
+| 1 | **Copilot Studio alone** (Pattern A) | [docs/Walkthrough.md — provision, index, then wire Pattern A](docs/Walkthrough.md) | Copilot Studio queries Azure AI Search directly — no agent code needed. Fastest setup (~15 min after index is populated). |
+| 2 | **Foundry Agent alone** (Pattern B) | [docs/Walkthrough.md — provision, index, then create Pattern B](docs/Walkthrough.md), then test with `python -m scripts.demo.test_pattern_b` | A PromptAgent with MCPTool + `tool_choice="required"` for force-grounded synthesis. No Copilot Studio required for testing. |
 | 3 | **Copilot Studio + Foundry Agent** (Patterns A+B or Hybrid) | Complete all steps in [docs/Walkthrough.md](docs/Walkthrough.md), then wire via [docs/CopilotStudioIntegration.md](docs/CopilotStudioIntegration.md) | Copilot Studio as the front door, Foundry Agent as the reasoning backend. Full enterprise pattern. |
 
 > **Not sure which?** Start with **Path 1** (Pattern A). It's zero-code, demonstrates value in minutes, and you can layer Foundry Agent Service on top later without re-indexing.
 
 > **Two more patterns** round out the palette: **Pattern C** (a low-latency
 > deterministic document-locator on `/api/lookup`) and **Pattern A2** (Copilot
-> Studio's *new agent experience* connecting straight to a **Foundry IQ**
-> knowledge base via Microsoft IQ — agentic retrieval with no prompt agent). Both
+> Studio's **GitHub Copilot harness** connecting straight to a **Foundry IQ**
+> knowledge base — agentic retrieval with no prompt agent). Both
 > are detailed in [docs/RetrievalPatterns.md](docs/RetrievalPatterns.md).
 
 ---
@@ -49,7 +49,7 @@ flowchart TD
     Q1 -- Yes --> Q2{Need an LLM agent?}
     Q2 -- "No, hybrid search is enough" --> QK{Classic index search or agentic KB retrieval?}
     QK -- Classic search --> A["★ Pattern A: Direct Index Copilot Studio → AI Search (default)"]
-    QK -- Agentic retrieval over KB --> A2["Pattern A2: Copilot Studio new experience → Microsoft IQ → Foundry IQ"]
+    QK -- Agentic retrieval over KB --> A2["Pattern A2: Copilot Studio GitHub Copilot harness → Foundry IQ"]
     Q2 -- Yes --> Q3{Self-host the runtime?}
     Q3 -- No --> B[Pattern B: Foundry Agent Service prompt agent + MCPTool]
     Q3 -- Yes --> H[Hosted Agent runtime Microsoft Agent Framework hosting]
@@ -103,7 +103,10 @@ python -m scripts.demo.demo_decision_tree --skip-b --skip-hosted
 ```
 
 Ready to wire and test the same patterns inside Copilot Studio? Follow the
-step-by-step **[docs/CopilotStudioTestingGuide.md](docs/CopilotStudioTestingGuide.md)** — setup steps for every pattern plus numbered test scenarios you can run from the agent's Test pane.
+step-by-step **[Copilot Studio Testing Guide](docs/CopilotStudioTestingGuide.md)**,
+then start with its corpus-grounded
+**[sample query catalog](docs/CopilotStudioTestingGuide.md#starter-query-catalog)**
+for A, A-SP, A2, B, C, Hosted, and Hybrid scenarios.
 
 ---
 
@@ -144,9 +147,70 @@ ORCHESTRATOR_PATTERN=A         # controls /api/chat routing — see docs/Retriev
 SEARCH_MODE=integrated_vectorization
 ```
 
-### 3. Index the knowledge base
+### 3. Provision Azure infrastructure
 
-Two options — pick one. Both populate `hr-policy-index`.
+Run infrastructure provisioning **before indexing documents, creating Pattern B,
+or wiring Copilot Studio**. The indexing and agent setup commands require the
+Search, Storage, Foundry, model, identity, and RBAC outputs created here.
+
+For a fresh tenant or subscription, confirm both CLIs use the intended account,
+then bind the local azd environment to that target. Reusing an existing local
+environment without updating these values can deploy against the previous
+subscription.
+
+```bash
+az account show --query '{subscription:name, subscriptionId:id, tenantId:tenantId}' -o table
+azd auth login --check-status
+
+azd env select hr-demo
+azd env set AZURE_SUBSCRIPTION_ID <subscription-id>
+azd env set AZURE_TENANT_ID <tenant-id>
+azd env set AZURE_LOCATION eastus2
+azd env set AZURE_SEARCH_LOCATION eastus
+azd env set AZURE_PRINCIPAL_ID $(az ad signed-in-user show --query id -o tsv)
+
+# Never reuse an image from an ACR in another tenant.
+azd env set AZURE_BACKEND_IMAGE ""
+
+# Required safety gate: inspect the target subscription and planned changes.
+azd provision --preview --no-prompt
+
+# Provision infrastructure with the public placeholder first.
+azd ext install azure.ai.agents
+azd provision --no-prompt
+
+# Verify AcrPull is present before deploying private images, then deploy services.
+az role assignment list \
+  --scope $(az acr show --name $(azd env get-value AZURE_CONTAINER_REGISTRY_NAME) --query id -o tsv) \
+  --query "[?roleDefinitionName=='AcrPull'].{principalId:principalId,role:roleDefinitionName}" \
+  -o table
+azd deploy --no-prompt
+```
+
+The deployment creates `rg-hr-policy-kb-hr-demo` with Foundry and its project,
+model deployments, Azure AI Search, Document Intelligence, Storage, Container
+Registry, Container Apps, managed identities, Log Analytics, and Application
+Insights. Search defaults to `eastus`; the rest of the stack defaults to
+`eastus2`.
+
+Do not continue until provisioning and deployment succeed and the backend health endpoint returned
+in `SERVICE_BACKEND_URI` responds successfully. See
+[infra/README.md](infra/README.md) for resource details and troubleshooting.
+
+### 4. Populate the Azure AI Search index
+
+Two options — pick one. Both create and populate the Azure AI Search index
+`hr-policy-index`.
+
+> **This step does not create a Foundry knowledge source or knowledge base, and
+> it does not add a knowledge source to Copilot Studio.** After the index is
+> populated:
+>
+> - For Pattern A, continue to Step 8 and add `hr-policy-index` as an Azure AI
+>   Search knowledge source in Copilot Studio.
+> - For Pattern B, continue to Step 5. Its provisioning command creates the
+>   Foundry knowledge source and knowledge base over this index, followed by the
+>   MCP connection and PromptAgent.
 
 ```bash
 # Option 1 — Client-side chunking (best for dev/test)
@@ -178,7 +242,7 @@ Local-only extraction (no Azure upload):
 uv run python scripts/index_knowledge_base_docintel_chunking.py --local-only
 ```
 
-### 4. (Optional) Provision the Foundry Agent (Pattern B)
+### 5. (Optional) Provision the Foundry knowledge base and agent (Pattern B)
 
 Skip this step if you're starting with Pattern A. Run it when you want
 force-grounded answer synthesis via `tool_choice="required"`.
@@ -201,7 +265,7 @@ uv run python -m src.agents.create_foundry_agent --verify-only
 uv run python -m src.agents.create_foundry_agent --cleanup
 ```
 
-### 5. Run the FastAPI backend
+### 6. Run the FastAPI backend
 
 ```bash
 uv run python -m src.backend.main
@@ -223,14 +287,14 @@ Endpoints:
 | `GET`  | `/api/copilot-studio/token`        | Direct Line token (web chat embed)   |
 | `POST` | `/api/copilot-studio/chat`         | Proxy to Copilot Studio bot          |
 
-### 6. (Optional) Run the React frontend
+### 7. (Optional) Run the React frontend
 
 ```bash
 # Pure Agent Framework UI
 cd src/frontend && npm install && npm run dev          # http://localhost:5173
 ```
 
-### 7. Wire up Copilot Studio
+### 8. Wire up Copilot Studio
 
 | Pattern | Setup guide                                                                |
 | ------- | -------------------------------------------------------------------------- |
@@ -247,7 +311,7 @@ OpenAPI specs to import as Custom Connectors in Power Platform:
   generative AI instructions or attach as a knowledge file (HR
   glossary + policy-number map).
 
-### 8. (Optional) Run the Hosted Agent runtime
+### 9. (Optional) Run the Hosted Agent runtime
 
 ```bash
 cd src/hosted_agent
@@ -260,28 +324,31 @@ docker build -t hr-policy-hosted-agent .
 Framework with `FoundryChatClient` and the `@tool search_hr_policies`
 function defined in `src/agents/hr_policy_agent_af.py`.
 
-### 9. Run the test suite
+### 10. Run the test suite
 
 ```bash
 uv run pytest tests/ -v
 uv run pytest tests/ -v -m mock     # tests that don't need Azure
 ```
 
-### 10. Deploy infrastructure and services
+### 11. Deploy subsequent infrastructure and service updates
 
-The Bicep is subscription-scoped and `azure.yaml` declares two deployable
-services, so use **`azd up`** — it provisions the resources *and* builds,
-pushes, and deploys the backend + hosted agent in one step.
+After the initial deployment in Step 3, use `azd provision` for infrastructure
+changes and `azd deploy` for service changes. Keep the two phases separate so
+managed-identity registry permissions can be verified before private images are
+activated. The Bicep is subscription-scoped and `azure.yaml` declares the
+backend and hosted agent services.
 
 ```bash
 azd ext install azure.ai.agents          # hosted-agent (azure.ai.agent) support
 azd auth login
-azd env new hr-demo
+azd env select hr-demo
 azd env set AZURE_PRINCIPAL_ID $(az ad signed-in-user show --query id -o tsv)
-azd up
+azd provision --no-prompt
+azd deploy --no-prompt
 ```
 
-`azd up` provisions: AI Foundry + project, gpt-5-mini / gpt-5 / embeddings,
+The two-phase deployment provisions: AI Foundry + project, gpt-5-mini / gpt-5 / embeddings,
 Azure AI Search, Document Intelligence, Storage (`ask-hr-knowledge` container),
 **Azure Container Registry**, a **Container Apps environment + FastAPI backend**
 (Pattern C `/api/lookup` + Pattern B2 `/api/chat`), **Log Analytics + Application
@@ -289,8 +356,8 @@ Insights**, and all RBAC — including the Foundry project managed identity's
 Search read role and the user's Foundry Project Manager role. It then builds and
 pushes the backend and **`hr-policy-agent`** Hosted Agent images and deploys them.
 
-Push code-only changes afterwards with `azd deploy`; provision without deploying
-services with `azd provision`.
+Push code-only changes afterwards with `azd deploy`; apply infrastructure changes
+with `azd provision`.
 
 ---
 
@@ -301,11 +368,29 @@ services with `azd provision`.
 | Microsoft Agent Framework     | `agent-framework>=1.11.0` (GA)                              |
 | Foundry Agent Service SDK     | `azure-ai-projects>=2.3.0` (GA)                             |
 | Foundry helpers               | `agent-framework-foundry>=1.10.1` (GA)                      |
-| Azure AI Search SDK           | `azure-search-documents>=12.0.0,<12.1`                      |
+| Azure AI Search SDK           | `azure-search-documents>=12.1.0b1,<12.2` (preview; KB tuning on `2026-05-01-preview`) |
 | OpenAI SDK                    | `openai>=2.31.0`                                            |
 | FastAPI / Pydantic            | `fastapi>=0.135.1`, `pydantic>=2.12.5`                      |
 | Frontend                      | React 19, TypeScript 5.8, Vite 6, Tailwind 4                 |
 | Hosted Agent (Agent Framework hosting, GA) | `agent-framework>=1.11.0` + `agent-framework-foundry-hosting>=1.0.0a260709` (preview) for Foundry's hosted-agents surface |
+
+### SDK and API version updates
+
+When upgrading the Search SDK or the preview API used by Patterns A2 and B,
+update and validate all of these locations together:
+
+| Location | What it controls |
+| -------- | ---------------- |
+| `pyproject.toml` | Primary Python dependency constraint |
+| `src/hosted_agent/requirements.txt` | Hosted Agent image dependency constraint |
+| `uv.lock` | Resolved package version and hashes (`uv lock`) |
+| `README.md` | Documented supported SDK/version status |
+| `src/agents/create_foundry_agent.py` | Import-error install guidance and KB provisioning model types |
+| `src/config/search_config.json` | KB MCP and indexer REST API versions |
+| `docs/` | GA/preview labels and feature-specific API guidance |
+
+The `12.1.0b1` preview is intentional: stable `12.0.0` cannot serialize the
+KB-level medium reasoning, `extractiveData`, or retrieval-instruction fields.
 
 ---
 

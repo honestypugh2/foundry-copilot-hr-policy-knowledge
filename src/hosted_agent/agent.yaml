@@ -1,7 +1,3 @@
-# Foundry Hosted Agent deployment descriptor (Agent Framework, Responses protocol)
-# Schema aligned with the official sample:
-#   https://github.com/microsoft/agent-framework/blob/main/python/samples/04-hosting/foundry-hosted-agents/responses/02_tools/agent.yaml
-# See also: https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/deploy-hosted-agent
 kind: hosted
 name: hr-policy-agent
 description: >
@@ -9,9 +5,6 @@ description: >
   policy documents using hybrid search (text + vector) with semantic ranking
   over an Azure AI Search index of policy chunks.
 
-# Protocols exposed by this container. The protocol version MUST be 2.0.0 to match
-# the agent-framework-foundry-hosting package — versions 1.0.0 and 2.0.0 are
-# incompatible (see the hosted-agent troubleshooting guide).
 protocols:
   - protocol: responses
     version: 2.0.0
@@ -20,14 +13,6 @@ resources:
   cpu: "1"
   memory: "2Gi"
 
-# Non-secret env vars injected into the container.
-# FOUNDRY_PROJECT_ENDPOINT and AZURE_AI_MODEL_DEPLOYMENT_NAME are also
-# auto-injected by the platform at runtime.
-#
-# The container image is supplied at deploy time — `azd deploy` builds and
-# pushes it automatically for the azure.ai.agent service flow; for SDK/REST
-# deploys pass it to create_version, e.g.:
-#   image: ${ACR_LOGIN_SERVER}/hr-policy-agent:${IMAGE_TAG}
 environment_variables:
   - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
     value: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
@@ -35,6 +20,18 @@ environment_variables:
     value: ${AZURE_SEARCH_ENDPOINT}
   - name: AZURE_SEARCH_INDEX_NAME
     value: ${AZURE_SEARCH_INDEX_NAME}
+  - name: AZURE_SEARCH_KNOWLEDGE_SOURCE_NAME
+    value: ${AZURE_SEARCH_KNOWLEDGE_SOURCE_NAME}
+  - name: AZURE_SEARCH_KNOWLEDGE_BASE_NAME
+    value: ${AZURE_SEARCH_KNOWLEDGE_BASE_NAME}
+  - name: AZURE_SEARCH_KB_MODEL_DEPLOYMENT
+    value: ${AZURE_SEARCH_KB_MODEL_DEPLOYMENT}
+  - name: AZURE_SEARCH_KB_REASONING_EFFORT
+    value: ${AZURE_SEARCH_KB_REASONING_EFFORT}
+  - name: AZURE_SEARCH_KB_OUTPUT_MODE
+    value: ${AZURE_SEARCH_KB_OUTPUT_MODE}
+  - name: AZURE_SEARCH_MCP_API_VERSION
+    value: ${AZURE_SEARCH_MCP_API_VERSION}
   - name: AI_SEARCH_QUERY_TYPE
     value: "semantic"
   - name: AI_SEARCH_SEMANTIC_CONFIG

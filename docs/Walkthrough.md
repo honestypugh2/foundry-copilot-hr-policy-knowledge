@@ -127,6 +127,11 @@ cd src/frontend && npm install && npm run dev          # http://localhost:5173
 
 ## 7. Wire up Copilot Studio
 
+After wiring a pattern, start with the corpus-grounded
+[sample query catalog](CopilotStudioTestingGuide.md#starter-query-catalog). It
+includes focused queries for A, A2, B, C, and Hosted plus a shared comparison
+set for equivalent answer paths.
+
 | If you want…                              | Follow                                                                |
 | ----------------------------------------- | --------------------------------------------------------------------- |
 | Copilot to call the prompt agent (B)      | [CopilotStudioIntegration.md](CopilotStudioIntegration.md) — Path 2   |

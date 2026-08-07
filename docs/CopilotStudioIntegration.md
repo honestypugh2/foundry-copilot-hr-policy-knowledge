@@ -197,15 +197,24 @@ Employee (Teams / Web) ──► Copilot Studio Agent
 > performs **hybrid (text + vector + semantic)** search out of the box
 > — no Foundry project required for Pattern A.
 
-### Pattern A2 wiring (new experience → Microsoft IQ → Foundry IQ)
+### Pattern A2 wiring (GitHub Copilot harness → Foundry IQ)
 
 Steps 1–2 above wire **Pattern A** — the *classic search* path, connecting
 Copilot Studio to an Azure AI Search **index**. The Copilot Studio **new agent
-experience** (preview) adds a second, distinct front door: connect the agent
-**directly to a Foundry IQ knowledge base** (`hr-knowledge-base`) via
-**Microsoft IQ**. This is **agentic retrieval** — the knowledge base plans
-sub-queries, retrieves in parallel, reranks, and returns merged results — and it
-needs **no Foundry prompt agent** in the path.
+experience**, now documented as the **GitHub Copilot harness**, adds a second,
+distinct front door: connect the agent **directly to a Foundry IQ knowledge
+base** (`hr-knowledge-base`) as a **Foundry IQ tool**. This is **agentic
+retrieval** — the knowledge base plans sub-queries, retrieves in parallel,
+reranks, and returns merged results — and it needs **no Foundry prompt agent**
+in the path.
+
+> **Availability (verified August 6, 2026).** Microsoft Learn no longer labels
+> the Copilot Studio GitHub Copilot harness or its Foundry IQ connection as
+> preview. Foundry IQ has mixed availability: some agentic-retrieval features
+> are GA through the `2026-04-01` REST API, while the Microsoft Foundry and
+> Azure portal experiences continue to provide preview-only access to the full
+> feature set. Review the API version and feature-specific status before using
+> this path in production.
 
 > **Prerequisite.** Provision the knowledge base first:
 > `python -m src.agents.create_foundry_agent` (it creates the Knowledge Source
@@ -214,7 +223,7 @@ needs **no Foundry prompt agent** in the path.
 > tenant, and you must have access to the knowledge base in Microsoft Foundry.
 
 1. Open your agent (new experience) and select the **Build** tab.
-2. In the components panel, select **Microsoft IQ** → **Foundry IQ**.
+2. In the components panel, select **Tools** → **Foundry IQ**.
 3. Select **Create new connection**, choose an authentication type
    (**Microsoft Entra ID Integrated** recommended; API key / client certificate /
    service principal also supported), enter the Foundry IQ Search Service
@@ -255,7 +264,7 @@ needs **no Foundry prompt agent** in the path.
 > to the *agent* — use B when you need forced grounding / answer synthesis owned
 > in Foundry, or when you're on the classic Copilot Studio experience.
 >
-> **Reference:** [Connect to Foundry IQ from an agent (preview)](https://learn.microsoft.com/en-us/microsoft-copilot-studio/agents-experience/foundry-iq-connect).
+> **Reference:** [Connect to Foundry IQ from an agent](https://learn.microsoft.com/en-us/microsoft-copilot-studio/agents-experience/foundry-iq-connect).
 
 ### Step 3: Configure Lever 1 — Agent Instructions
 
@@ -658,7 +667,10 @@ routing on top of the Hosted Agent, follow
 
 ### Step 9: Testing
 
-In the Copilot Studio **Test** pane, try:
+Use the corpus-grounded
+[starter query catalog](CopilotStudioTestingGuide.md#starter-query-catalog) for
+pattern-specific prompts and expected policy evidence. For a quick smoke test,
+try these in the Copilot Studio **Test** pane:
 
 - "What is the PTO policy?"
 - "How many holidays do we get?"

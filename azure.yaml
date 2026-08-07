@@ -24,3 +24,9 @@ services:
 infra:
     provider: bicep
     path: infra
+hooks:
+    postprovision:
+        shell: sh
+        run: uv run python -c "from src.agents.create_foundry_agent import create_knowledge_source, create_knowledge_base; create_knowledge_source(); create_knowledge_base()"
+        continueOnError: false
+        interactive: true

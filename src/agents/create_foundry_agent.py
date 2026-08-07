@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pattern 2: Foundry Agent Action — Agentic Retrieval via Foundry IQ
+Pattern B: Foundry Agent Action — Agentic Retrieval via Foundry IQ
 
 Creates a Foundry Agent with an MCP tool connected to an Azure AI Search
 Knowledge Base. Copilot Studio invokes this agent as an Action rather than
@@ -49,11 +49,14 @@ import sys
 import time
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+load_dotenv(PROJECT_ROOT / ".env")
 
-from src.config.model_policy import get_chat_model
-from src.config.search_config import search_cfg
+from src.config.model_policy import get_chat_model  # noqa: E402
+from src.config.search_config import search_cfg  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
@@ -62,19 +65,28 @@ try:
     from azure.identity import AzureCliCredential, DefaultAzureCredential, get_bearer_token_provider
     from azure.search.documents.indexes import SearchIndexClient
     from azure.search.documents.indexes.models import (
+        AzureOpenAIVectorizerParameters,
         SearchIndexKnowledgeSource,
         SearchIndexKnowledgeSourceParameters,
         SearchIndexFieldReference,
         KnowledgeBase,
+        KnowledgeBaseAzureOpenAIModel,
         KnowledgeSourceReference,
     )
+    from azure.search.documents.knowledgebases.models import (
+        KnowledgeRetrievalLowReasoningEffort,
+        KnowledgeRetrievalMediumReasoningEffort,
+        KnowledgeRetrievalMinimalReasoningEffort,
+        KnowledgeRetrievalOutputMode,
+    )
     from azure.ai.projects import AIProjectClient
-    from azure.ai.projects.models import PromptAgentDefinition, MCPTool
+    from azure.ai.projects.models import MCPTool as FoundryMCPTool
+    from azure.ai.projects.models import PromptAgentDefinition
     FOUNDRY_SDK_AVAILABLE = True
 except ImportError as e:
     FOUNDRY_SDK_AVAILABLE = False
     logger.warning("Required SDK packages not installed: %s", e)
-    logger.info("Install: pip install 'azure-search-documents>=12.0.0,<12.1' 'azure-ai-projects>=2.3.0' azure-identity")
+    logger.info("Install: pip install --pre 'azure-search-documents>=12.1.0b1,<12.2' 'azure-ai-projects>=2.3.0' azure-identity")
 
 
 # ---------------------------------------------------------------------------
@@ -84,8 +96,12 @@ INDEX_NAME = search_cfg.index_name
 AGENTIC_CFG = search_cfg.agentic_retrieval
 FOUNDRY_CFG = search_cfg.foundry_agent
 
-KNOWLEDGE_SOURCE_NAME = search_cfg.knowledge_source_name
-KNOWLEDGE_BASE_NAME = search_cfg.knowledge_base_name
+KNOWLEDGE_SOURCE_NAME = os.getenv(
+    "AZURE_SEARCH_KNOWLEDGE_SOURCE_NAME", search_cfg.knowledge_source_name
+)
+KNOWLEDGE_BASE_NAME = os.getenv(
+    "AZURE_SEARCH_KNOWLEDGE_BASE_NAME", search_cfg.knowledge_base_name
+)
 MCP_CONNECTION_NAME = search_cfg.mcp_connection_name
 
 # Agent config
@@ -132,26 +148,63 @@ def create_knowledge_source() -> None:
 # ---------------------------------------------------------------------------
 # Step 2: Create Knowledge Base
 # ---------------------------------------------------------------------------
-def create_knowledge_base() -> None:
-    """Create a Knowledge Base wrapping the Knowledge Source(s).
+def _build_knowledge_base() -> KnowledgeBase:
+    """Build the shared extractive KB used by Patterns A2 and B."""
+    reasoning_effort = os.getenv(
+        "AZURE_SEARCH_KB_REASONING_EFFORT",
+        str(AGENTIC_CFG.get("retrieval_reasoning_effort", "medium")),
+    ).lower()
+    reasoning_efforts = {
+        "minimal": KnowledgeRetrievalMinimalReasoningEffort,
+        "low": KnowledgeRetrievalLowReasoningEffort,
+        "medium": KnowledgeRetrievalMediumReasoningEffort,
+    }
+    if reasoning_effort not in reasoning_efforts:
+        raise ValueError(
+            "agentic_retrieval.retrieval_reasoning_effort must be minimal, low, or medium"
+        )
 
-    In ``azure-search-documents`` 12.0.0 (GA) the Knowledge Base definition no
-    longer carries ``output_mode`` or ``retrieval_reasoning_effort``. Those are
-    now supplied at **retrieval time** on the agentic-retrieval request (the MCP
-    tool call, ``api-version={AGENTIC_CFG['mcp']['api_version']}``), so the
-    config values ``agentic_retrieval.output_mode`` and
-    ``agentic_retrieval.retrieval_reasoning_effort`` are applied by the caller,
-    not here.
-    """
+    output_mode = os.getenv(
+        "AZURE_SEARCH_KB_OUTPUT_MODE",
+        str(AGENTIC_CFG.get("output_mode", "EXTRACTIVE")),
+    ).upper()
+    if output_mode not in {"EXTRACTIVE", "EXTRACTIVE_DATA", "EXTRACTIVEDATA"}:
+        raise ValueError(
+            "Patterns A2 and B require agentic_retrieval.output_mode=EXTRACTIVE"
+        )
+
+    openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+    if not openai_endpoint:
+        raise ValueError("AZURE_OPENAI_ENDPOINT is required to create the knowledge base")
+
+    model_name = str(FOUNDRY_CFG.get("model", "gpt-5-mini"))
+    model_deployment = os.getenv("AZURE_SEARCH_KB_MODEL_DEPLOYMENT", AGENT_MODEL)
+    return KnowledgeBase(
+        name=KNOWLEDGE_BASE_NAME,
+        description=f"HR policy knowledge base with agentic retrieval over {INDEX_NAME}",
+        knowledge_sources=[KnowledgeSourceReference(name=KNOWLEDGE_SOURCE_NAME)],
+        models=[
+            KnowledgeBaseAzureOpenAIModel(
+                azure_open_ai_parameters=AzureOpenAIVectorizerParameters(
+                    resource_url=openai_endpoint,
+                    deployment_name=model_deployment,
+                    model_name=model_name,
+                )
+            )
+        ],
+        retrieval_reasoning_effort=reasoning_efforts[reasoning_effort](),
+        output_mode=KnowledgeRetrievalOutputMode.EXTRACTIVE_DATA,
+        retrieval_instructions=FOUNDRY_CFG.get("retrieval_instructions", ""),
+    )
+
+
+def create_knowledge_base() -> None:
+    """Create the shared extractive Knowledge Base for Patterns A2 and B."""
     search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT", "")
     credential = _get_credential()
     index_client = SearchIndexClient(endpoint=search_endpoint, credential=credential)
 
-    kb = KnowledgeBase(
-        name=KNOWLEDGE_BASE_NAME,
-        description=f"HR policy knowledge base with agentic retrieval over {INDEX_NAME}",
-        knowledge_sources=[KnowledgeSourceReference(name=KNOWLEDGE_SOURCE_NAME)],
-    )
+    kb = _build_knowledge_base()
 
     index_client.create_or_update_knowledge_base(knowledge_base=kb)
     logger.info("Knowledge Base '%s' created with source '%s'", KNOWLEDGE_BASE_NAME, KNOWLEDGE_SOURCE_NAME)
@@ -168,7 +221,10 @@ def create_mcp_connection() -> str:
     project_resource_id = os.getenv("AZURE_AI_PROJECT_RESOURCE_ID") or os.getenv(
         "PROJECT_RESOURCE_ID", ""
     )
-    mcp_api_version = AGENTIC_CFG.get("mcp", {}).get("api_version", "2026-05-01-preview")
+    mcp_api_version = os.getenv(
+        "AZURE_SEARCH_MCP_API_VERSION",
+        AGENTIC_CFG.get("mcp", {}).get("api_version", "2026-05-01-preview"),
+    )
 
     if not project_resource_id:
         logger.error(
@@ -214,17 +270,8 @@ def create_mcp_connection() -> str:
 # ---------------------------------------------------------------------------
 # Step 4: Create Foundry Agent
 # ---------------------------------------------------------------------------
-def create_foundry_agent(mcp_endpoint: str) -> None:
-    """Create a Foundry Agent with MCP tool access to the knowledge base."""
-    project_endpoint = os.getenv("AZURE_AI_PROJECT_ENDPOINT", "") or os.getenv("AI_FOUNDRY_PROJECT_ENDPOINT", "")
-    if not project_endpoint:
-        logger.error("AZURE_AI_PROJECT_ENDPOINT not set")
-        return
-
-    credential = _get_credential()
-    project_client = AIProjectClient(endpoint=project_endpoint, credential=credential)
-
-    # Agent instructions
+def _build_prompt_agent_definition(mcp_endpoint: str) -> PromptAgentDefinition:
+    """Build the force-grounded Pattern B prompt-agent definition."""
     retrieval_instructions = FOUNDRY_CFG.get("retrieval_instructions", "")
     answer_instructions = FOUNDRY_CFG.get("answer_instructions", "")
 
@@ -264,8 +311,7 @@ HR Policy Knowledge Base ({KNOWLEDGE_BASE_NAME})
 - Never provide legal advice
 - Be helpful and provide actionable guidance"""
 
-    # Create MCP tool
-    mcp_tool = MCPTool(
+    mcp_tool = FoundryMCPTool(
         server_label="hr-knowledge",
         server_url=mcp_endpoint,
         require_approval="never",
@@ -273,14 +319,28 @@ HR Policy Knowledge Base ({KNOWLEDGE_BASE_NAME})
         project_connection_id=MCP_CONNECTION_NAME,
     )
 
+    return PromptAgentDefinition(
+        model=AGENT_MODEL,
+        instructions=instructions,
+        tools=[mcp_tool],
+        tool_choice="required",
+    )
+
+
+def create_foundry_agent(mcp_endpoint: str) -> None:
+    """Create the Pattern B Foundry Agent with required KB retrieval."""
+    project_endpoint = os.getenv("AZURE_AI_PROJECT_ENDPOINT", "") or os.getenv("AI_FOUNDRY_PROJECT_ENDPOINT", "")
+    if not project_endpoint:
+        logger.error("AZURE_AI_PROJECT_ENDPOINT not set")
+        return
+
+    credential = _get_credential()
+    project_client = AIProjectClient(endpoint=project_endpoint, credential=credential)
+
     # Create the agent
     agent = project_client.agents.create_version(
         agent_name=AGENT_NAME,
-        definition=PromptAgentDefinition(
-            model=AGENT_MODEL,
-            instructions=instructions,
-            tools=[mcp_tool],
-        ),
+        definition=_build_prompt_agent_definition(mcp_endpoint),
     )
 
     logger.info("Foundry Agent '%s' created (version %s, model %s)",
@@ -312,7 +372,7 @@ def verify() -> None:
 
     # Check knowledge source
     try:
-        ks = index_client.get_knowledge_source(KNOWLEDGE_SOURCE_NAME)
+        index_client.get_knowledge_source(KNOWLEDGE_SOURCE_NAME)
         logger.info("  Knowledge Source '%s': OK", KNOWLEDGE_SOURCE_NAME)
     except Exception as e:
         logger.error("  Knowledge Source '%s': NOT FOUND — %s", KNOWLEDGE_SOURCE_NAME, e)
@@ -359,7 +419,10 @@ def _print_dry_run(search_endpoint: str) -> None:
     project_resource_id = os.getenv("AZURE_AI_PROJECT_RESOURCE_ID") or os.getenv(
         "PROJECT_RESOURCE_ID", ""
     )
-    mcp_api_version = AGENTIC_CFG.get("mcp", {}).get("api_version", "2026-05-01-preview")
+    mcp_api_version = os.getenv(
+        "AZURE_SEARCH_MCP_API_VERSION",
+        AGENTIC_CFG.get("mcp", {}).get("api_version", "2026-05-01-preview"),
+    )
     mcp_endpoint = f"{search_endpoint}/knowledgebases/{KNOWLEDGE_BASE_NAME}/mcp?api-version={mcp_api_version}"
 
     logger.info("=== DRY RUN — no resources will be created ===")
@@ -437,7 +500,10 @@ def run(verify_only: bool = False, do_cleanup: bool = False, dry_run: bool = Fal
     logger.info("")
     logger.info("Step 3: Create MCP Connection")
     search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT", "")
-    mcp_api_version = AGENTIC_CFG.get("mcp", {}).get("api_version", "2026-05-01-preview")
+    mcp_api_version = os.getenv(
+        "AZURE_SEARCH_MCP_API_VERSION",
+        AGENTIC_CFG.get("mcp", {}).get("api_version", "2026-05-01-preview"),
+    )
     mcp_endpoint = f"{search_endpoint}/knowledgebases/{KNOWLEDGE_BASE_NAME}/mcp?api-version={mcp_api_version}"
     result = create_mcp_connection()
     if not result:

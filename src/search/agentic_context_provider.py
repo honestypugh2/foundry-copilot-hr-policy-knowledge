@@ -59,28 +59,6 @@ def is_context_mode(mode: Optional[str]) -> bool:
     return (mode or "").lower() in _CONTEXT_MODES
 
 
-def _supports_higher_reasoning_effort() -> bool:
-    """True when the installed azure-search-documents allows non-minimal effort.
-
-    The GA ``azure-search-documents`` (12.0.0, pinned by this repo) only supports
-    ``retrieval_reasoning_effort='minimal'``. ``medium`` / ``low`` require a
-    preview build (>= 12.1.0b*). We clamp to ``minimal`` on GA to avoid a
-    runtime ``ValueError`` from the context provider.
-    """
-    try:
-        import azure.search.documents as asd
-
-        version = getattr(asd, "__version__", "0.0.0")
-        if any(marker in version for marker in ("a", "b", "rc")):
-            return True
-        parts = version.split(".")
-        major = int(parts[0])
-        minor = int("".join(ch for ch in parts[1] if ch.isdigit()) or "0")
-        return (major, minor) >= (12, 1)
-    except Exception:  # pragma: no cover - defensive
-        return False
-
-
 def _resolve_credential() -> Any:
     from azure.identity import AzureCliCredential, DefaultAzureCredential
 
@@ -135,14 +113,6 @@ def build_search_context_provider(
         effort = str(ar.get("retrieval_reasoning_effort", "medium")).lower()
         if effort not in _VALID_EFFORTS:
             effort = "medium"
-        # GA azure-search-documents (12.0.0) only supports 'minimal'.
-        if effort != "minimal" and not _supports_higher_reasoning_effort():
-            logger.info(
-                "azure-search-documents GA build detected; clamping "
-                "retrieval_reasoning_effort '%s' -> 'minimal'.",
-                effort,
-            )
-            effort = "minimal"
         logger.info(
             "Agent Framework RAG: agentic retrieval over knowledge base '%s'",
             search_cfg.knowledge_base_name,

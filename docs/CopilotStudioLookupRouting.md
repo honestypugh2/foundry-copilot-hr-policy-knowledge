@@ -35,6 +35,10 @@ text on both sides → same routing behavior.
 > built-in citation card is enough for your users to click through to
 > the document, you may not need Pattern C at all.
 
+After wiring the tool, use the Pattern C and Hybrid prompts in the
+[sample query catalog](CopilotStudioTestingGuide.md#starter-query-catalog) to
+verify locator routing against known policies.
+
 ---
 
 <a id="pattern-c-vs-native-citations"></a>

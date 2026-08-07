@@ -39,9 +39,19 @@ class CopilotStudioService:
         COPILOT_STUDIO_REGION           Region prefix for token URL (e.g. unitedstates)
     """
 
-    def __init__(self):
-        self.environment_id = os.getenv("COPILOT_STUDIO_ENVIRONMENT_ID", "")
-        self.agent_schema = os.getenv("COPILOT_STUDIO_AGENT_SCHEMA", "")
+    def __init__(
+        self,
+        *,
+        environment_id: str | None = None,
+        agent_schema: str | None = None,
+        token_endpoint: str | None = None,
+    ):
+        self.environment_id = environment_id or os.getenv(
+            "COPILOT_STUDIO_ENVIRONMENT_ID", ""
+        )
+        self.agent_schema = agent_schema or os.getenv(
+            "COPILOT_STUDIO_AGENT_SCHEMA", ""
+        )
         self.endpoint = os.getenv(
             "COPILOT_STUDIO_ENDPOINT",
             "https://api.copilotstudio.microsoft.com",
@@ -49,7 +59,9 @@ class CopilotStudioService:
         self.region = os.getenv("COPILOT_STUDIO_REGION", "unitedstates")
 
         # Allow full override of the token endpoint
-        self._token_endpoint_override = os.getenv("COPILOT_STUDIO_TOKEN_ENDPOINT", "")
+        self._token_endpoint_override = token_endpoint or os.getenv(
+            "COPILOT_STUDIO_TOKEN_ENDPOINT", ""
+        )
 
         # Build credential chain for Entra ID auth
         use_managed = os.getenv("USE_MANAGED_IDENTITY", "true").lower() == "true"
@@ -137,10 +149,11 @@ class CopilotStudioService:
     #  Direct-to-Engine proxy — backend-side conversation                 #
     # ------------------------------------------------------------------ #
 
-    async def start_conversation(self) -> dict[str, Any]:
+    async def start_conversation(self, token: str | None = None) -> dict[str, Any]:
         """Start a new conversation via Direct Line."""
-        token_data = await self.get_directline_token()
-        token = token_data["token"]
+        if token is None:
+            token_data = await self.get_directline_token()
+            token = token_data["token"]
 
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
@@ -149,6 +162,21 @@ class CopilotStudioService:
             )
             resp.raise_for_status()
             return resp.json()
+
+    async def ask(self, message: str) -> dict[str, Any]:
+        """Run one isolated Direct Line conversation for a benchmark or proxy call."""
+        token_data = await self.get_directline_token()
+        token = token_data["token"]
+        conversation = await self.start_conversation(token)
+        result = await self.send_message(
+            conversation_id=conversation["conversationId"],
+            token=token,
+            message=message,
+        )
+        return {
+            **result,
+            "conversation_id": conversation["conversationId"],
+        }
 
     async def send_message(
         self,

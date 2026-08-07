@@ -27,8 +27,16 @@ class AgentAnswerAdapter:
         invocation_path: str,
     ) -> None:
         self._answer = answer
-        self.pattern = pattern
-        self.invocation_path = invocation_path
+        self._pattern = pattern
+        self._invocation_path = invocation_path
+
+    @property
+    def pattern(self) -> Literal["B", "Hosted"]:
+        return self._pattern
+
+    @property
+    def invocation_path(self) -> str:
+        return self._invocation_path
 
     async def invoke(self, query: str, top: int) -> InvocationResult:
         del top
@@ -88,6 +96,10 @@ class FoundryAgentAdapter(AgentAnswerAdapter):
             invocation_path="foundry_responses_agent_mcp",
         )
 
+    @property
+    def pattern(self) -> Literal["B"]:
+        return "B"
+
 
 class HostedAgentAdapter(AgentAnswerAdapter):
     def __init__(self, answer: AgentCallable) -> None:
@@ -96,3 +108,7 @@ class HostedAgentAdapter(AgentAnswerAdapter):
             pattern="Hosted",
             invocation_path="agent_framework_hosted",
         )
+
+    @property
+    def pattern(self) -> Literal["Hosted"]:
+        return "Hosted"

@@ -3,7 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.benchmarking.cli import main
+import pytest
+
+from src.benchmarking.cli import _build_adapter, main
+from src.copilot_studio.service import CopilotStudioService
+from scripts.generate_copilot_benchmark_manifests import generate
 from tests.test_benchmarking_phase1 import _manifest
 
 
@@ -82,3 +86,115 @@ def test_cli_emits_versioned_offline_artifacts(tmp_path: Path):
     assert json.loads(
         (output_dir / "cli-smoke.manifest.json").read_text(encoding="utf-8")
     )["schema_version"] == "1.0"
+
+
+def test_cli_rejects_unconfigured_copilot_studio(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr("src.benchmarking.cli.load_dotenv", lambda: None)
+    monkeypatch.delenv("COPILOT_STUDIO_ENVIRONMENT_ID", raising=False)
+    monkeypatch.delenv("COPILOT_STUDIO_AGENT_SCHEMA", raising=False)
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(_manifest().model_dump_json(), encoding="utf-8")
+    cases_path = tmp_path / "cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "case_id": "configured-check",
+                    "query": "What is PTO?",
+                    "category": "direct_fact",
+                    "expected_behavior": "answer",
+                    "expected_source_ids": ["50010"],
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="COPILOT_STUDIO_ENVIRONMENT_ID"):
+        main(
+            [
+                "--manifest",
+                str(manifest_path),
+                "--cases",
+                str(cases_path),
+                "--output-dir",
+                str(tmp_path / "reports"),
+                "--copilot-studio",
+            ]
+        )
+
+
+def test_copilot_adapter_targets_explicit_real_agent(monkeypatch):
+    monkeypatch.setenv("COPILOT_STUDIO_ENVIRONMENT_ID", "env-from-dotenv")
+    monkeypatch.setenv("COPILOT_STUDIO_AGENT_SCHEMA", "agent-from-dotenv")
+    monkeypatch.setenv("COPILOT_STUDIO_TOKEN_ENDPOINT", "https://old.example/token")
+
+    adapter = _build_adapter(
+        _manifest(),
+        None,
+        copilot_studio=True,
+        copilot_environment_id="real-environment",
+        copilot_agent_schema="cr4ba_askHrPatternA",
+        copilot_token_endpoint="https://new.example/token",
+    )
+
+    service = CopilotStudioService(
+        environment_id="real-environment",
+        agent_schema="cr4ba_askHrPatternA",
+        token_endpoint="https://new.example/token",
+    )
+    assert adapter.invocation_path == "copilot_studio_direct_line:A"
+    assert service.environment_id == "real-environment"
+    assert service.agent_schema == "cr4ba_askHrPatternA"
+    assert service.token_endpoint_url == "https://new.example/token"
+
+
+def test_copilot_manifest_identifies_real_agent_and_model(tmp_path: Path):
+    agent_source = tmp_path / "Ask HR Policy Agent - A"
+    agent_source.mkdir()
+    (agent_source / "agent.mcs.yml").write_text(
+        "instructions: HR policy only\n", encoding="utf-8"
+    )
+    dataset = tmp_path / "cases.json"
+    dataset.write_text(
+        json.dumps(
+            [
+                {
+                    "case_id": "pto",
+                    "query": "What is PTO?",
+                    "category": "direct_fact",
+                    "expected_behavior": "answer",
+                    "expected_source_ids": ["50010"],
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    output_dir = tmp_path / "manifests"
+
+    generate(
+        pattern="A",
+        agent_name="Ask HR Policy Agent - A",
+        agent_source=agent_source,
+        dataset=dataset,
+        output_dir=output_dir,
+        corpus_fingerprint="corpus-v1",
+        index_fingerprint="index-v1",
+        repetitions=3,
+        model_deployment="Claude Sonnet 4.6",
+    )
+
+    manifest = json.loads(
+        (output_dir / "copilot-ask-hr-policy-agent-a.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert manifest["pattern"] == "A"
+    assert manifest["model_deployment"] == "Claude Sonnet 4.6"
+    assert manifest["invocation_path"] == (
+        "copilot_studio_direct_line:Ask HR Policy Agent - A"
+    )
+    assert manifest["knowledge_source_settings"]["copilot_studio_agent"] == (
+        "Ask HR Policy Agent - A"
+    )
+    assert manifest["configuration_version"]

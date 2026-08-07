@@ -31,6 +31,31 @@ The subscription-level entry point is [main.bicep](main.bicep), which creates th
 azd up
 ```
 
+### Search knowledge base
+
+Bicep provisions the Azure AI Search service and exports the shared knowledge
+base contract as azd environment values. Search knowledge sources and knowledge
+bases are data-plane resources, so they cannot be declared as ARM/Bicep child
+resources. The `postprovision` hook in [`../azure.yaml`](../azure.yaml) upserts:
+
+- Knowledge source: `hr-knowledge-source`
+- Knowledge base: `hr-knowledge-base`
+- Query-planning model: `gpt-5-mini`
+- Retrieval reasoning effort: `medium`
+- Output mode: `extractiveData`
+
+The hook intentionally provisions only the shared Search resources; it does not
+create a Foundry PromptAgent. It requires `hr-policy-index` to exist. For a new
+environment, run the indexing pipeline and then rerun provisioning:
+
+```bash
+uv run python scripts/index_knowledge_base_integrated_vectorization.py
+azd provision
+```
+
+The hook uses the preview `azure-search-documents` SDK pinned by this project
+and fails provisioning if Azure rejects the knowledge-base update.
+
 ### Terraform
 
 ```bash

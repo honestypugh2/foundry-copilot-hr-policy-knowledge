@@ -42,7 +42,7 @@ Status and interfaces were verified against current Microsoft documentation on
 | Azure AI Search Knowledge Base retrieve | **Adapter** | Map the GA `2026-04-01` response and opt-in preview versions into normalized references and lossless activity records. |
 | Foundry Agent Service plus MCP | **Adapter** | Normalize the actual invocation, response usage, and trace IDs; never issue a second retrieve to infer MCP timing. |
 | Pattern C and Hosted Agent call sites | **Adapter** | Reuse existing routes and agent protocol, preserving deterministic and cold-start semantics. |
-| Copilot Studio A/A2 | **Adapter** | Import externally captured rows when no supported automated invocation exists; identify Copilot-owned generation as outside repo instrumentation. |
+| Copilot Studio A/A2/B/C/Hosted | **Adapter** | Run published development agents through Direct Line or import external captures; identify Copilot-owned generation as outside repo instrumentation. |
 | RAG Experiment Accelerator | **Reuse** | Use for retrieval sweeps and exchange datasets/results where stable contracts justify an adapter. |
 | Foundry RAG evaluators | **Adapter** | Optional evaluator backend; report evaluator tokens and calibrate against deterministic checks and a reviewed gold set. |
 | Foundry/OpenTelemetry tracing | **Adapter** | Add low-cardinality experiment/configuration attributes to existing spans with content recording off by default. |
@@ -86,6 +86,10 @@ python -m src.benchmarking.cli \
 Fixture mode validates contracts and report generation only. Its local wall
 times are not Azure performance evidence and must not be used in pattern
 recommendations.
+
+For exported real pattern-agent setup, per-agent manifest generation, and Direct
+Line execution, see
+[CopilotStudioBenchmarking.md](CopilotStudioBenchmarking.md).
 
 ## Implementation Roadmap
 

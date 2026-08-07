@@ -1,6 +1,6 @@
 # Copilot Studio Testing Guide — Ask HR Policy Knowledge Agent
 
-End-to-end walkthrough for wiring **all four patterns** (A, B, C, Hosted)
+End-to-end walkthrough for wiring **all five patterns** (A, A2, B, C, Hosted)
 plus the **Hybrid** orchestration in a single Copilot Studio agent and
 verifying each one with concrete test prompts.
 
@@ -49,7 +49,7 @@ all RBAC — then builds/pushes and deploys the backend + Hosted Agent images.
 | ✅ | What | Why |
 | -- | ---- | --- |
 | ☐ | `azd up` completed (infra + services) — see [README.md § 10](../README.md#10-deploy-infrastructure-and-services) | Provisions ACR, Container Apps, App Insights + deploys backend & Hosted Agent |
-| ☐ | `hr-policy-index` populated (`uv run python scripts/index_knowledge_base_integrated_vectorization.py`) | All four patterns query this index |
+| ☐ | `hr-policy-index` populated (`uv run python scripts/index_knowledge_base_integrated_vectorization.py`) | Patterns A, A2, B, C, and Hosted retrieve from this index |
 | ☐ | Foundry project endpoint set (`AZURE_AI_PROJECT_ENDPOINT` in `.env`) | Required for Pattern B + Hosted |
 | ☐ | `HRPolicyAgent` PromptAgent provisioned (`uv run python -m src.agents.create_foundry_agent`) | Required for Pattern B |
 | ☐ | `hr-policy-agent` Hosted Agent deployed (`azd deploy`, host `azure.ai.agent`; descriptor `src/hosted_agent/agent.yaml`) | Required for Hosted Agent |
@@ -98,11 +98,67 @@ flowchart LR
 > Latency figures are illustrative and environment-dependent, not benchmark
 > results. They include different execution boundaries depending on the path.
 
-> **You don't have to wire all four.** Pick the patterns you want to
+> **You don't have to wire every pattern.** Pick the patterns you want to
 > demo. The most common minimal config is **Pattern A only** (or
 > **Pattern A-SP** if your docs already live in SharePoint) for fast
 > start, or **Pattern A + Pattern C** for fast lookups on top of a
 > citation-friendly KB.
+
+---
+
+## Starter query catalog
+
+These queries are grounded in documents under
+`data/knowledge_base/ASK HR Knowledge` that Option 2 can index. Start with the
+shared comparison query when validating equivalent answer paths, then use the
+pattern-specific queries to exercise each architecture's intended strength.
+
+### Shared comparison queries
+
+Use the exact same wording for A, A2, B, and Hosted when comparing answer
+quality and latency:
+
+| Query | Expected evidence |
+| ----- | ----------------- |
+| `What does the full-time Paid Time Off policy cover?` | Policy 50010 |
+| `Compare the full-time and part-time PTO policies.` | Policies 50010 and 50020 |
+| `What policy covers time away from work because I am temporarily unable to work?` | Policy 50030 |
+| `Which PTO policy applies to me?` | Clarifying question: full-time or part-time |
+| `What will the weather be tomorrow?` | Grounded refusal; no policy citation |
+
+### Pattern-specific starters
+
+| Pattern | Sample query | What it demonstrates |
+| ------- | ------------ | -------------------- |
+| **A — Direct Index** | `What does Policy 20030 say about the probationary period?` | Focused retrieval from Policy 20030 with a native citation card. |
+| **A — Direct Index** | `How is holiday pay handled under Policy 30010?` | Direct factual answer from one policy. |
+| **A — Direct Index** | `What is the uniform dress code?` | Synonym/title retrieval for Policy 60010. |
+| **A-SP — SharePoint** | `What does the full-time Paid Time Off policy cover?` | Native retrieval with a SharePoint citation and source-file deep link for Policy 50010. |
+| **A-SP — SharePoint** | `Where can I read the uniform dress code policy?` | Native SharePoint citation for Policy 60010 without the custom locator endpoint. |
+| **A2 — Foundry IQ** | `Compare the uniform and non-uniform dress code policies.` | Agentic retrieval and synthesis across Policies 60010 and 60020. |
+| **A2 — Foundry IQ** | `How do the HR Generalist and Data Management career paths differ?` | Multi-policy retrieval across Policies 40010 and 40020. |
+| **A2 — Foundry IQ** | `Which policies govern employee use of generative AI and company information?` | Query planning across Policies 70060, 70020, and 70010. |
+| **B — Prompt Agent** | `Explain the differences between full-time and part-time PTO and cite both policies.` | Forced MCP retrieval and grounded synthesis from Policies 50010 and 50020. |
+| **B — Prompt Agent** | `Summarize the pre-employment medical examination and probationary-period requirements.` | Grounded synthesis across Policies 20010 and 20030. |
+| **B — Prompt Agent** | `What should an employee consider when using generative AI with company information?` | Actionable synthesis grounded in Policies 70060 and 70020. |
+| **C — Locator** | `Where can I find Policy 50020?` | Deterministic filename and URL lookup. |
+| **C — Locator** | `Give me the link to the part-time PTO policy.` | Vernacular-to-policy resolution without answer synthesis. |
+| **C — Locator** | `Locate the Generative Artificial Intelligence and Large Language Models policy.` | Exact source lookup for Policy 70060. |
+| **Hosted Agent** | `Compare Policies 50010 and 50020.` | Self-hosted synthesis using the same evidence as Pattern B. |
+| **Hosted Agent** | `Which IT policies govern employee devices, acceptable use, and information security?` | Multi-policy tool retrieval across Policies 70070, 70010, and 70020. |
+| **Hosted Agent** | `Summarize the HR Generalist and Data Management career paths.` | Self-hosted multi-document synthesis from Policies 40010 and 40020. |
+| **Hybrid — Content + Locator** | `Explain the part-time PTO policy and give me the link to the source document.` | Content retrieval through A or B plus deterministic document lookup through C for Policy 50020. |
+| **Hybrid — Content + Locator** | `What does the uniform dress code require, and where can I read the policy?` | Grounded content and a source URL for Policy 60010 in one conversation. |
+
+> **Option 2 corpus limitation.** Do not use Policies 70030, 70040, 900100, or
+> 900200 as expected-answer tests. Their source files use legacy `.doc`, which
+> the integrated-vectorization pipeline excludes. The policy index spreadsheet
+> is also not a reliable answer source because the Document Intelligence Layout
+> skill does not support its `.xlsx` content in this pipeline.
+
+For controlled benchmarking, use the versioned cases in
+[`experiments/datasets/copilot-hr-policy-v1.json`](../experiments/datasets/copilot-hr-policy-v1.json)
+rather than copying these examples into a second dataset.
 
 ---
 
