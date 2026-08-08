@@ -185,11 +185,8 @@ class HRPolicySearchService:
         if self.search_key and not self.search_key.startswith("your_"):
             return AzureKeyCredential(self.search_key)
         if self.use_managed_identity:
-            try:
-                return AzureCliCredential()
-            except Exception:
-                return DefaultAzureCredential()
-        raise ValueError("No valid credential for Azure AI Search")
+            return DefaultAzureCredential()
+        return AzureCliCredential()
 
     def get_search_client(self) -> Optional[SearchClient]:
         """Get or create SearchClient."""

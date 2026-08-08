@@ -370,7 +370,7 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_SEARCH_KB_REASONING_EFFORT', value: searchKnowledgeBaseReasoningEffort }
             { name: 'AZURE_SEARCH_KB_OUTPUT_MODE', value: searchKnowledgeBaseOutputMode }
             { name: 'AZURE_SEARCH_MCP_API_VERSION', value: searchMcpApiVersion }
-            { name: 'AZURE_AI_PROJECT_ENDPOINT', value: '${aiServices.properties.endpoint}/api/projects/${aiProject.name}' }
+            { name: 'AZURE_AI_PROJECT_ENDPOINT', value: uri(aiServices.properties.endpoint, 'api/projects/${aiProject.name}') }
             { name: 'AZURE_AI_MODEL_DEPLOYMENT_NAME', value: openAIDeploymentName }
             { name: 'AZURE_OPENAI_ENDPOINT', value: aiServices.properties.endpoint }
             { name: 'AZURE_OPENAI_DEPLOYMENT_NAME', value: openAIDeploymentName }
@@ -632,7 +632,7 @@ output gpt5DeploymentName string = gpt5DeploymentName
 output embeddingDeploymentName string = embeddingDeploymentName
 output aiFoundryResourceName string = aiServices.name
 output aiProjectName string = aiProject.name
-output projectEndpoint string = '${aiServices.properties.endpoint}/api/projects/${aiProject.name}'
+output projectEndpoint string = uri(aiServices.properties.endpoint, 'api/projects/${aiProject.name}')
 output searchEndpoint string = 'https://${search.name}.search.windows.net'
 output searchName string = search.name
 output knowledgeSourceName string = searchKnowledgeSourceName

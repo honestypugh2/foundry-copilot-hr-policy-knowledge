@@ -5,7 +5,7 @@
     "description": "Custom file-metadata lookup tool for Copilot Studio (Pattern C — Dual-Tool Routing). Mirrors the canonical file_metadata_lookup tool definition from honestypugh2/foundry-copilot-search-validate (src/agents/orchestrator_pattern_b.py). Returns metadata fields only — it does NOT call the knowledge base or synthesize an answer.",
     "version": "1.0.0"
   },
-  "host": "REPLACE_WITH_YOUR_BACKEND_HOST",
+  "host": "ca-backend-zptc7utdm2gis.nicedune-3f634c43.eastus2.azurecontainerapps.io",
   "basePath": "/",
   "schemes": ["https"],
   "consumes": ["application/json"],
@@ -23,9 +23,9 @@
             "required": true,
             "schema": {
               "type": "object",
-              "required": ["message"],
+              "required": ["query"],
               "properties": {
-                "message": {
+                "query": {
                   "type": "string",
                   "description": "The search query to find the document. Include policy number and/or document title (e.g. 'PTO policy 50010', 'Code of Ethics 10000', 'uniform dress code')."
                 }
@@ -40,6 +40,9 @@
               "type": "object",
               "properties": {
                 "query": {"type": "string"},
+                "policy_id": {"type": "string"},
+                "title": {"type": "string"},
+                "blob_url": {"type": "string"},
                 "expanded_query": {"type": "string"},
                 "total": {"type": "integer"},
                 "processing_time_ms": {"type": "integer"},
@@ -60,6 +63,7 @@
               }
             }
           },
+          "422": {"description": "Missing or blank query"},
           "503": {"description": "Search service unavailable"}
         }
       }

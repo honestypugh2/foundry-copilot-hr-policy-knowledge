@@ -15,7 +15,7 @@ This document covers the end-to-end data pipeline — from raw HR policy documen
   - [Glossary Enrichment](#3-glossary-enrichment)
   - [Embedding Generation](#4-embedding-generation)
   - [Indexing](#5-indexing)
-- [Pattern 1, Option 1: DocIntel + Client-Side Chunking](#pattern-1-option-1-docIntel--client-side-chunking)
+- [Pattern 1, Option 1: DocIntel + Client-Side Chunking](#pattern-1-option-1-docintel--client-side-chunking)
 - [Pattern 1, Option 2: Integrated Vectorization](#pattern-1-option-2-integrated-vectorization)
 - [Pattern 2: Foundry Agent Action](#pattern-2-foundry-agent-action)
 - [Testing](#testing)

@@ -3,7 +3,9 @@
 How the **Foundry Agent Service prompt agent** is wired up in this repo,
 and why it answers HR questions reliably.
 
-> Pattern B is the default ([RetrievalPatterns.md](RetrievalPatterns.md)).
+> Pattern A is the recommended starting pattern; this document covers Pattern B
+> when force-grounded Foundry synthesis is required
+> ([RetrievalPatterns.md](RetrievalPatterns.md)).
 > Provision it with `python -m src.agents.create_foundry_agent`.
 > After provisioning, use the Pattern B and shared comparison prompts in the
 > [starter query catalog](CopilotStudioTestingGuide.md#starter-query-catalog).

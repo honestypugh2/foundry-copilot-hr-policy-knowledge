@@ -42,6 +42,8 @@ verify locator routing against known policies.
 ---
 
 <a id="pattern-c-vs-native-citations"></a>
+<a id="pattern-c-vs-native-citations"></a>
+
 ## Pattern C vs native Copilot Studio citations
 
 Copilot Studio's native knowledge-source connectors already attach
@@ -126,6 +128,8 @@ agent for content. If you don't have one yet, follow Path 1 of
 
 ---
 
+<a id="pattern-c-router-instructions"></a>
+
 ## 2. Agent instructions (Lever 1 — the router)
 
 Paste into the agent's **Instructions**. This is what makes Copilot
@@ -171,8 +175,8 @@ second routing lever. They mirror the reference repo's canonical
 > index search for metadata fields only — it does NOT use the
 > knowledge base. Do NOT use this for content/policy questions.**
 
-The input parameter `message` carries the same intent as the
-reference's `query`:
+The input parameter `query` matches the published contract. The backend also
+accepts legacy `message` payloads for existing clients:
 
 > **The search query to find the document. Include policy number
 > and/or document title.**
@@ -217,8 +221,9 @@ hasn't been edited to sound generic.
 
 ## 5. Why this is fast
 
-`POST /api/lookup` runs one hybrid search and returns metadata fields
-only — no Foundry agent, no MCP, and no backend model synthesis. Its
+`POST /api/lookup` runs one hybrid search and returns top-level
+`policy_id`, `title`, and `blob_url` fields plus the richer `documents`
+metadata array. There is no Foundry agent, MCP call, or backend model synthesis. Its
 illustrative latency is ~1–2 s, compared with ~10–14 s for Pattern B's
 agent synthesis. Pattern A is also illustrative ~1–2 s, so choose Pattern C
 for deterministic metadata and a verbatim URL, not a guaranteed speedup over

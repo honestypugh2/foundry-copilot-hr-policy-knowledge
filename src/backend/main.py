@@ -24,6 +24,7 @@ from src.models.schemas import (
     ChatResponse,
     HealthResponse,
     KnowledgeBaseInfo,
+    LookupRequest,
 )
 from src.agents.orchestrator import HRPolicyWorkflowOrchestrator
 from src.search.search_service import HRPolicySearchService, HR_GLOSSARY
@@ -291,7 +292,7 @@ async def chat(request: ChatRequest):
 
 
 @app.post("/api/lookup")
-async def lookup(request: ChatRequest):
+async def lookup(request: LookupRequest):
     """Look up the storage location of an HR policy document.
 
     Mirrors the canonical ``file_metadata_lookup`` tool from
@@ -318,7 +319,12 @@ async def lookup(request: ChatRequest):
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Search service unavailable: {e}")
 
-    query = expand_query_with_glossary(request.message or "")
+    try:
+        raw_query = request.search_text
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    query = expand_query_with_glossary(raw_query)
     results = iv_search.search(query, top=3)
 
     documents = []
@@ -333,8 +339,12 @@ async def lookup(request: ChatRequest):
         })
 
     elapsed_ms = int((time.time() - start) * 1000)
+    primary_document = documents[0] if documents else {}
     return {
-        "query": request.message,
+        "query": raw_query,
+        "policy_id": primary_document.get("policy_number", ""),
+        "title": primary_document.get("parent_title", ""),
+        "blob_url": primary_document.get("blob_url", ""),
         "expanded_query": query,
         "documents": documents,
         "total": len(documents),

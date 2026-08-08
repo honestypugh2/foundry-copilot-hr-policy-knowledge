@@ -1,5 +1,10 @@
 # `scripts/` — Indexing & Utility Scripts
 
+For the ordered build sequence, start with
+[Build the Retrieval Patterns](../docs/patterns/README.md). For script ownership
+and benchmark boundaries, use the
+[Pattern Code Ownership and Benchmark Guide](../docs/PatternSetupAndBenchmarkGuide.md).
+
 This directory holds the scripts that **populate the Azure AI Search index**
 (`hr-policy-index`) plus supporting utilities. Every retrieval pattern in this
 repo — **A, A2, B, C, and the Hosted Agent** — ultimately reads from that same

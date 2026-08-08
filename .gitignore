@@ -156,3 +156,6 @@ node_modules/
 .github/prompts
 src/frontend/test-results/
 src/frontend/playwright-report/
+
+docs/BenchmarkingBlogOutline.md
+docs/BenchmarkingDecisionSystem.md

@@ -7,7 +7,9 @@ from src.agents.create_foundry_agent import (
 
 
 def test_shared_kb_is_medium_extractive_without_answer_synthesis(monkeypatch):
-    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com")
+    monkeypatch.setenv(
+        "AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com/openai/v1"
+    )
 
     payload = _build_knowledge_base().as_dict()
 

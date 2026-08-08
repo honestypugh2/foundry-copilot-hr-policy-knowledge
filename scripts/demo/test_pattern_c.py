@@ -101,8 +101,12 @@ def run(question: str) -> int:
         })
 
     elapsed_ms = int((time.time() - start) * 1000)
+    primary_document = documents[0] if documents else {}
     payload = {
         "query": question,
+        "policy_id": primary_document.get("policy_number", ""),
+        "title": primary_document.get("parent_title", ""),
+        "blob_url": primary_document.get("blob_url", ""),
         "expanded_query": expanded,
         "documents": documents,
         "total": len(documents),

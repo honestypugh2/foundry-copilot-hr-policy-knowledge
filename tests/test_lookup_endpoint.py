@@ -52,13 +52,16 @@ async def test_lookup_returns_canonical_metadata_fields(client: AsyncClient):
         mock_instance.search.return_value = [fake_hit]
         mock_cls.return_value = mock_instance
 
-        resp = await client.post("/api/lookup", json={"message": "PTO policy"})
+        resp = await client.post("/api/lookup", json={"query": "PTO policy"})
 
     assert resp.status_code == 200
     body = resp.json()
 
     assert body["total"] == 1
     assert body["query"] == "PTO policy"
+    assert body["policy_id"] == "50010"
+    assert body["title"] == "Types of Leave: Paid Time Off (PTO)"
+    assert body["blob_url"] == "https://example.blob.core.windows.net/hr-policies/50010.pdf"
     assert "expanded_query" in body
     assert "processing_time_ms" in body
     assert isinstance(body["documents"], list) and len(body["documents"]) == 1
@@ -74,6 +77,32 @@ async def test_lookup_returns_canonical_metadata_fields(client: AsyncClient):
 
 
 @pytest.mark.anyio
+async def test_lookup_accepts_legacy_message_contract(client: AsyncClient):
+    """Existing clients can continue to send the legacy ``message`` field."""
+    fake_hit = {
+        "policy_number": "50010",
+        "parentTitle": "Types of Leave: Paid Time Off (PTO)",
+        "fileName": "50010 - Types of Leave_ Paid Time Off (PTO) (1010_0).pdf",
+        "filePath": "https://example.blob.core.windows.net/hr-policies/50010.pdf",
+        "blob_url": "https://example.blob.core.windows.net/hr-policies/50010.pdf",
+        "score": 12.34,
+    }
+
+    with patch(
+        "src.search.integrated_vectorization_search.IntegratedVectorizationSearchService"
+    ) as mock_cls:
+        mock_instance = MagicMock()
+        mock_instance.search.return_value = [fake_hit]
+        mock_cls.return_value = mock_instance
+
+        resp = await client.post("/api/lookup", json={"message": "PTO policy"})
+
+    assert resp.status_code == 200
+    assert resp.json()["policy_id"] == "50010"
+    assert resp.json()["title"] == "Types of Leave: Paid Time Off (PTO)"
+
+
+@pytest.mark.anyio
 async def test_lookup_empty_results(client: AsyncClient):
     """When the index returns no hits, the response shape is still
     well-formed with ``total: 0`` and an empty ``documents`` array.
@@ -85,7 +114,7 @@ async def test_lookup_empty_results(client: AsyncClient):
         mock_instance.search.return_value = []
         mock_cls.return_value = mock_instance
 
-        resp = await client.post("/api/lookup", json={"message": "nonexistent policy"})
+        resp = await client.post("/api/lookup", json={"query": "nonexistent policy"})
 
     assert resp.status_code == 200
     body = resp.json()
@@ -103,7 +132,7 @@ async def test_lookup_search_service_unavailable(client: AsyncClient):
     ) as mock_cls:
         mock_cls.side_effect = RuntimeError("search endpoint not configured")
 
-        resp = await client.post("/api/lookup", json={"message": "PTO"})
+        resp = await client.post("/api/lookup", json={"query": "PTO"})
 
     assert resp.status_code == 503
 
@@ -127,7 +156,7 @@ async def test_lookup_passes_glossary_expanded_query(client: AsyncClient):
         mock_instance.search.side_effect = fake_search
         mock_cls.return_value = mock_instance
 
-        resp = await client.post("/api/lookup", json={"message": "pto"})
+        resp = await client.post("/api/lookup", json={"query": "pto"})
 
     assert resp.status_code == 200
     # ``pto`` should be expanded to include ``Paid Time Off`` by the glossary.

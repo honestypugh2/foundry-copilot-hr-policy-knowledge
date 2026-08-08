@@ -5,7 +5,7 @@
     "description": "Answers HR policy questions using the Foundry Agent Service (Pattern B) backed by an Azure AI Search Knowledge Base accessed via MCP.",
     "version": "1.0.0"
   },
-  "host": "REPLACE_WITH_YOUR_BACKEND_HOST",
+  "host": "ca-backend-zptc7utdm2gis.nicedune-3f634c43.eastus2.azurecontainerapps.io",
   "basePath": "/",
   "schemes": ["https"],
   "consumes": ["application/json"],

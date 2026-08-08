@@ -116,6 +116,14 @@ def _get_credential():
         return DefaultAzureCredential()
 
 
+def _azure_openai_resource_url(endpoint: str) -> str:
+    """Return the resource root expected by Search knowledge-base models."""
+    normalized = endpoint.rstrip("/")
+    if normalized.endswith("/openai/v1"):
+        normalized = normalized.removesuffix("/openai/v1")
+    return normalized
+
+
 # ---------------------------------------------------------------------------
 # Step 1: Create Knowledge Source
 # ---------------------------------------------------------------------------
@@ -173,7 +181,9 @@ def _build_knowledge_base() -> KnowledgeBase:
             "Patterns A2 and B require agentic_retrieval.output_mode=EXTRACTIVE"
         )
 
-    openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+    openai_endpoint = _azure_openai_resource_url(
+        os.getenv("AZURE_OPENAI_ENDPOINT", "")
+    )
     if not openai_endpoint:
         raise ValueError("AZURE_OPENAI_ENDPOINT is required to create the knowledge base")
 
@@ -348,10 +358,10 @@ def create_foundry_agent(mcp_endpoint: str) -> None:
     logger.info("  Agent ID: %s", agent.id)
     logger.info("")
     logger.info("Next steps:")
-    logger.info("  1. In Copilot Studio, add a Foundry Agent Action")
-    logger.info("  2. Connect to agent '%s' version %s", agent.name, agent.version)
-    logger.info("  3. Create a topic that invokes this agent action")
-    logger.info("  4. Publish to Teams / Web Chat")
+    logger.info("  1. In a standard-harness Copilot Studio agent, select Agents > Add an agent")
+    logger.info("  2. Select Connect to an external agent > Microsoft Foundry")
+    logger.info("  3. Use Agent ID '%s' (version %s)", agent.name, agent.version)
+    logger.info("  4. Test the external-agent route, then publish")
 
 
 # ---------------------------------------------------------------------------

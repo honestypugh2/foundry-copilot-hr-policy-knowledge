@@ -1,5 +1,11 @@
 # Pattern Test Scripts + Decision-Tree Demo
 
+These are smoke tests for repository-owned invocation paths, not the canonical
+setup guide and not benchmark evidence. Start with
+[Pattern Setup, Code Ownership, and Benchmark Guide](../../docs/PatternSetupAndBenchmarkGuide.md).
+Pattern A2 has no local demo script because Copilot Studio owns its synthesis;
+test A2 in Copilot Studio or through the Direct Line benchmark adapter.
+
 Live, runnable scripts that exercise each retrieval pattern in this
 repo against the configured Azure resources, plus a storytelling demo
 that walks the decision tree end-to-end.
@@ -90,8 +96,9 @@ python -m scripts.demo.demo_decision_tree \
   --locator "Give me the link to the PTO policy"
 ```
 
-The demo ends with a side-by-side latency table so you can see the
-~1–2 s (A, C) vs ~10–14 s (B, Hosted) gap in your own environment.
+The demo ends with a side-by-side table of single-run observations. Those
+observations can confirm a path is working but cannot establish a comparative
+latency result.
 
 ---
 
@@ -122,9 +129,9 @@ still exits 0 so it's safe in CI.
 Replicates `src/backend/main.py:/api/lookup`:
 1. Glossary expansion (same as Pattern A).
 2. Hybrid search over the same index, but projected into the
-   metadata-only shape (`policy_number`, `parent_title`,
-   `metadata_storage_name`, `metadata_storage_path`, `blob_url`,
-   `score`).
+   blog-compatible top-level locator fields (`policy_id`, `title`, `blob_url`)
+   plus the richer `documents` metadata (`policy_number`, `parent_title`,
+   `metadata_storage_name`, `metadata_storage_path`, `blob_url`, `score`).
 3. Prints the routing levers used by the Copilot Studio side
    ([CopilotStudioLookupRouting.md](../../docs/CopilotStudioLookupRouting.md)).
 

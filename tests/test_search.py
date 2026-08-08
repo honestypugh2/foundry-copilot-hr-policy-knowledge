@@ -1,6 +1,10 @@
 """Tests for search service and glossary expansion."""
 
 import pytest
+from azure.identity import AzureCliCredential, DefaultAzureCredential
+
+from src.search.integrated_vectorization_search import IntegratedVectorizationSearchService
+from src.search.search_service import HRPolicySearchService
 from src.search.search_service import expand_query_with_glossary, HR_GLOSSARY
 
 
@@ -44,3 +48,27 @@ class TestSearchServiceInit:
     def test_glossary_keys_are_lowercase(self):
         for key in HR_GLOSSARY:
             assert key == key.lower(), f"Glossary key should be lowercase: {key}"
+
+    @pytest.mark.parametrize(
+        "service_type",
+        [IntegratedVectorizationSearchService, HRPolicySearchService],
+    )
+    def test_managed_identity_uses_default_credential(self, monkeypatch, service_type):
+        monkeypatch.delenv("AZURE_SEARCH_API_KEY", raising=False)
+        monkeypatch.setenv("USE_MANAGED_IDENTITY", "true")
+
+        credential = service_type()._get_credential()
+
+        assert isinstance(credential, DefaultAzureCredential)
+
+    @pytest.mark.parametrize(
+        "service_type",
+        [IntegratedVectorizationSearchService, HRPolicySearchService],
+    )
+    def test_local_identity_uses_azure_cli_credential(self, monkeypatch, service_type):
+        monkeypatch.delenv("AZURE_SEARCH_API_KEY", raising=False)
+        monkeypatch.setenv("USE_MANAGED_IDENTITY", "false")
+
+        credential = service_type()._get_credential()
+
+        assert isinstance(credential, AzureCliCredential)

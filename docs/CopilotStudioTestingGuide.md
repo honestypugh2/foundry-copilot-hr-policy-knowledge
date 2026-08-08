@@ -1,12 +1,17 @@
 # Copilot Studio Testing Guide — Ask HR Policy Knowledge Agent
 
-End-to-end walkthrough for wiring **all five patterns** (A, A2, B, C, Hosted)
-plus the **Hybrid** orchestration in a single Copilot Studio agent and
-verifying each one with concrete test prompts.
+End-to-end validation for **all five patterns** (A, A2, B, C, Hosted) plus the
+optional **Hybrid** orchestration.
+
+Validate each pattern in a separate Copilot Studio test agent first. Add only
+the knowledge source, tool, or external agent for that pattern. A single agent
+with all five routes measures orchestration choices rather than the pattern you
+intended to test. Build Hybrid only after its component routes pass separately.
 
 This guide is the testing-focused companion to the per-pattern setup
 docs:
 
+- [patterns/README.md](patterns/README.md) — ordered build and validation entry point
 - [CopilotStudioIntegration.md](CopilotStudioIntegration.md) — Pattern A / B / Hosted wiring reference
 - [CopilotStudioLookupRouting.md](CopilotStudioLookupRouting.md) — Pattern C router
 - [CopilotStudioHybridExample.md](CopilotStudioHybridExample.md) — Hybrid worked example
@@ -48,7 +53,7 @@ all RBAC — then builds/pushes and deploys the backend + Hosted Agent images.
 
 | ✅ | What | Why |
 | -- | ---- | --- |
-| ☐ | `azd up` completed (infra + services) — see [README.md § 10](../README.md#10-deploy-infrastructure-and-services) | Provisions ACR, Container Apps, App Insights + deploys backend & Hosted Agent |
+| ☐ | Initial `azd up` completed — see [README.md § 3](../README.md#3-provision-azure-infrastructure) | Provisions Azure resources; follow README safety gates for private container images |
 | ☐ | `hr-policy-index` populated (`uv run python scripts/index_knowledge_base_integrated_vectorization.py`) | Patterns A, A2, B, C, and Hosted retrieve from this index |
 | ☐ | Foundry project endpoint set (`AZURE_AI_PROJECT_ENDPOINT` in `.env`) | Required for Pattern B + Hosted |
 | ☐ | `HRPolicyAgent` PromptAgent provisioned (`uv run python -m src.agents.create_foundry_agent`) | Required for Pattern B |
@@ -57,13 +62,14 @@ all RBAC — then builds/pushes and deploys the backend + Hosted Agent images.
 | ☐ | Backend endpoint auth decided — Container Apps public ingress needs **no key** for a demo; for production front it with **Entra (Container Apps authentication)**. The `az functionapp keys list` / `code` query-key steps in Step C2 / D apply **only if you host the backend on Azure Functions instead**. | Pattern C / B2 auth |
 | ☐ | Smoke-tested locally with `python -m scripts.demo.demo_decision_tree --skip-b --skip-hosted` | Confirms search + lookup work before Copilot Studio is in the loop |
 
-Required RBAC on the Azure AI Search service (Patterns B / Hosted only) — all
-assigned automatically by the Bicep when `AZURE_PRINCIPAL_ID` is set:
+Required RBAC on the Azure AI Search service (Patterns B / Hosted only). Bicep
+assigns identities known during deployment; assign the unique `HRPolicyAgent`
+identity after the provisioning script creates it:
 
 | Role | Assigned to | Purpose |
 | ---- | ----------- | ------- |
 | Search Index Data Contributor | Your user | Create indexes, upload docs |
-| Search Index Data Reader | Your user + project managed identity + backend Container App identity | Query the index from Foundry / the backend |
+| Search Index Data Reader | Your user + `HRPolicyAgent` identity + hosted/backend runtime identities | Query the index from Foundry / the backend |
 | Search Service Contributor | Your user | Create knowledge bases/sources |
 | Foundry Project Manager | Your user | Deploy the Hosted Agent |
 | AcrPull | Project managed identity + backend Container App identity | Pull container images from ACR |
@@ -128,27 +134,31 @@ quality and latency:
 
 ### Pattern-specific starters
 
-| Pattern | Sample query | What it demonstrates |
-| ------- | ------------ | -------------------- |
-| **A — Direct Index** | `What does Policy 20030 say about the probationary period?` | Focused retrieval from Policy 20030 with a native citation card. |
-| **A — Direct Index** | `How is holiday pay handled under Policy 30010?` | Direct factual answer from one policy. |
-| **A — Direct Index** | `What is the uniform dress code?` | Synonym/title retrieval for Policy 60010. |
-| **A-SP — SharePoint** | `What does the full-time Paid Time Off policy cover?` | Native retrieval with a SharePoint citation and source-file deep link for Policy 50010. |
-| **A-SP — SharePoint** | `Where can I read the uniform dress code policy?` | Native SharePoint citation for Policy 60010 without the custom locator endpoint. |
-| **A2 — Foundry IQ** | `Compare the uniform and non-uniform dress code policies.` | Agentic retrieval and synthesis across Policies 60010 and 60020. |
-| **A2 — Foundry IQ** | `How do the HR Generalist and Data Management career paths differ?` | Multi-policy retrieval across Policies 40010 and 40020. |
-| **A2 — Foundry IQ** | `Which policies govern employee use of generative AI and company information?` | Query planning across Policies 70060, 70020, and 70010. |
-| **B — Prompt Agent** | `Explain the differences between full-time and part-time PTO and cite both policies.` | Forced MCP retrieval and grounded synthesis from Policies 50010 and 50020. |
-| **B — Prompt Agent** | `Summarize the pre-employment medical examination and probationary-period requirements.` | Grounded synthesis across Policies 20010 and 20030. |
-| **B — Prompt Agent** | `What should an employee consider when using generative AI with company information?` | Actionable synthesis grounded in Policies 70060 and 70020. |
-| **C — Locator** | `Where can I find Policy 50020?` | Deterministic filename and URL lookup. |
-| **C — Locator** | `Give me the link to the part-time PTO policy.` | Vernacular-to-policy resolution without answer synthesis. |
-| **C — Locator** | `Locate the Generative Artificial Intelligence and Large Language Models policy.` | Exact source lookup for Policy 70060. |
-| **Hosted Agent** | `Compare Policies 50010 and 50020.` | Self-hosted synthesis using the same evidence as Pattern B. |
-| **Hosted Agent** | `Which IT policies govern employee devices, acceptable use, and information security?` | Multi-policy tool retrieval across Policies 70070, 70010, and 70020. |
-| **Hosted Agent** | `Summarize the HR Generalist and Data Management career paths.` | Self-hosted multi-document synthesis from Policies 40010 and 40020. |
-| **Hybrid — Content + Locator** | `Explain the part-time PTO policy and give me the link to the source document.` | Content retrieval through A or B plus deterministic document lookup through C for Policy 50020. |
-| **Hybrid — Content + Locator** | `What does the uniform dress code require, and where can I read the policy?` | Grounded content and a source URL for Policy 60010 in one conversation. |
+The **prompt/instruction source** column tells you what must be configured
+before running each query. Do not use a query alone to infer that the correct
+retrieval path ran; inspect the Copilot Studio activity trace or tool call.
+
+| Pattern | Prompt/instruction source | Sample query | What it demonstrates |
+| ------- | ------------------------- | ------------ | -------------------- |
+| **A — Direct Index** | [Shared Copilot instructions](CopilotStudioIntegration.md#shared-copilot-instructions) | `What does Policy 20030 say about the probationary period?` | Focused retrieval from Policy 20030 with a native citation card. |
+| **A — Direct Index** | [Shared Copilot instructions](CopilotStudioIntegration.md#shared-copilot-instructions) | `How is holiday pay handled under Policy 30010?` | Direct factual answer from one policy. |
+| **A — Direct Index** | [Shared Copilot instructions](CopilotStudioIntegration.md#shared-copilot-instructions) | `What is the uniform dress code?` | Synonym/title retrieval for Policy 60010. |
+| **A-SP — SharePoint** | [Shared Copilot instructions](CopilotStudioIntegration.md#shared-copilot-instructions) | `What does the full-time Paid Time Off policy cover?` | Native retrieval with a SharePoint citation and source-file deep link for Policy 50010. |
+| **A-SP — SharePoint** | [Shared Copilot instructions](CopilotStudioIntegration.md#shared-copilot-instructions) | `Where can I read the uniform dress code policy?` | Native SharePoint citation for Policy 60010 without the custom locator endpoint. |
+| **A2 — Foundry IQ** | [A2 prompt contract](CopilotStudioIntegration.md#a2-prompt-contract) | `Compare the uniform and non-uniform dress code policies.` | Agentic retrieval and synthesis across Policies 60010 and 60020. |
+| **A2 — Foundry IQ** | [A2 prompt contract](CopilotStudioIntegration.md#a2-prompt-contract) | `How do the HR Generalist and Data Management career paths differ?` | Multi-policy retrieval across Policies 40010 and 40020. |
+| **A2 — Foundry IQ** | [A2 prompt contract](CopilotStudioIntegration.md#a2-prompt-contract) | `Which policies govern employee use of generative AI and company information?` | Query planning across Policies 70060, 70020, and 70010. |
+| **B — Prompt Agent** | [Pattern B prompt contract](CopilotStudioIntegration.md#pattern-b-prompt-contract) | `Explain the differences between full-time and part-time PTO and cite both policies.` | Forced MCP retrieval and grounded synthesis from Policies 50010 and 50020. |
+| **B — Prompt Agent** | [Pattern B prompt contract](CopilotStudioIntegration.md#pattern-b-prompt-contract) | `Summarize the pre-employment medical examination and probationary-period requirements.` | Grounded synthesis across Policies 20010 and 20030. |
+| **B — Prompt Agent** | [Pattern B prompt contract](CopilotStudioIntegration.md#pattern-b-prompt-contract) | `What should an employee consider when using generative AI with company information?` | Actionable synthesis grounded in Policies 70060 and 70020. |
+| **C — Locator** | [Pattern C router instructions](CopilotStudioLookupRouting.md#pattern-c-router-instructions) | `Where can I find Policy 50020?` | Deterministic filename and URL lookup. |
+| **C — Locator** | [Pattern C router instructions](CopilotStudioLookupRouting.md#pattern-c-router-instructions) | `Give me the link to the part-time PTO policy.` | Vernacular-to-policy resolution without answer synthesis. |
+| **C — Locator** | [Pattern C router instructions](CopilotStudioLookupRouting.md#pattern-c-router-instructions) | `Locate the Generative Artificial Intelligence and Large Language Models policy.` | Exact source lookup for Policy 70060. |
+| **Hosted Agent** | [Hosted prompt contract](CopilotStudioIntegration.md#hosted-prompt-contract) | `Compare Policies 50010 and 50020.` | Self-hosted synthesis using the same evidence as Pattern B. |
+| **Hosted Agent** | [Hosted prompt contract](CopilotStudioIntegration.md#hosted-prompt-contract) | `Which IT policies govern employee devices, acceptable use, and information security?` | Multi-policy tool retrieval across Policies 70070, 70010, and 70020. |
+| **Hosted Agent** | [Hosted prompt contract](CopilotStudioIntegration.md#hosted-prompt-contract) | `Summarize the HR Generalist and Data Management career paths.` | Self-hosted multi-document synthesis from Policies 40010 and 40020. |
+| **Hybrid — Content + Locator** | [Pattern C router instructions](CopilotStudioLookupRouting.md#pattern-c-router-instructions) | `Explain the part-time PTO policy and give me the link to the source document.` | Content retrieval through A or B plus deterministic document lookup through C for Policy 50020. |
+| **Hybrid — Content + Locator** | [Pattern C router instructions](CopilotStudioLookupRouting.md#pattern-c-router-instructions) | `What does the uniform dress code require, and where can I read the policy?` | Grounded content and a source URL for Policy 60010 in one conversation. |
 
 > **Option 2 corpus limitation.** Do not use Policies 70030, 70040, 900100, or
 > 900200 as expected-answer tests. Their source files use legacy `.doc`, which
@@ -233,7 +243,7 @@ The simplest path — Copilot Studio's native Azure AI Search connector.
 4. Index name: `hr-policy-index`.
 5. Click **Add to agent**. Wait for status **In progress → Ready**.
 
-Pattern A is now live — skip ahead to [Test scenarios A](#scenario-a-pattern-a-direct-knowledge-base--).
+Pattern A is now live — skip ahead to [Test scenario A](#scenario-a).
 
 ---
 
@@ -266,7 +276,7 @@ Full background: [CopilotStudioIntegration.md — Pattern A-SP wiring](CopilotSt
 > hasn’t indexed the file yet — wait ~15 min and retry. Copilot
 > Studio can only return what M365 search can find.
 
-Pattern A-SP is now live — use [Scenario A-SP](#scenario-a-sp-pattern-a-sp-sharepoint-knowledge-source) to verify.
+Pattern A-SP is now live — use [Scenario A-SP](#scenario-a-sp) to verify.
 
 ---
 
@@ -276,18 +286,30 @@ Two options. Pick one.
 
 #### Option B1 — Add the Foundry agent directly (recommended)
 
+> **Standard harness required.** **Connect to an external agent** isn't exposed
+> in the GitHub Copilot-harness agent used for Pattern A2. Create a separate
+> standard-harness Copilot Studio agent for this Pattern B test.
+>
 > **⚠️ New Foundry portal only.** Copilot Studio can only connect to Foundry
 > agents created in the **new Foundry portal** — connecting to one created in
 > the previous portal fails with `404 - Version not found`. This repo's
 > `create_foundry_agent.py` uses the GA `azure-ai-projects` SDK (new Foundry),
 > so `HRPolicyAgent` is compatible.
 
+Before connecting it, open `HRPolicyAgent` in Microsoft Foundry and select
+**Publish -> Teams and Microsoft 365 Copilot**. Choose **Just you** for an
+isolated test, then confirm the endpoint shows **Activity protocol**. New
+agents default to Responses, but Copilot Studio's external-agent connector
+requires Activity. New-model agents can expose both protocols simultaneously.
+
 1. **Agents → Add an agent → Connect to an external agent → Microsoft Foundry (Preview)**.
 2. Select an existing **connection**, or create one using your **Foundry project
    endpoint URL**, then select **Next**.
-3. Enter a **Name** and **Description** (the description drives orchestration),
-   then enter the **Agent Id** — `HRPolicyAgent`. You can change the Agent Id
-   later from the agent's details page.
+3. Enter **Name** `HRPolicyAgentB`, use the Pattern B routing description from
+  [Step 6](CopilotStudioIntegration.md#step-6-add-the-foundry-agent-to-copilot-studio),
+  and enter **Agent Id** `HRPolicyAgent`. The Name is Copilot Studio's local
+  label; the Agent Id is the stable Foundry agent identifier. Use the selected
+  Microsoft Foundry project connection.
 
    ![Foundry agent picker](images/copilot-studio/07-agents-add-foundry-agent.png)
 
@@ -320,12 +342,12 @@ the backend runs on **Azure Container Apps** (`/api/chat`).
    > by setting `backendAuthClientId` (an admin-created app registration); the
    > Container App then returns 401 to unauthenticated callers.
 
-4. Map the user's message to the `message` input.
+4. Map the user's message to the `query` input.
 5. Under **Details → Allow agent to decide dynamically when to use the tool** = **On**.
 6. **Completion → Write the response with generative AI**.
 
 Either option leaves `askHRPolicy` (or the agent name) discoverable to
-the planner. Skip ahead to [Test scenarios B](#scenario-b-pattern-b-foundry-agent--mcptool).
+the planner. Skip ahead to [Test scenario B](#scenario-b).
 
 ---
 
@@ -380,7 +402,7 @@ intents.
 
 6. Click **Save**.
 
-Skip to [Test scenarios C](#scenario-c-pattern-c-dual-tool-routing).
+Skip to [Test scenario C](#scenario-c).
 
 > **Pattern C vs native citations.** Before wiring this, read
 > [CopilotStudioLookupRouting.md § Pattern C vs native citations](CopilotStudioLookupRouting.md#pattern-c-vs-native-citations).
@@ -403,10 +425,10 @@ instead of the Foundry-managed PromptAgent.
 4. **Completion → Write the response with generative AI**.
 5. **Save.**
 
-Skip to [Test scenarios H](#scenario-h-hosted-agent).
+Skip to [Test scenario H](#scenario-h).
 
 > Full deployment details for the container live in
-> [README.md § 8 — Run the Hosted Agent runtime](../README.md#8-optional-run-the-hosted-agent-runtime)
+> [README.md § 9 — Run the Hosted Agent runtime](../README.md#9-optional-run-the-hosted-agent-runtime)
 > and [src/hosted_agent/agent.yaml](../src/hosted_agent/agent.yaml).
 
 ---
@@ -421,7 +443,7 @@ combination per turn.
 
 Follow the full conversational walkthrough in
 [CopilotStudioHybridExample.md](CopilotStudioHybridExample.md), then
-run [Hybrid test scenarios](#scenario-hy-hybrid).
+run [Hybrid test scenarios](#scenario-hybrid).
 
 ---
 
@@ -432,6 +454,8 @@ question. The **Activity** tab below the chat shows which knowledge
 source or tool was invoked — this is how you verify routing.
 
 ---
+
+<a id="scenario-a"></a>
 
 ### Scenario A — Pattern A (Direct Index) ★
 
@@ -480,6 +504,8 @@ User: What's the best Italian restaurant near our HQ?
 ---
 
 <a id="scenario-a-sp-pattern-a-sp-sharepoint-knowledge-source"></a>
+<a id="scenario-a-sp"></a>
+
 ### Scenario A-SP — Pattern A-SP (SharePoint Knowledge Source)
 
 Use this scenario when you wired Step B-SP. Behaviour mirrors Scenario
@@ -549,6 +575,8 @@ User: How much vacation do I get?
 
 ---
 
+<a id="scenario-b"></a>
+
 ### Scenario B — Pattern B (Foundry Agent + MCPTool)
 
 After Step C, content questions can also route through the
@@ -599,6 +627,8 @@ User: What's our parental leave policy?
 - Activity trace shows the MCP retrieval ran but returned no hits.
 
 ---
+
+<a id="scenario-c"></a>
 
 ### Scenario C — Pattern C (Dual-Tool Routing)
 
@@ -654,6 +684,8 @@ User: How many holidays do we get?
 
 ---
 
+<a id="scenario-h"></a>
+
 ### Scenario H — Hosted Agent
 
 After Step E, the planner can pick the `hr-policy-agent` container
@@ -690,6 +722,8 @@ User: What's our cryptocurrency reimbursement policy?
   Framework hosting doesn't expose Foundry's tool-choice setting.
 
 ---
+
+<a id="scenario-hybrid"></a>
 
 ### Scenario Hy — Hybrid
 
@@ -755,7 +789,7 @@ Tick these off in order. Skip rows for patterns you're not wiring.
 | ✅ | Step | Reference |
 | -- | ---- | --------- |
 | ☐ | Same-tenant requirement verified | This doc top |
-| ☐ | `hr-policy-index` populated and reachable (Pattern A / B / C / Hosted) | [README.md § 3](../README.md) |
+| ☐ | `hr-policy-index` populated and reachable (A / A2 / B / C / Hosted) | [README.md § 4](../README.md#4-populate-the-azure-ai-search-index) |
 | ☐ | Smoke-tested locally with `scripts/demo/demo_decision_tree.py` | [scripts/demo/README.md](../scripts/demo/README.md) |
 | ☐ | Copilot Studio agent created with Step A instructions | Step A |
 | ☐ | Generative AI orchestration = Yes, general knowledge = Off | Step A |
@@ -766,7 +800,7 @@ Tick these off in order. Skip rows for patterns you're not wiring.
 | ☐ | **Pattern B** — `HRPolicyAgent` provisioned (`create_foundry_agent`) | Step C |
 | ☐ | **Pattern B** — Tool added (Option B1 native, or B2 REST with `code` in Query) | Step C |
 | ☐ | **Pattern B** — B1 / B2 / B3 tests pass | Scenario B |
-| ☐ | **Pattern C** — `openapi-lookup-v2.json` imported with `code` in Query | Step D |
+| ☐ | **Pattern C** — `openapi-lookup-v2.json` imported with the authentication selected in Step D (`None` for this public Container Apps demo) | Step D |
 | ☐ | **Pattern C** — Dual-tool router instructions saved | Step D |
 | ☐ | **Pattern C** — C1 / C2 / C3 pass, C4 negative test routes to content path | Scenario C |
 | ☐ | **Hosted** — `hr-policy-agent` container deployed and showing in portal | Step E |
@@ -785,8 +819,18 @@ Tick these off in order. Skip rows for patterns you're not wiring.
 | **Pattern A-SP** — fresh upload not found | Microsoft 365 search hasn’t crawled the file yet | Confirm the title appears in the SharePoint top-bar search; wait ~15 min after upload and retry |
 | **Pattern A-SP** — citation deep link 404s for some users | Per-user SharePoint ACL doesn’t grant access | Grant the user **Read** on the library or specific file in SharePoint; this is the connector enforcing ACLs as designed |
 | **Pattern A-SP** — vernacular like "vacation" misses | No synonym map on the SP connector | Wire Pattern A alongside, or add a Custom topic for the term |
+| **A2** shows **Connect to continue** with an **Allow** button | First-use consent for the Azure - Foundry IQ connection has not completed | Select **Allow**, wait for the connection to become ready, then select **Retry** or start a new test session |
+| **A2** tool Inputs shows **Messages (`object[]`)** but no **Knowledge Base Name** or **API Version** | This is the expected native Foundry IQ binding; the resource and API version are stored in the connection/tool binding | Leave **Messages -> How is this filled?** set to **AI**. Save, run a Preview query, and confirm the activity trace contains Foundry IQ retrieval results. |
+| **A2** Preview sends `knowledgeBaseName: hr-policy-docs` and `api-version: 2025-05-01-preview` | The Messages body is valid, but the hidden tool binding retained sample/default resource values | Remove the tool. Add it from the dedicated **Build -> Tools -> Foundry IQ** card, select/create the Search connection, select **Next**, choose `hr-knowledge-base` in the picker, and then select **Add to agent**. Do not add the retrieval action directly from the **Azure - Foundry IQ** connector. |
+| Only **Azure - Foundry IQ** connector actions are available; there is no dedicated **Foundry IQ** tool card, endpoint form, or knowledge-base picker | The native Foundry IQ experience documented by Microsoft isn't available in this environment's current rollout | The API and MCP action Inputs can't establish the Search-service binding. Capture the UI and environment ID, then open a Microsoft support request. Use Pattern A or Pattern C until **Build -> Tools -> Foundry IQ -> Create new connection** is available. |
+| **A2** returns HTTP 400: `A non-empty request body is required` and the activity card shows only **Knowledge Base Name** and **API Version** | The selected action has no input for the required `messages` or `intents` body | Remove the action. In an agent created with the GitHub Copilot harness, use **Build -> Tools -> Foundry IQ**, create/select the connection, and choose `hr-knowledge-base` from the knowledge-base picker. If the picker is absent, create a compatible agent. |
+| **A2** still says **I couldn't connect** after consent | Stale or invalid Azure - Foundry IQ connection | Select the connection with a green status, or open connection manager and reconnect **Azure - Foundry IQ**, then retry |
+| `hr-knowledge-base` is absent from the A2 picker | Wrong tenant, maker lacks KB access, or KB was not provisioned | Run `uv run python -m src.agents.create_foundry_agent --verify-only`; confirm tenant alignment and maker access, then recreate the connection |
 | Foundry agent tool dropdown is empty | PromptAgent not published, or different tenant | Run `uv run python -m src.agents.create_foundry_agent --verify-only`; confirm tenant alignment |
-| Pattern B / Hosted returns 401 in Activity trace | RBAC not assigned to project managed identity | Assign **Search Index Data Reader** to the Foundry project's managed identity on the search service |
+| `Agent HRPolicyAgent endpoint does not support activity` | The Agent Id resolved, but its stable endpoint still exposes the default Responses protocol | In Foundry, open `HRPolicyAgent`, select **Publish -> Teams and Microsoft 365 Copilot**, choose **Just you** for testing, and confirm the endpoint shows **Activity protocol**. Retry with Agent Id `HRPolicyAgent`; don't use the Entra identity GUID. |
+| Pattern B returns 401 in Activity trace | The Activity channel or caller authorization isn't configured | Complete the Foundry Teams and Microsoft 365 publish flow and reconnect the Microsoft Foundry connection in Copilot Studio |
+| Pattern B retrieval returns 403 after the agent is invoked | The agent's unique Entra identity lacks downstream Search access | Assign **Search Index Data Reader** to the `HRPolicyAgent` identity on the search service |
+| Hosted returns 401 in Activity trace | RBAC not assigned to the hosted runtime identity | Assign **Search Index Data Reader** to the hosted agent's managed identity on the search service |
 | REST tool returns 401 even with key | Auth set to **Header** with the default header name instead of **Query** | Use `code` in **Query**, or **Header** with parameter name `x-functions-key` (the default `Authorization` header name returns 401) |
 | Connection error: *"Let's get you connected first"* | Copilot Studio connection to Foundry Agent Service expired | **Open connection manager → Microsoft Foundry Agent Service → Connect**, then **Retry** in the chat |
 | Pattern C fires on content questions | Tool description too generic, or router instructions weak | Restore `description` text in `openapi-lookup-v2.json` verbatim; tighten rule #2 in Step D instructions |

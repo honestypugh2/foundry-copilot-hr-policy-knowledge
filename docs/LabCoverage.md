@@ -162,7 +162,7 @@ agent call).
 
 ## See Also
 
-- [RetrievalPatterns.md](RetrievalPatterns.md) — the four patterns in detail
+- [RetrievalPatterns.md](RetrievalPatterns.md) — the five patterns in detail
 - [CopilotStudioIntegration.md](CopilotStudioIntegration.md) — wiring guide
 - [CopilotStudioLookupRouting.md](CopilotStudioLookupRouting.md) — Pattern C and the trade-off vs native citations
 - [Azure/Copilot-Studio-and-Azure](https://github.com/Azure/Copilot-Studio-and-Azure) — the upstream lab series

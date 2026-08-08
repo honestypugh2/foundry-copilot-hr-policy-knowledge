@@ -278,7 +278,7 @@ See [CopilotStudioIntegration.md](CopilotStudioIntegration.md) for detailed Copi
 
 This project ships two architectural paths. Choose based on your requirements:
 
-| Aspect | Logic Apps Pipeline (this doc) | Agent Framework Backend ([Architecture.md](Architecture.md)) |
+| Aspect | Logic Apps Pipeline (this doc) | Agent Framework Backend ([AgentArchitecturePaths.md](AgentArchitecturePaths.md)) |
 |---|---|---|
 | **Ingestion** | Automated via SharePoint trigger | Manual script (`index_knowledge_base_integrated_vectorization.py`) |
 | **Orchestration** | Azure Logic Apps (low-code) | FastAPI + WorkflowBuilder (code-first) |

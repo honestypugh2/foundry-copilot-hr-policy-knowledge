@@ -1,36 +1,27 @@
 # Copilot Studio Integration Guide
 
-This document describes how to connect **Copilot Studio** to the HR
-Policy Knowledge Agent so employees can ask HR questions directly from
-a Teams bot or web chat.
+Use this document as the detailed Copilot Studio field reference. Choose one
+pattern below and follow its short guide first. Each pattern can be built and
+tested independently; do not combine routes until each one passes by itself.
 
-> **Just want to test the patterns end-to-end?** See the dedicated
-> **[Copilot Studio Testing Guide](CopilotStudioTestingGuide.md)** — it
-> consolidates the per-pattern wiring below into a single walkthrough
-> with numbered test scenarios for the Test pane.
+## Choose one pattern
 
-> **Pattern naming — quick map.** This guide is structured around the
-> four patterns in [docs/RetrievalPatterns.md](RetrievalPatterns.md):
->
-> | Pattern in this repo | Section in this doc                 | Older name (Rosetta stone) |
-> | -------------------- | ----------------------------------- | -------------------------- |
-> | **Pattern A** — Direct Index (Azure AI Search) | [Pattern A wiring](#pattern-a-wiring) | "Path 1 — Knowledge Source" |
-> | **Pattern A-SP** — SharePoint Knowledge Source (CS native connector) | [Pattern A-SP wiring](#pattern-a-sp-wiring) | (new) |
-> | **Pattern B** — Foundry Agent Service + MCP | [Pattern B wiring](#pattern-b-wiring) | "Path 2 — Foundry Agent Action" |
-> | **Pattern C** — Dual-Tool Routing           | [CopilotStudioLookupRouting.md](CopilotStudioLookupRouting.md) | (new) |
-> | **Hosted Agent** — Self-hosted Agent Framework runtime | [Hosted Agent wiring](#hosted-agent-wiring) | (new) |
-> | **Hybrid** — Pattern A + B + C combined     | [CopilotStudioHybridExample.md](CopilotStudioHybridExample.md) | (new) |
->
-> Older lab material and earlier versions of this doc used "Path 1 / Path 2".
-> Those phrases now refer to Patterns A and B respectively.
->
-> **Pattern B vs. Hosted Agent.** Both publish a Foundry-visible agent
-> that Copilot Studio adds via the same **Tools → Microsoft Foundry
-> agent** picker. The only difference is *where the agent's request
-> loop runs* — Pattern B is Foundry-managed; Hosted Agent runs in your
-> own container ([`src/hosted_agent/`](../src/hosted_agent/)). Copilot
-> Studio's wiring steps are identical from Step 6 onward, so the
-> Hosted Agent section below is intentionally short.
+| Pattern | Choose it when | Copilot Studio connection | Build guide | Detailed reference |
+| --- | --- | --- | --- | --- |
+| **A — Direct index** | You want the simplest policy Q&A with native citations. | Azure AI Search knowledge source | [Build A](patterns/pattern-a-direct-index.md) | [A wiring](#pattern-a-wiring) |
+| **A-SP — SharePoint** | Policies already live in SharePoint and per-user file access matters. | SharePoint knowledge source | [A-SP wiring](#pattern-a-sp-wiring) | [A-SP wiring](#pattern-a-sp-wiring) |
+| **A2 — Direct Foundry IQ** | Retrieval needs query planning, but Copilot Studio should write the answer. | Foundry IQ knowledge-base tool | [Build A2](patterns/pattern-a2-foundry-iq.md) | [A2 wiring](#pattern-a2-wiring-github-copilot-harness--foundry-iq) |
+| **B — Foundry agent** | Foundry must force retrieval and own answer synthesis. | External Microsoft Foundry agent | [Build B](patterns/pattern-b-foundry-agent.md) | [B wiring](#pattern-b-wiring) |
+| **C — Document locator** | The user needs the exact authoritative filename and URL, not a summary. | REST API tool, `lookupHRPolicyDocument` | [Build C](patterns/pattern-c-document-locator.md) | [C wiring](#pattern-c-wiring) |
+| **Hosted — Agent Framework** | You must own the runtime, middleware, authentication, or request loop. | External Foundry agent backed by your container | [Build Hosted](patterns/pattern-hosted-agent.md) | [Hosted wiring](#hosted-agent-wiring) |
+
+**Stop after one pattern** if it meets the requirement. Use the
+[hybrid guide](CopilotStudioHybridExample.md) only after the individual routes
+pass in separate test agents. See [RetrievalPatterns.md](RetrievalPatterns.md)
+for the full architecture comparison and the
+[Copilot Studio Testing Guide](CopilotStudioTestingGuide.md) for validation.
+
+Older material calls Pattern A "Path 1" and Pattern B "Path 2".
 
 ---
 
@@ -57,64 +48,21 @@ knowledge source — lives in
 
 ---
 
-## Pattern Comparison
-
-| Aspect                   | **Pattern A** — Direct Index            | **Pattern B** — Foundry Agent Service + MCP |
-| ------------------------ | -------------------------------------- | ----------------------------------------- |
-| **How it works**         | Copilot Studio queries `hr-policy-index` directly via its native Azure AI Search connector. Hybrid (text + vector + semantic) search via integrated vectorization. Copilot Studio's built-in LLM synthesizes the answer. | Copilot Studio invokes a Foundry Agent via **Agents → Add an agent → Connect to an external agent → Microsoft Foundry (Preview)** (or a **REST API tool**). The agent uses agentic retrieval for AI-planned query routing, sub-query decomposition, and source attribution with custom retrieval + answer instructions. |
-| **Search type**          | Text + vector + semantic ranker (single query) | Agentic retrieval (query planning + sub-queries + semantic ranking + answer synthesis) |
-| **Answer synthesis**     | Copilot Studio built-in LLM            | Foundry Agent (`gpt-5-mini`) with custom instructions |
-| **Custom instructions**  | Limited (Copilot Studio Instructions field) | Full retrieval + answer instructions in `search_config.json` |
-| **Source attribution**   | URL-based citations (`metadata_storage_path`) | Rich per-fact citations with policy numbers via agent instructions |
-| **Illustrative latency** | ~1–2 s                                | ~10–14 s                                |
-| **Setup complexity**     | Lowest — attach KB, write instructions | Higher — requires Foundry project + RBAC + `create_foundry_agent.py` |
-| **Best for**             | Simple Q&A, fast responses, "start here" demo | Complex queries, multi-source aggregation, force-grounded synthesis |
-
-> Latency figures are illustrative and environment-dependent, not benchmark
-> results. Copilot Studio's own answer generation is included in the Pattern A
-> user experience even though this repo makes no backend model call for it.
-
----
-
-## Prerequisites
+## Shared prerequisites
 
 | Requirement                     | Details                                                              |
 | ------------------------------- | -------------------------------------------------------------------- |
 | Copilot Studio license          | Power Virtual Agents / Copilot Studio                                |
 | Power Platform environment      | (your environment ID)                                                |
 | Azure AI Search index           | `hr-policy-index` (deployed via this project)                        |
-| Azure AI Search access (Entra ID) | Data connection with **Entra ID** auth; grant **Search Index Data Reader** to the Copilot Studio agent identity (and the Foundry project managed identity for Pattern B) |
-| Microsoft Foundry project       | Required for **Pattern B** only                                      |
-| RBAC: Search Index Data Reader  | Assigned to the Foundry project managed identity (Pattern B only)    |
-
-## Architecture
-
-```
-Employee (Teams / Web) ──► Copilot Studio Agent
-                              │
-                    ┌─────────┴─────────┐
-                    ▼                   ▼
-              Pattern A             Pattern B
-            Knowledge Source     Foundry Agent Tool
-            (Azure AI Search)      │
-                    │              ▼
-                    │         Foundry Agent (gpt-5-mini)
-                    │              │
-                    │         MCP Tool: knowledge_base_retrieve
-                    │              │
-                    │         Knowledge Base
-                    │              │
-                    └──────┬───────┘
-                           ▼
-                      hr-policy-index
-                           │
-                           ▼
-                  Grounded HR Policy Answer
-```
+| Azure AI Search access (Entra ID) | Data connection with **Entra ID** auth; grant **Search Index Data Reader** to the Copilot Studio agent identity and the unique `HRPolicyAgent` identity for Pattern B |
+| Microsoft Foundry project       | Required for **A2, B, and Hosted**                                   |
+| RBAC: Search Index Data Reader  | Assigned to the unique `HRPolicyAgent` Entra identity (Pattern B only) |
 
 ---
 
 <a id="pattern-a-wiring"></a>
+
 ## Pattern A wiring — Azure AI Search as Knowledge Source
 
 > **Have your policies in SharePoint already?** Skip this section and
@@ -124,7 +72,7 @@ Employee (Teams / Web) ──► Copilot Studio Agent
 > native connector and inherit deep-link citations + per-user
 > permissions for free. No `hr-policy-index` ingestion required.
 
-### Step 1: Create a Copilot in Copilot Studio
+### A1: Create a Copilot in Copilot Studio
 
 1. Navigate to [Copilot Studio](https://copilotstudio.microsoft.com).
 2. Click **Create → New copilot**.
@@ -132,7 +80,7 @@ Employee (Teams / Web) ──► Copilot Studio Agent
 4. Description: `Answers employee questions using internal HR policy documents`.
 5. Language: English.
 
-### Step 2: Add Azure AI Search as a Knowledge Source
+### A2: Add Azure AI Search as a Knowledge Source
 
 > **Use a formal data connection with Entra ID — not API keys.**
 > Per current Microsoft guidance
@@ -197,7 +145,9 @@ Employee (Teams / Web) ──► Copilot Studio Agent
 > performs **hybrid (text + vector + semantic)** search out of the box
 > — no Foundry project required for Pattern A.
 
-### Pattern A2 wiring (GitHub Copilot harness → Foundry IQ)
+<a id="pattern-a2-wiring-github-copilot-harness--foundry-iq"></a>
+
+## Pattern A2 wiring — GitHub Copilot harness to Foundry IQ
 
 Steps 1–2 above wire **Pattern A** — the *classic search* path, connecting
 Copilot Studio to an Azure AI Search **index**. The Copilot Studio **new agent
@@ -228,12 +178,102 @@ in the path.
    (**Microsoft Entra ID Integrated** recommended; API key / client certificate /
    service principal also supported), enter the Foundry IQ Search Service
    endpoint, and select **Create**.
-4. Select **Next**, choose **`hr-knowledge-base`** from the list, and select
-   **Add to agent**, then **Save**.
+4. Complete the UI path shown in your environment:
+    - **Knowledge-base picker:** select **Next**, choose
+      **`hr-knowledge-base`**, select **Add to agent**, then **Save**.
+      - **Tool input check:** open the connected tool's **Inputs** page. The
+         native binding shows **Messages (`object[]`)** with **How is this filled?**
+         set to **AI**. Leave that setting unchanged. **Knowledge Base Name** and
+         **API Version** aren't invocation inputs in this surface; Copilot Studio
+         stores them in the knowledge-base selection and connection binding.
+         They are established when you select **Next**, choose
+         **`hr-knowledge-base`** from the picker, and select **Add to agent**. They
+         can't be corrected later from the **Messages** input page.
+      - If the action exposes only **Knowledge Base Name** and **API Version** and
+         has no **Messages** input, it can't build the retrieval request body and
+         fails with HTTP 400: `A non-empty request body is required`. Remove that
+         action and add Foundry IQ again through the knowledge-base picker. If the
+         picker is absent, verify that the agent was created with the GitHub
+         Copilot harness.
 5. Select the connected Foundry IQ knowledge base and give it a **detailed
-   description** — the description drives orchestration. Select **Save**.
+   description** — the description drives orchestration. Paste the following,
+   then select **Save**:
+
+   ```text
+   Search the authoritative internal HR policy knowledge base for questions
+   about hiring, leave, pay, dress code, career paths, IT policies, ethics, and
+   operational matters. Use this tool for factual or comparative HR policy
+   questions. Search by policy number, formal title, and common employee terms.
+   Do not use this tool for general-knowledge questions. If evidence is absent,
+   say that the HR policy documents do not contain the answer.
+   ```
 6. Test on the **Preview** tab and open the **activity trace**; confirm a
    **Foundry IQ retrieval** step appears.
+
+> **Why the inputs differ.** The native Foundry IQ binding owns the selected
+> `hr-knowledge-base` resource and compatible API version, while the AI-filled
+> **Messages** input supplies the required retrieval body at invocation time.
+> Do not replace **Messages** with a fixed value or try to add hidden resource
+> inputs manually.
+>
+> In Preview, expand the tool call and inspect **Input**. A correct binding must
+> not send sample defaults such as `knowledgeBaseName: hr-policy-docs` or
+> `api-version: 2025-05-01-preview`. If those values appear, remove the tool and
+> add it again from the dedicated **Foundry IQ** card, completing the
+> knowledge-base picker. Do not choose the **Azure - Foundry IQ** connector and
+> then add its retrieval action directly. If the dedicated flow never presents
+> a picker and only **Azure - Foundry IQ -> Foundry IQ Knowledge Retrieval
+> (API)** is available, the current environment's connector surface can't
+> establish the native binding. Capture the trace and raise it with Microsoft
+> support. Re-adding that action doesn't change its hidden defaults.
+
+#### A2 fallback when the dedicated Foundry IQ picker is unavailable
+
+The Search endpoint can only be entered through **Build -> Tools -> Foundry IQ
+-> Create new connection**. The supported flow then displays **Next** and a
+knowledge-base picker.
+
+Do not substitute **Connector -> Azure - Foundry IQ -> Foundry IQ Knowledge
+Retrieval (API)** or **Foundry IQ Knowledge Retrieval (MCP)**. Their action
+Inputs pages don't expose the Search endpoint or establish the native
+knowledge-base binding. Entering only **Knowledge Base Name** and **API Version**
+doesn't identify the Search service.
+
+If the **Foundry IQ** tool card or its connection form isn't available in the
+current environment, Pattern A2 can't be configured there through the supported
+Copilot Studio UI. Capture the missing card/action Inputs and environment ID,
+then open a Microsoft support request for the rollout or tenant configuration.
+Use Pattern A (Azure AI Search knowledge) or Pattern C (the repository lookup
+connector) until the native Foundry IQ flow is available.
+
+### First-test connection consent
+
+The first Preview request can pause with **Connect to continue** and an
+**Azure - Foundry IQ** consent card. This occurs before retrieval and does not
+mean the knowledge base failed.
+
+1. Select **Allow** on the consent card.
+2. Wait for the connection to report ready.
+3. Select **Retry**, or start a new test session and send the query again.
+4. Open the activity trace and confirm a **Foundry IQ retrieval** step.
+
+If the card still says **I couldn't connect** after consent, open the connection
+manager, reconnect the **Azure - Foundry IQ** connection, and retry. If the
+activity card shows only manual **Knowledge Base Name** and **API Version**
+inputs and no **Messages** input, the action can't create a retrieval body.
+Remove it and follow steps 1–4 above.
+
+Before recreating the tool, verify the Azure-side resources independently:
+
+```bash
+uv run python -m src.agents.create_foundry_agent --verify-only
+```
+
+The expected result is an existing `hr-policy-index`,
+`hr-knowledge-source`, and `hr-knowledge-base`. If the knowledge base does not
+appear in Copilot Studio's picker even though verification succeeds, confirm
+that Copilot Studio and the Search service use the same Entra tenant and that
+the signed-in maker has access to the knowledge base.
 
 > **One Foundry IQ connection per agent.** Tune retrieval (sources, instructions,
 > ranking) in **Microsoft Foundry**, not Copilot Studio. Removing the connection
@@ -266,14 +306,48 @@ in the path.
 >
 > **Reference:** [Connect to Foundry IQ from an agent](https://learn.microsoft.com/en-us/microsoft-copilot-studio/agents-experience/foundry-iq-connect).
 
-### Step 3: Configure Lever 1 — Agent Instructions
+<a id="a2-prompt-contract"></a>
+
+### A2 prompt contract and sample queries
+
+A2 has two instruction layers:
+
+1. **Copilot Studio answer instructions:** use the shared instruction block in
+   [shared Copilot instructions](#shared-copilot-instructions). Copilot Studio
+   owns the final answer.
+2. **Foundry IQ retrieval instructions:** the repository provisions these from
+   `foundry_agent.retrieval_instructions` in
+   [`src/config/search_config.json`](../src/config/search_config.json). They
+   require retrieval only from connected sources, policy-number/title matching,
+   multi-policy decomposition, and a grounded refusal when evidence is absent.
+
+Try these in the Copilot Studio **Preview** pane:
+
+| Query | Expected behavior |
+| --- | --- |
+| `Compare the uniform and non-uniform dress code policies.` | Foundry IQ retrieval for Policies 60010 and 60020, followed by a cited Copilot Studio answer. |
+| `How do the HR Generalist and Data Management career paths differ?` | Multi-policy retrieval for Policies 40010 and 40020. |
+| `What will the weather be tomorrow?` | Grounded refusal with no invented policy citation. |
+
+Open the activity trace for each query and confirm that a **Foundry IQ
+retrieval** step occurred. If it did not, strengthen the Foundry IQ tool
+description added in A2 step 5.
+
+<a id="shared-copilot-instructions"></a>
+
+## Shared Copilot Studio settings
+
+Apply these settings to each isolated Copilot Studio test agent unless its
+pattern guide says otherwise.
+
+### S1: Add agent instructions
 
 By default, new agents use **generative orchestration**, which
 automatically searches all knowledge sources added on the Knowledge
 page. You do **not** need to modify the **Conversational boosting**
 system topic — it isn't used in generative orchestration mode.
 
-#### 3a. Add Instructions (Overview page)
+#### Instructions field
 
 1. Open your agent in Copilot Studio.
 2. On the **Overview** page, find the **Instructions** text box.
@@ -296,7 +370,7 @@ These instructions guide the planner when it decides which knowledge
 sources to search, how to fill tool inputs, and how to generate
 responses.
 
-#### 3b. Configure Generative AI settings
+### S2: Configure generative AI
 
 1. Go to **Settings → Generative AI**.
 2. **Use generative AI orchestration** → **Yes** (default).
@@ -312,7 +386,7 @@ responses.
 > sources and a system message. Generative orchestration is recommended
 > for new agents.
 
-### Step 4: Configure vernacular handling
+### S3: Configure vernacular handling
 
 Copilot Studio has limited prompt customization, so vernacular is
 handled in three layers:
@@ -337,6 +411,7 @@ handled in three layers:
 ---
 
 <a id="pattern-a-sp-wiring"></a>
+
 ## Pattern A-SP wiring — SharePoint as a Knowledge Source
 
 Pattern A-SP is the **SharePoint variant of Pattern A**. The agent’s
@@ -375,14 +450,15 @@ control natively.
 | Microsoft 365 search has indexed the library | New / freshly uploaded files take up to ~15 minutes to surface. Verify with the SharePoint search bar before wiring. |
 | Same tenant as Copilot Studio | The connector is OAuth-based; cross-tenant SharePoint sources aren’t supported. |
 
-### Step 1: Create the agent
+### ASP1: Create the agent
 
-Identical to **Pattern A Step 1** — same name, description, language.
+Identical to [A1](#a1-create-a-copilot-in-copilot-studio) — same name,
+description, and language.
 If you already created an agent for Pattern A, reuse it; A-SP can
 co-exist with A on the same agent (the planner will just have two
 Knowledge Sources to choose from).
 
-### Step 2: Add SharePoint as a Knowledge Source
+### ASP2: Add SharePoint as a Knowledge Source
 
 1. In the agent editor go to **Knowledge** (or click **Add knowledge**
    from the **Overview** page).
@@ -406,10 +482,10 @@ Knowledge Sources to choose from).
 > the SharePoint search bar. If a freshly-uploaded file isn’t found,
 > wait for the next M365 crawl (~15 min) and re-test.
 
-### Step 3: Configure agent Instructions and Generative AI settings
+### ASP3: Configure agent instructions and generative AI settings
 
-Use the **same Step 3a Instructions and Step 3b Generative AI
-settings** as Pattern A above. The instructions tell the planner how
+Use the [shared Copilot Studio settings](#shared-copilot-studio-settings).
+The instructions tell the planner how
 to cite policy numbers and refuse off-topic questions; that logic is
 independent of which Knowledge Source backs the answer.
 
@@ -421,7 +497,7 @@ independent of which Knowledge Source backs the answer.
 > 2. Add a **Custom topic** with explicit trigger phrases for the
 >    most-confused terms (see Pattern A Step 4.3).
 
-### Step 4: Layering with other patterns
+### ASP4: Layering with other patterns
 
 Pattern A-SP composes with Patterns B, C, and Hosted exactly like
 Pattern A:
@@ -457,6 +533,7 @@ Pattern A:
 ---
 
 <a id="pattern-b-wiring"></a>
+
 ## Pattern B wiring — Foundry Agent as a Tool
 
 This path gives Copilot Studio access to the Foundry Agent's agentic
@@ -465,15 +542,15 @@ decomposition, semantic ranking, answer synthesis, and custom
 retrieval/answer instructions — all against the same
 `hr-policy-index`.
 
-> **Prerequisites from Pattern A.** Before adding the tool, complete
-> Pattern A Step 3 (Instructions + Generative AI settings).
+> **Shared setup.** Before adding the tool, complete
+> [Shared Copilot Studio settings](#shared-copilot-studio-settings).
 > Instructions tell the agent how to format responses and cite policy
 > numbers; Generative AI settings enable orchestration and disable
 > general knowledge. Pattern A Step 2 (Add Azure AI Search Knowledge
 > Source) is **optional** for Pattern B — the Foundry agent runs its
 > own retrieval pipeline.
 
-### Step 5: Create the Foundry Agent
+### B1: Create the Foundry agent
 
 Run the provisioning script:
 
@@ -500,28 +577,114 @@ python -m src.agents.create_foundry_agent --verify-only
 | Role                            | Assigned to                                    | Purpose                                          |
 | ------------------------------- | ---------------------------------------------- | ------------------------------------------------ |
 | Search Index Data Contributor   | Your user identity                             | Create indexes, upload documents.                |
-| Search Index Data Reader        | User + Project Managed Identity                | Query indexes, access the knowledge base.        |
+| Search Index Data Reader        | User + `HRPolicyAgent` Entra identity          | Query indexes, access the knowledge base.        |
 | Search Service Contributor      | Your user identity                             | Create knowledge bases and sources.              |
 
-### Step 6: Add the Foundry Agent to Copilot Studio
+<a id="step-6-add-the-foundry-agent-to-copilot-studio"></a>
+
+### B2: Add the Foundry agent to Copilot Studio
 
 **Option A — Add the Foundry Agent directly:**
 
+> **Standard harness required.** **Connect to an external agent** is a standard-
+> harness feature. It doesn't appear in the GitHub Copilot-harness agent used
+> for Pattern A2. Create a standard-harness Copilot Studio agent for Pattern B.
+>
 > **⚠️ New Foundry portal only.** Copilot Studio can only connect to Foundry
 > agents created in the **new Foundry portal**; a previous-portal agent fails
 > with `404 - Version not found`. This repo's `create_foundry_agent.py` uses the
 > GA `azure-ai-projects` SDK (new Foundry), so `HRPolicyAgent` is compatible.
 
+#### Enable the Activity protocol first
+
+New Foundry agents expose the **Responses protocol** by default. Copilot
+Studio's **Connect to an external agent** feature sends Activity protocol
+messages, so a Responses-only endpoint fails with:
+
+```text
+Agent HRPolicyAgent endpoint does not support activity.
+```
+
+1. In the Microsoft Foundry portal, open `HRPolicyAgent`.
+2. Select **Publish -> Teams and Microsoft 365 Copilot**.
+3. Complete the metadata and publish options. For an isolated test, choose
+   **Just you**.
+4. Return to the agent details and confirm the endpoint shows **Activity
+   protocol**.
+
+The publish flow creates or configures Azure Bot Service and enables Activity
+protocol with the matching channel authorization scheme. It requires
+**Foundry User** on the project and **Azure Bot Service Contributor Role** (or
+equivalent permissions) on the target resource group.
+
+New-model Foundry agents can expose multiple protocols simultaneously. The
+publish flow adds Activity and its Bot Service authorization scheme; Responses
+may remain available for direct API clients.
+
+This agent uses the new Foundry model, so publishing doesn't replace its unique
+Entra identity. Confirm the `HRPolicyAgent` identity still has **Search Index
+Data Reader** on the Search service before testing retrieval.
+
 1. **Agents → Add an agent → Connect to an external agent → Microsoft Foundry (Preview)**.
 2. Select an existing **connection**, or create one with your **Foundry project
    endpoint URL**, then select **Next**.
-3. Enter a **Name** and **Description**, then enter the **Agent Id**
-   (`HRPolicyAgent`). The Foundry agent runs as a sub-agent for complex tasks
-   with agentic retrieval; you can change the Agent Id later from its details
-   page.
+3. Complete **Connect Microsoft Foundry agent** with these values:
+
+   | Field | Value |
+   | --- | --- |
+   | **Name** | `HRPolicyAgentB` |
+   | **Description** | `Use this agent for every question about internal HR policies, including hiring, leave, pay, dress code, career paths, ethics, IT policies, and operational matters. It retrieves authoritative HR policy evidence, compares policies when needed, and returns policy-number and title citations. Do not use it for general-knowledge questions.` |
+   | **Agent Id** | `HRPolicyAgent` |
+   | **Connection** | The Microsoft Foundry connection created with `AZURE_AI_PROJECT_ENDPOINT` |
+
+   **Name** is the local sub-agent label used by Copilot Studio. **Agent Id** is
+   the stable Foundry agent identifier; it isn't the immutable agent-version
+   number.
 4. Under **Completion**, select **Write the response with generative
    AI** (lets Copilot Studio format the answer with citations).
 5. Select **Add Agent**, then **Save**.
+
+#### Get the Pattern B Agent ID
+
+The provisioning command prints the created agent and version:
+
+```bash
+source .venv/bin/activate
+python -m src.agents.create_foundry_agent
+```
+
+For this repository, `AGENT_NAME = "HRPolicyAgent"`, so the Copilot Studio
+**Agent Id** is `HRPolicyAgent`. To verify an existing deployment without
+creating a new version, run:
+
+```bash
+source .venv/bin/activate
+python - <<'PY'
+from dotenv import load_dotenv
+load_dotenv('.env')
+
+import os
+from azure.ai.projects import AIProjectClient
+from azure.identity import AzureCliCredential
+
+client = AIProjectClient(
+    endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+    credential=AzureCliCredential(process_timeout=30),
+)
+agent = client.agents.get(agent_name="HRPolicyAgent")
+print(agent.id)
+PY
+```
+
+Expected output:
+
+```text
+HRPolicyAgent
+```
+
+The signed-in identity needs permission to read agents in the Foundry project.
+An HTTP 403 mentioning `agents/read` indicates missing Foundry project RBAC,
+not an invalid Agent ID.
 
 See: [Add a Foundry agent to Copilot Studio](https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-agent-foundry-agent).
 
@@ -563,7 +726,7 @@ runs on **Azure Container Apps** (`/api/chat`) — import
 > **UI Note.** Copilot Studio renamed *Actions* to *Tools* (April
 > 2025+). The steps above reflect the current UI.
 
-### Step 7: Wire the tool in Topics (optional)
+### B3: Wire the tool in Topics (optional)
 
 If you prefer explicit routing instead of generative orchestration:
 
@@ -573,8 +736,72 @@ If you prefer explicit routing instead of generative orchestration:
 4. Under **Completion**, author a specific response template
    referencing output variables.
 
+<a id="pattern-b-prompt-contract"></a>
+
+### Pattern B prompt contract and sample queries
+
+Pattern B also has two instruction layers, but Foundry owns the answer:
+
+1. **Copilot Studio routing/formatting:** reuse the
+   [shared Copilot instructions](#shared-copilot-instructions) so policy
+   questions route to the external agent and general knowledge stays disabled.
+2. **PromptAgent system instructions:**
+   `_build_prompt_agent_definition()` in
+   [`src/agents/create_foundry_agent.py`](../src/agents/create_foundry_agent.py)
+   installs the prompt. It requires `knowledge_base_retrieve` first, prohibits
+   general-knowledge answers, requires policy-number/title citations, provides
+   grounded refusal behavior, and prohibits legal advice. It embeds the full
+   retrieval and answer guidance from
+   [`src/config/search_config.json`](../src/config/search_config.json), while
+   `tool_choice="required"` enforces the MCP retrieval call.
+
+Do **not** paste the PromptAgent system prompt into Copilot Studio. Change the
+provisioned prompt or shared config and rerun
+`python -m src.agents.create_foundry_agent`. The optional `/api/chat` route also
+passes `AGENT_INSTRUCTIONS` from
+[`src/agents/hr_policy_agent.py`](../src/agents/hr_policy_agent.py) for its
+individual Responses API invocation; that overlay is not used when Copilot
+Studio connects directly to the external PromptAgent.
+
+Try these in Copilot Studio or the Foundry agent playground:
+
+| Query | Expected behavior |
+| --- | --- |
+| `Explain the differences between full-time and part-time PTO and cite both policies.` | Required MCP retrieval and citations to Policies 50010 and 50020. |
+| `Summarize the pre-employment medical examination and probationary-period requirements.` | Multi-policy synthesis from Policies 20010 and 20030. |
+| `What will the weather be tomorrow?` | Grounded refusal after retrieval finds no policy evidence. |
+
 ---
+
+<a id="pattern-c-wiring"></a>
+
+## Pattern C wiring — Deterministic document locator
+
+Pattern C is a separate locator route. It returns authoritative document
+metadata from `POST /api/lookup`; it does not synthesize policy content.
+
+1. Verify
+   `https://ca-backend-zptc7utdm2gis.nicedune-3f634c43.eastus2.azurecontainerapps.io/api/health`.
+2. Import [`copilot/openapi-lookup-v2.json`](../copilot/openapi-lookup-v2.json)
+   through **Tools → Add a tool → New tool → REST API**.
+3. For this public demo endpoint, select **None** for authentication. Use OAuth
+   2.0 after enabling Container Apps Entra authentication.
+4. Confirm the user's locator request maps to the required `query` input.
+5. Add the
+   [Pattern C router instructions](CopilotStudioLookupRouting.md#pattern-c-router-instructions).
+6. Start a new test session and ask:
+   `Give me the link to the part-time PTO policy.`
+7. Pass when `lookupHRPolicyDocument` returns Policy 50020's exact filename and
+   blob URL without replacing it with a summary.
+
+Use the [Pattern C guide](patterns/pattern-c-document-locator.md) for the short
+build path and [the routing reference](CopilotStudioLookupRouting.md) for all
+fields, authentication options, and mixed content/location routing.
+
+---
+
 <a id="hosted-agent-wiring"></a>
+
 ## Hosted Agent wiring — Self-hosted container as a Tool
 
 This path runs the same answer loop as Pattern B — `gpt-5-mini` synthesising
@@ -584,8 +811,8 @@ when you need custom auth, sidecar services, or full control of the
 runtime. **Copilot Studio is still the front door**; only the agent's
 request/response loop moves to your infrastructure.
 
-> **Prerequisites from Pattern A.** Same as Pattern B — complete
-> Pattern A Step 3 (Instructions + Generative AI settings) before
+> **Shared setup.** Complete
+> [Shared Copilot Studio settings](#shared-copilot-studio-settings) before
 > adding the tool. Pattern A's Knowledge Source connection is optional;
 > the hosted agent runs its own retrieval against the same
 > `hr-policy-index` via the `@tool search_hr_policies` function.
@@ -605,9 +832,9 @@ docker build -t hr-policy-agent:latest .
 
 The agent manifest is [`src/hosted_agent/agent.yaml`](../src/hosted_agent/agent.yaml).
 It names the agent `hr-policy-agent` and exposes the OpenAI Responses
-protocol on `protocols/openai/responses`, which is exactly what
-Copilot Studio's Foundry-agent connector consumes — no REST API tool
-import needed.
+protocol on `protocols/openai/responses` for direct tests. Before using
+Copilot Studio's Foundry-agent connector, publish it to Teams and Microsoft
+365 Copilot to enable Activity protocol; no REST API tool import is needed.
 
 Verify deployment from the Foundry portal:
 
@@ -615,9 +842,8 @@ Verify deployment from the Foundry portal:
 - Status: **Running**.
 - Endpoint: `{project_endpoint}/agents/hr-policy-agent/endpoint/protocols/openai/responses`.
 
-**RBAC requirements** — same as Pattern B (Search Index Data Reader
-for the project managed identity is enough; the container reads from
-`hr-policy-index` directly).
+**RBAC requirements** — assign Search Index Data Reader to the hosted runtime
+identity that reads `hr-policy-index` directly.
 
 ### Step H2: Add the Hosted Agent to Copilot Studio
 
@@ -646,16 +872,39 @@ explicit "You MUST call `search_hr_policies` first" rule (the Agent
 Framework runtime can't enforce `tool_choice="required"` server-side
 the way Foundry Agent Service does).
 
-No additional Copilot Studio Instructions are required beyond what you
-set in **Pattern A Step 3**. If you also want Pattern C-style dual-tool
+No additional Copilot Studio Instructions are required beyond the
+[shared settings](#shared-copilot-studio-settings). If you also want Pattern C-style dual-tool
 routing on top of the Hosted Agent, follow
 [CopilotStudioLookupRouting.md](CopilotStudioLookupRouting.md) verbatim
 — the lookup tool is independent of which content agent you've wired.
 
+<a id="hosted-prompt-contract"></a>
+
+### Hosted prompt contract and sample queries
+
+The server-side `HR_POLICY_SYSTEM_PROMPT` requires `search_hr_policies` before
+every answer, prohibits general-knowledge answers, requires policy-number/title
+citations, and asks a clarifying question for ambiguous requests. Copilot Studio
+uses the [shared instructions](#shared-copilot-instructions) only for routing
+and presentation; the container owns retrieval and synthesis.
+
+Do **not** paste this server-side prompt into Copilot Studio. Edit
+`HR_POLICY_SYSTEM_PROMPT` in
+[`src/agents/hr_policy_agent_af.py`](../src/agents/hr_policy_agent_af.py), then
+rebuild and redeploy the container for changes to take effect.
+
+Try these in Copilot Studio or against the hosted Responses endpoint:
+
+| Query | Expected behavior |
+| --- | --- |
+| `Compare Policies 50010 and 50020.` | A `search_hr_policies` tool call followed by a cited comparison. |
+| `Which IT policies govern employee devices, acceptable use, and information security?` | Multi-policy retrieval for Policies 70070, 70010, and 70020. |
+| `What will the weather be tomorrow?` | Tool call followed by the configured grounded-refusal response. |
+
 ---
 ## Publish and test
 
-### Step 8: Publish to Teams
+### Publish to Teams
 
 1. **Channels → Microsoft Teams**.
 2. Click **Turn on Teams**.
@@ -665,7 +914,7 @@ routing on top of the Hosted Agent, follow
 4. Click **Publish**.
 5. Share the bot link with employees.
 
-### Step 9: Testing
+### Validate the selected pattern
 
 Use the corpus-grounded
 [starter query catalog](CopilotStudioTestingGuide.md#starter-query-catalog) for
@@ -697,6 +946,7 @@ try these in the Copilot Studio **Test** pane:
 | Generic answers                | Pattern A — confirm "Allow general knowledge" is **off**. Pattern B — confirm the Foundry agent's `tool_choice="required"`. |
 | Connection failed              | Verify AI Search endpoint and API key.                                            |
 | Foundry agent not invoked      | Verify the tool is added and instructions mention policy queries.                 |
+| `Agent HRPolicyAgent endpoint does not support activity` | Publish `HRPolicyAgent` to **Teams and Microsoft 365 Copilot** in Foundry to enable Activity protocol, then retry with the same Agent Id. |
 | Foundry agent timeout          | Check Foundry project endpoint and managed identity RBAC.                         |
 | `askHRPolicy` returns 401      | Tool auth is `Header` instead of `Query`; switch to `Query` with parameter `code`.|
 

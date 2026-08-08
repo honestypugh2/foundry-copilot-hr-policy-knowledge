@@ -52,6 +52,19 @@ class ChatRequest(BaseModel):
     use_azure: bool = True
 
 
+class LookupRequest(BaseModel):
+    """Request to locate an HR policy document."""
+    query: str | None = None
+    message: str | None = None
+
+    @property
+    def search_text(self) -> str:
+        value = self.query or self.message
+        if not value or not value.strip():
+            raise ValueError("Either 'query' or 'message' must be provided")
+        return value
+
+
 class ChatResponse(BaseModel):
     """Response from the HR policy agent."""
     answer: str

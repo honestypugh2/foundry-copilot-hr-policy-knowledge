@@ -20,21 +20,36 @@
 
 ## Where to Start
 
-This repo supports three main paths. Pick the one that matches your scenario:
+This repository is the executable companion to
+[Grounding Copilot Studio Agents with Azure AI Search and Foundry IQ](https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/grounding-copilot-studio-agents-with-azure-ai-search-and-foundry-iq/4539337).
+The article and repository use the same five pattern names.
 
-| # | Path | Start here | What you'll build |
-| - | ---- | ---------- | ----------------- |
-| 1 | **Copilot Studio alone** (Pattern A) | [docs/Walkthrough.md — provision, index, then wire Pattern A](docs/Walkthrough.md) | Copilot Studio queries Azure AI Search directly — no agent code needed. Fastest setup (~15 min after index is populated). |
-| 2 | **Foundry Agent alone** (Pattern B) | [docs/Walkthrough.md — provision, index, then create Pattern B](docs/Walkthrough.md), then test with `python -m scripts.demo.test_pattern_b` | A PromptAgent with MCPTool + `tool_choice="required"` for force-grounded synthesis. No Copilot Studio required for testing. |
-| 3 | **Copilot Studio + Foundry Agent** (Patterns A+B or Hybrid) | Complete all steps in [docs/Walkthrough.md](docs/Walkthrough.md), then wire via [docs/CopilotStudioIntegration.md](docs/CopilotStudioIntegration.md) | Copilot Studio as the front door, Foundry Agent as the reasoning backend. Full enterprise pattern. |
+**Build one pattern at a time:** start with
+[Build the Retrieval Patterns](docs/patterns/README.md). It walks through
+Pattern A first, explains its Search and SharePoint options, and then gives one
+focused guide each for A2, B, C, and Hosted. Each guide ends with a validation
+check and a decision to stop or continue.
 
-> **Not sure which?** Start with **Path 1** (Pattern A). It's zero-code, demonstrates value in minutes, and you can layer Foundry Agent Service on top later without re-indexing.
+Use [Pattern Setup, Code Ownership, and Benchmark Guide](docs/PatternSetupAndBenchmarkGuide.md)
+after setup when you need file ownership, benchmark boundaries, or article
+lineage.
 
-> **Two more patterns** round out the palette: **Pattern C** (a low-latency
-> deterministic document-locator on `/api/lookup`) and **Pattern A2** (Copilot
-> Studio's **GitHub Copilot harness** connecting straight to a **Foundry IQ**
-> knowledge base — agentic retrieval with no prompt agent). Both
-> are detailed in [docs/RetrievalPatterns.md](docs/RetrievalPatterns.md).
+| Pattern | Build this when | First pattern-specific step |
+| --- | --- | --- |
+| **A** | Copilot Studio should query `hr-policy-index` using classic search. | Add the populated Search index as Copilot Studio Knowledge. |
+| **A2** | Copilot Studio should use agentic Foundry IQ retrieval without a PromptAgent. | Provision `hr-knowledge-base`, then add it as a Foundry IQ tool. |
+| **B** | Foundry should force KB retrieval and synthesize the answer. | Provision and invoke `HRPolicyAgent` with its required MCP tool. |
+| **C** | Users need a deterministic document URL rather than synthesis. | Run `/api/lookup` and import `copilot/openapi-lookup-v2.json`. |
+| **Hosted** | You need to own the agent request loop, auth, or middleware. | Run or deploy the `src/hosted_agent/` container. |
+
+Start with **A** if you are unsure. Do not configure all five in one test agent.
+All five reuse `hr-policy-index`; A2 and B layer `hr-knowledge-base` on top, so
+changing patterns does not require re-indexing.
+
+Do not treat `scripts/demo/` timings as benchmark findings. Smoke tests prove a
+configured path works. The current benchmark system under `src/benchmarking/`
+and `experiments/` produces versioned evidence for the planned follow-up article.
+See the [documentation map](docs/README.md) for every focused deep dive.
 
 ---
 
@@ -65,6 +80,7 @@ flowchart TD
 | Pattern | Code path                                       | Illustrative latency | When                                |
 | ------- | ----------------------------------------------- | -------- | ----------------------------------- |
 | **A** ★ | Copilot Studio Knowledge Source                 | ~1–2 s   | Start here — simplest setup, no agent code needed |
+| **A2**  | Copilot Studio Foundry IQ tool → `hr-knowledge-base` | ~2–4 s | Agentic retrieval without a PromptAgent |
 | **B**   | `src/agents/hr_policy_agent.py` (PromptAgent)   | ~10–14 s | Upgrade for force-grounded answer synthesis |
 | **C**   | `src/backend/main.py:/api/lookup`               | ~1–2 s   | Low-latency doc-locator with verbatim URL — only when native citations aren't enough |
 | Hosted  | `src/agents/hr_policy_agent_af.py` + container  | ~10–14 s | Self-hosted runtime (Agent Framework hosting, GA) |
@@ -89,13 +105,13 @@ up to Pattern B when you need force-grounded synthesis via
 
 Full details: **[docs/RetrievalPatterns.md](docs/RetrievalPatterns.md)**.
 Executable comparison contract and roadmap: **[docs/BenchmarkingDecisionSystem.md](docs/BenchmarkingDecisionSystem.md)**.
-Deep-dive on the default Pattern B internals: **[docs/FoundryAgentArchitecture.md](docs/FoundryAgentArchitecture.md)**.
+Deep-dive on Pattern B internals: **[docs/FoundryAgentArchitecture.md](docs/FoundryAgentArchitecture.md)**.
 SDK choice (Foundry Agent Service vs Microsoft Agent Framework): **[docs/AgentArchitecturePaths.md](docs/AgentArchitecturePaths.md)**.
 Distribute Pattern B to Microsoft 365 Copilot & Teams (GA): **[docs/Distribution-M365-Teams.md](docs/Distribution-M365-Teams.md)**.
 Linear setup steps: **[docs/Walkthrough.md](docs/Walkthrough.md)**.
 Lab cross-walk to [Azure/Copilot-Studio-and-Azure](https://github.com/Azure/Copilot-Studio-and-Azure): **[docs/LabCoverage.md](docs/LabCoverage.md)**.
 
-Want to see each pattern run live? **[scripts/demo/README.md](scripts/demo/README.md)** ships a per-pattern test script for A / B / C / Hosted plus a four-act storytelling demo that walks the decision tree end-to-end:
+Want to smoke-test repository-owned paths? **[scripts/demo/README.md](scripts/demo/README.md)** ships test scripts for A / B / C / Hosted plus a four-act storytelling demo. A2 must be tested through its Copilot Studio agent because Copilot Studio owns that pattern's answer synthesis:
 
 ```bash
 # Full storytelling walk-through (skip Foundry-only acts if not provisioned)
@@ -208,6 +224,8 @@ Two options — pick one. Both create and populate the Azure AI Search index
 >
 > - For Pattern A, continue to Step 8 and add `hr-policy-index` as an Azure AI
 >   Search knowledge source in Copilot Studio.
+> - For Pattern A2, continue to Step 5 to provision `hr-knowledge-base`, then
+>   use the Pattern A2 guide in Step 8 to add it directly as a Foundry IQ tool.
 > - For Pattern B, continue to Step 5. Its provisioning command creates the
 >   Foundry knowledge source and knowledge base over this index, followed by the
 >   MCP connection and PromptAgent.
@@ -242,10 +260,11 @@ Local-only extraction (no Azure upload):
 uv run python scripts/index_knowledge_base_docintel_chunking.py --local-only
 ```
 
-### 5. (Optional) Provision the Foundry knowledge base and agent (Pattern B)
+### 5. (Optional) Provision Foundry IQ resources (Patterns A2 and B)
 
-Skip this step if you're starting with Pattern A. Run it when you want
-force-grounded answer synthesis via `tool_choice="required"`.
+Skip this step if you're starting with Pattern A. Run it for Pattern A2's direct
+Foundry IQ connection or Pattern B's force-grounded answer synthesis via
+`tool_choice="required"`.
 
 ```bash
 # Preview what will be created (no credentials needed beyond AZURE_SEARCH_ENDPOINT)
@@ -257,6 +276,8 @@ uv run python -m src.agents.create_foundry_agent
 
 Creates: Knowledge Source → Knowledge Base → MCP connection → PromptAgent
 (`HRPolicyAgent`, `gpt-5-mini`, `tool_choice="required"`).
+
+Pattern A2 uses the Knowledge Base directly and ignores the PromptAgent.
 
 Verify or clean up:
 
@@ -277,7 +298,7 @@ Endpoints:
 | Method | Path                               | Notes                                |
 | ------ | ---------------------------------- | ------------------------------------ |
 | `POST` | `/api/chat`                        | Pattern B answer synthesis           |
-| `POST` | `/api/lookup`                      | Pattern C locator (no backend model call) |
+| `POST` | `/api/lookup`                      | Pattern C locator; canonical `query`, legacy `message` accepted |
 | `GET`  | `/api/knowledge-base`              | Index metadata                       |
 | `POST` | `/api/knowledge-base/reindex`      | Full reindex                         |
 | `POST` | `/api/documents/upload`            | Upload + index a single document     |
@@ -299,6 +320,7 @@ cd src/frontend && npm install && npm run dev          # http://localhost:5173
 | Pattern | Setup guide                                                                |
 | ------- | -------------------------------------------------------------------------- |
 | A       | [docs/CopilotStudioIntegration.md](docs/CopilotStudioIntegration.md) — *Path 1* |
+| A2      | [Pattern A2 wiring](docs/CopilotStudioIntegration.md#pattern-a2-wiring-github-copilot-harness--foundry-iq) — *Build → Tools → Foundry IQ* |
 | B       | [docs/CopilotStudioIntegration.md](docs/CopilotStudioIntegration.md) — *Path 2* |
 | C       | [docs/CopilotStudioLookupRouting.md](docs/CopilotStudioLookupRouting.md)   |
 | Hybrid  | [docs/CopilotStudioHybridExample.md](docs/CopilotStudioHybridExample.md)   |
@@ -421,10 +443,13 @@ KB-level medium reasoning, `extractiveData`, or retrieval-instruction fields.
 │   ├── openapi-lookup-v2.json        # Pattern C custom connector
 │   └── quick_reference_guide.md      # HR glossary + policy-number map
 ├── docs/
-│   ├── RetrievalPatterns.md          # Decision tree + Pattern A/B/C/Hosted comparison
-│   ├── CopilotStudioIntegration.md   # Patterns A & B in Copilot Studio
+│   ├── README.md                     # Documentation map by user task
+│   ├── patterns/README.md            # Ordered one-pattern-at-a-time build guides
+│   ├── PatternSetupAndBenchmarkGuide.md # Code ownership + benchmark reference
+│   ├── RetrievalPatterns.md          # Decision tree + five-pattern comparison
+│   ├── CopilotStudioIntegration.md   # Detailed A/A2/B/Hosted UI reference
 │   ├── CopilotStudioLookupRouting.md # Pattern C wiring
-│   ├── CopilotStudioHybridExample.md # Combining all three patterns
+│   ├── CopilotStudioHybridExample.md # Combining answer and locator paths
 │   ├── DataPipelineAndTesting.md     # Indexing pipeline + tests
 │   └── SharePointLogicAppsArchitecture.md
 ├── infra/                            # Bicep + Terraform IaC

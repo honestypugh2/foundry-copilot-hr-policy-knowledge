@@ -4,10 +4,14 @@ A single, linear walkthrough from a clean clone to answering an HR
 question through Copilot Studio. Replaces the older "Option A vs
 Option B" fork.
 
+> For pattern selection, exact file ownership, smoke tests, benchmark entry
+> points, and blog lineage, use the authoritative
+> [Pattern Setup, Code Ownership, and Benchmark Guide](PatternSetupAndBenchmarkGuide.md).
+
 > **Pick a pattern first.** This walkthrough provisions the index
 > needed for **Pattern A** (default — Copilot Studio queries the Azure
-> AI Search Knowledge Base directly). Steps 4 and 5 are **optional**
-> and only required when you upgrade to Pattern B (Foundry Agent
+> AI Search index directly). Steps 4 and 5 are **optional**
+> and only required when you upgrade to A2/B (Foundry IQ/Agent
 > Service prompt agent), Pattern C (dual-tool routing), or run the
 > Hosted Agent runtime. See [RetrievalPatterns.md](RetrievalPatterns.md)
 > for the decision tree.
@@ -75,10 +79,10 @@ uv run python scripts/index_knowledge_base_docintel_chunking.py --local-only
 See [DataPipelineAndTesting.md](DataPipelineAndTesting.md) for the full
 pipeline diagram and the list of Azure resources each option creates.
 
-## 4. (Optional) Provision the Foundry Prompt Agent (Pattern B)
+## 4. (Optional) Provision Foundry IQ and PromptAgent resources (A2/B)
 
-Skip this step if you're starting with Pattern A. Run it when you want
-force-grounded answer synthesis via `tool_choice="required"`.
+Skip this step if you're starting with Pattern A. Run it for A2's direct Foundry
+IQ connection or B's force-grounded synthesis via `tool_choice="required"`.
 
 ```bash
 # Preview what will be created (no RBAC needed — read-only)
@@ -90,6 +94,7 @@ uv run python -m src.agents.create_foundry_agent
 
 Creates: **Knowledge Source → Knowledge Base → MCP connection →
 PromptAgent** (`HRPolicyAgent`, `gpt-5-mini`, `tool_choice="required"`).
+Pattern A2 uses the Knowledge Base and does not invoke the PromptAgent.
 
 Verify or clean up:
 
@@ -127,17 +132,19 @@ cd src/frontend && npm install && npm run dev          # http://localhost:5173
 
 ## 7. Wire up Copilot Studio
 
-After wiring a pattern, start with the corpus-grounded
-[sample query catalog](CopilotStudioTestingGuide.md#starter-query-catalog). It
-includes focused queries for A, A2, B, C, and Hosted plus a shared comparison
-set for equivalent answer paths.
+Build and validate one Copilot Studio pattern at a time using
+[Build the Retrieval Patterns](patterns/README.md):
 
-| If you want…                              | Follow                                                                |
-| ----------------------------------------- | --------------------------------------------------------------------- |
-| Copilot to call the prompt agent (B)      | [CopilotStudioIntegration.md](CopilotStudioIntegration.md) — Path 2   |
-| Copilot to query the KB directly (A)      | [CopilotStudioIntegration.md](CopilotStudioIntegration.md) — Path 1   |
-| Fast doc-locator routing (C)              | [CopilotStudioLookupRouting.md](CopilotStudioLookupRouting.md)        |
-| All three combined (hybrid)                | [CopilotStudioHybridExample.md](CopilotStudioHybridExample.md)        |
+1. [Pattern A and its Search/SharePoint options](patterns/pattern-a-direct-index.md)
+2. [Pattern A2: direct Foundry IQ](patterns/pattern-a2-foundry-iq.md)
+3. [Pattern B: external Foundry agent](patterns/pattern-b-foundry-agent.md)
+4. [Pattern C: deterministic document locator](patterns/pattern-c-document-locator.md)
+5. [Hosted Agent](patterns/pattern-hosted-agent.md)
+
+Stop as soon as a pattern meets the scenario. After wiring it, use the
+corpus-grounded [sample query catalog](CopilotStudioTestingGuide.md#starter-query-catalog).
+Combine routes only after they pass independently; see
+[CopilotStudioHybridExample.md](CopilotStudioHybridExample.md).
 
 Custom-connector OpenAPI specs:
 

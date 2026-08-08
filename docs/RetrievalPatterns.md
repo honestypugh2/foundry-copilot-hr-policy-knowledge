@@ -1,5 +1,9 @@
 # Retrieval Patterns
 
+This document compares the architecture choices. To build them in order with
+one focused guide per pattern, start with
+[Build the Retrieval Patterns](patterns/README.md).
+
 This project supports four retrieval patterns (A, A2, B, C) plus a Hosted Agent
 runtime (Microsoft Agent Framework hosting). Choose one based on **who
 orchestrates the search** and **how results reach Copilot Studio**.
@@ -86,8 +90,8 @@ synthesizes an answer from the retrieved snippets; "direct" does not mean a
 model-free Copilot Studio response. This repo owns the index, skillset, and
 indexing pipeline.
 
-- **Provision:** `python -m src.agents.create_foundry_agent --skip-agent`
-  (creates Knowledge Source + Knowledge Base; skips PromptAgentDefinition)
+- **Provision:** populate `hr-policy-index`; Pattern A does not require
+  `create_foundry_agent.py`, a Search knowledge base, or a PromptAgent.
 - **Strengths:** lowest illustrative latency and no repo-owned backend model
   call or model cost in the retrieval path.
 - **Limitations:** no answer synthesis — Copilot Studio falls back to

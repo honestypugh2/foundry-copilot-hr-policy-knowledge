@@ -101,6 +101,7 @@ output AZURE_OPENAI_EMBEDDING_DEPLOYMENT string = resources.outputs.embeddingDep
 output AZURE_AI_FOUNDRY_RESOURCE string = resources.outputs.aiFoundryResourceName
 output AZURE_AI_PROJECT_NAME string = resources.outputs.aiProjectName
 output AZURE_AI_PROJECT_ENDPOINT string = resources.outputs.projectEndpoint
+output FOUNDRY_PROJECT_ENDPOINT string = resources.outputs.projectEndpoint
 output AZURE_SEARCH_ENDPOINT string = resources.outputs.searchEndpoint
 output AZURE_SEARCH_NAME string = resources.outputs.searchName
 output AZURE_SEARCH_INDEX_NAME string = 'hr-policy-index'

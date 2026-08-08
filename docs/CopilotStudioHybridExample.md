@@ -1,10 +1,16 @@
 # Copilot Studio — Hybrid Orchestration Example
 
-A worked example combining all three patterns in a single copilot:
+A worked example combining Patterns A, B, and C in a single copilot:
 
 - **Pattern A** (Knowledge Source) for fallback / autocomplete-style answers.
 - **Pattern B** (Foundry Agent + MCP) for grounded answer synthesis.
 - **Pattern C** (Dual-Tool Routing) for "where is the document" intents.
+
+This is a composition example, not the complete pattern catalog. Pattern A2 can
+replace A when Foundry IQ retrieval is preferred, and Hosted can replace B when
+the answer-synthesis runtime must run in your infrastructure. Build and validate
+each route separately using the
+[ordered pattern guides](patterns/README.md) before combining them here.
 
 Use the compound prompts in the
 [sample query catalog](CopilotStudioTestingGuide.md#starter-query-catalog) as
@@ -48,11 +54,15 @@ flowchart LR
 > **User:** Where's our uniform dress code policy?
 >
 > **Copilot Studio routing:** matches *Locate document* intent.
-> Calls `lookupHRPolicyDocument({"message": "uniform dress code"})`.
+> Calls `lookupHRPolicyDocument({"query": "uniform dress code"})`.
 >
 > **Backend (`/api/lookup`):** ~1.4 s. Returns:
 > ```json
 > {
+>   "query": "uniform dress code",
+>   "policy_id": "60010",
+>   "title": "Operational Matters: Uniform Dress Code",
+>   "blob_url": "https://stxxx.blob.core.windows.net/ask-hr-knowledge/60010-uniform-dress-code.docx",
 >   "documents": [{
 >     "policy_number": "60010",
 >     "parent_title": "Operational Matters: Uniform Dress Code",

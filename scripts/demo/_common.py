@@ -107,6 +107,9 @@ def print_lookup_result(result: dict[str, Any]) -> None:
 
     print()
     print(_c("1", f"  Query: {query}"))
+    if result.get("policy_id"):
+        print(_c("1", f"  Primary match: Policy {result['policy_id']} — {result.get('title', '')}"))
+        print(_c("90", f"  URL: {result.get('blob_url', '')}"))
     if expanded and expanded != query:
         print(_c("90", f"  Expanded (glossary): {expanded}"))
     if elapsed is not None:

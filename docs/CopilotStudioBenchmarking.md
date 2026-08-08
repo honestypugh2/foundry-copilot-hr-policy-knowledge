@@ -1,5 +1,10 @@
 # Benchmarking through Copilot Studio
 
+Complete each pattern's setup in
+[Pattern Setup, Code Ownership, and Benchmark Guide](PatternSetupAndBenchmarkGuide.md)
+before using this document. This guide measures five isolated, published agents;
+it does not provision their Azure or Copilot Studio dependencies.
+
 Run end-to-end measurements against the real, published Copilot Studio agents
 configured for each pattern. The intentionally empty `TestAgent` is only an
 extension synchronization smoke test and is not a benchmark target. This
