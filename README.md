@@ -104,7 +104,7 @@ up to Pattern B when you need force-grounded synthesis via
 > [Pattern C vs native citations](docs/CopilotStudioLookupRouting.md#pattern-c-vs-native-citations).
 
 Full details: **[docs/RetrievalPatterns.md](docs/RetrievalPatterns.md)**.
-Executable comparison contract and roadmap: **[docs/BenchmarkingDecisionSystem.md](docs/BenchmarkingDecisionSystem.md)**.
+Copilot Studio benchmark setup: **[docs/CopilotStudioBenchmarking.md](docs/CopilotStudioBenchmarking.md)**.
 Deep-dive on Pattern B internals: **[docs/FoundryAgentArchitecture.md](docs/FoundryAgentArchitecture.md)**.
 SDK choice (Foundry Agent Service vs Microsoft Agent Framework): **[docs/AgentArchitecturePaths.md](docs/AgentArchitecturePaths.md)**.
 Distribute Pattern B to Microsoft 365 Copilot & Teams (GA): **[docs/Distribution-M365-Teams.md](docs/Distribution-M365-Teams.md)**.

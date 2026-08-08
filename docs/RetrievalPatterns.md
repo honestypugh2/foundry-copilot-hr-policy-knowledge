@@ -78,7 +78,7 @@ and running `python -m src.agents.create_foundry_agent`.
 > **Latency note:** All figures are illustrative and environment-dependent,
 > not benchmark results. Demo timings are useful smoke observations but are not
 > reproducible benchmark evidence. Use the versioned experiment contract and
-> reporting workflow in [BenchmarkingDecisionSystem.md](BenchmarkingDecisionSystem.md)
+> reporting workflow in [PatternSetupAndBenchmarkGuide.md](PatternSetupAndBenchmarkGuide.md)
 > before using latency to qualify a pattern.
 
 ## Pattern A — Direct Index
@@ -221,8 +221,8 @@ or you want to keep the answering loop on your own infrastructure.
 ## See Also
 
 - [CopilotStudioTestingGuide.md](CopilotStudioTestingGuide.md#starter-query-catalog) — corpus-grounded sample queries for each pattern
-- [BenchmarkingDecisionSystem.md](BenchmarkingDecisionSystem.md) — reproducible evidence, Microsoft asset reuse, and implementation roadmap
-- [ReactBenchmarkWorkbenchADR.md](ReactBenchmarkWorkbenchADR.md) — native operational plane versus custom decision plane
+- [PatternSetupAndBenchmarkGuide.md](PatternSetupAndBenchmarkGuide.md) — benchmark boundaries, code ownership, and comparison entry points
+- [CopilotStudioBenchmarking.md](CopilotStudioBenchmarking.md) — isolated Copilot Studio agents and Direct Line comparisons
 - [Walkthrough.md](Walkthrough.md) — linear setup walkthrough
 - [FoundryAgentArchitecture.md](FoundryAgentArchitecture.md) — Pattern B internals
 - [AgentArchitecturePaths.md](AgentArchitecturePaths.md) — Foundry Agent Service vs Microsoft Agent Framework

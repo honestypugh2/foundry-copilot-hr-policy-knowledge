@@ -32,20 +32,17 @@ competing setup flows.
 | [Distribution-M365-Teams.md](Distribution-M365-Teams.md) | Distribution after a retrieval pattern is working. |
 | [LabCoverage.md](LabCoverage.md) | Crosswalk to the Azure/Copilot-Studio-and-Azure labs. |
 
-## Benchmark and planned follow-up article
+## Benchmarking
 
 | Document | Scope |
 | --- | --- |
-| [BenchmarkingDecisionSystem.md](BenchmarkingDecisionSystem.md) | Evidence classes, normalized contracts, roadmap, and product boundaries. |
+| [PatternSetupAndBenchmarkGuide.md](PatternSetupAndBenchmarkGuide.md) | Benchmark boundaries, code ownership, and comparison entry points. |
 | [CopilotStudioBenchmarking.md](CopilotStudioBenchmarking.md) | Configure five isolated pattern agents and run Direct Line comparisons. |
 | [BenchmarkLoadTesting.md](BenchmarkLoadTesting.md) | Capacity/load experiments kept separate from controlled runs. |
-| [ReactBenchmarkWorkbenchADR.md](ReactBenchmarkWorkbenchADR.md) | Read-only decision workbench and native-product boundaries. |
-| [BenchmarkingBlogOutline.md](BenchmarkingBlogOutline.md) | Planned follow-up narrative and publication evidence gate. |
-| [BenchmarkMigrationLedger.md](BenchmarkMigrationLedger.md) | Provenance for concepts migrated from prior benchmark work. |
 
 ## Published article
 
 The canonical architecture article is
 [Grounding Copilot Studio Agents with Azure AI Search and Foundry IQ](https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/grounding-copilot-studio-agents-with-azure-ai-search-and-foundry-iq/4539337).
-It defines the five pattern names used by this repository. The benchmark docs
-extend that article with evidence; they do not rename or replace its patterns.
+It defines the five pattern names used by this repository. The benchmark guides
+evaluate those patterns; they do not rename or replace them.

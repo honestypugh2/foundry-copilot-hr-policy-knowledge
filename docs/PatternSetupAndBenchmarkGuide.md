@@ -394,13 +394,12 @@ docs, manifests, and reports must retain that meaning.
 - separate controlled, load, production-telemetry, and cost evidence;
 - Pareto and SLO qualification without silently treating missing values as zero.
 
-### Planned benchmark blog: evidence-backed decisions
+### Benchmark publication gate
 
-The planned follow-up is represented by
-[BenchmarkingBlogOutline.md](BenchmarkingBlogOutline.md). Its publication gate
-requires committed, compatible result artifacts before making comparative
-latency, quality, reliability, or cost claims. Until those connected runs are
-complete, timing values elsewhere in this repository are illustrative only.
+The [Copilot Studio benchmark workflow](CopilotStudioBenchmarking.md) requires
+committed, compatible result artifacts before making comparative latency,
+quality, reliability, or cost claims. Until those connected runs are complete,
+timing values elsewhere in this repository are illustrative only.
 
 ## Where to go next
 
@@ -409,5 +408,5 @@ complete, timing values elsewhere in this repository are illustrative only.
 - Configure five isolated pattern agents: [CopilotStudioTestingGuide.md](CopilotStudioTestingGuide.md)
 - Understand ingestion: [DataPipelineAndTesting.md](DataPipelineAndTesting.md)
 - Run the benchmark: [CopilotStudioBenchmarking.md](CopilotStudioBenchmarking.md)
-- Understand the evidence rules: [BenchmarkingDecisionSystem.md](BenchmarkingDecisionSystem.md)
+- Run capacity tests separately: [BenchmarkLoadTesting.md](BenchmarkLoadTesting.md)
 - Find every document by purpose: [docs/README.md](README.md)
