@@ -159,3 +159,5 @@ src/frontend/playwright-report/
 
 docs/BenchmarkingBlogOutline.md
 docs/BenchmarkingDecisionSystem.md
+docs/ReactBenchmarkWorkbenchADR.md
+docs/BenchmarkMigrationLedger.md
