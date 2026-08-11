@@ -39,24 +39,64 @@
             "schema": {
               "type": "object",
               "properties": {
-                "query": {"type": "string"},
-                "policy_id": {"type": "string"},
-                "title": {"type": "string"},
-                "blob_url": {"type": "string"},
-                "expanded_query": {"type": "string"},
-                "total": {"type": "integer"},
-                "processing_time_ms": {"type": "integer"},
+                "query": {
+                  "type": "string",
+                  "description": "The original document-location query submitted to the lookup API."
+                },
+                "policy_id": {
+                  "type": "string",
+                  "description": "The policy number of the highest-ranked matching document, such as 50020."
+                },
+                "title": {
+                  "type": "string",
+                  "description": "The authoritative title of the highest-ranked matching policy document."
+                },
+                "blob_url": {
+                  "type": "string",
+                  "description": "The direct HTTPS URL of the highest-ranked matching policy document. Return this URL verbatim to the user."
+                },
+                "expanded_query": {
+                  "type": "string",
+                  "description": "The normalized query used to search the policy index."
+                },
+                "total": {
+                  "type": "integer",
+                  "description": "The number of matching policy documents returned by the lookup."
+                },
+                "processing_time_ms": {
+                  "type": "integer",
+                  "description": "The server-side lookup duration in milliseconds."
+                },
                 "documents": {
                   "type": "array",
+                  "description": "Ranked matching policy documents and their authoritative storage metadata.",
                   "items": {
                     "type": "object",
                     "properties": {
-                      "policy_number": {"type": "string"},
-                      "parent_title": {"type": "string"},
-                      "metadata_storage_name": {"type": "string"},
-                      "metadata_storage_path": {"type": "string"},
-                      "blob_url": {"type": "string"},
-                      "score": {"type": "number"}
+                      "policy_number": {
+                        "type": "string",
+                        "description": "The policy number for this matching document."
+                      },
+                      "parent_title": {
+                        "type": "string",
+                        "description": "The authoritative policy title for this matching document."
+                      },
+                      "metadata_storage_name": {
+                        "type": "string",
+                        "description": "The source document filename in storage."
+                      },
+                      "metadata_storage_path": {
+                        "type": "string",
+                        "description": "The authoritative source storage path for this document."
+                      },
+                      "blob_url": {
+                        "type": "string",
+                        "description": "The direct HTTPS URL for this matching policy document."
+                      },
+                      "score": {
+                        "type": "number",
+                        "description": "The Azure AI Search relevance score for this match."
+                      }
                     }
                   }
                 }

@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+from time import perf_counter
 from typing import Annotated, Any, Dict, List, Optional
 
 from src.config.model_policy import get_chat_model
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Agent Framework imports
 # ---------------------------------------------------------------------------
 try:
-    from agent_framework import Agent, tool
+    from agent_framework import Agent, AgentSession, tool
     from agent_framework.foundry import FoundryChatClient
     AGENT_FRAMEWORK_AVAILABLE = True
 except ImportError:
@@ -127,9 +128,11 @@ class HRPolicyAgent:
         #   "context-semantic" -> AzureAISearchContextProvider, classic search
         #   "context-agentic"  -> AzureAISearchContextProvider, agentic retrieval
         #                         over the Foundry IQ knowledge base
-        self.retrieval_mode = (
+        from src.search.agentic_context_provider import normalize_retrieval_mode
+
+        self.retrieval_mode = normalize_retrieval_mode(
             retrieval_mode or os.getenv("RETRIEVAL_MODE", "tool")
-        ).lower()
+        )
         self.project_endpoint = project_endpoint or os.getenv(
             "AZURE_AI_PROJECT_ENDPOINT",
             os.getenv("AZURE_AI_FOUNDRY_PROJECT_ENDPOINT", ""),
@@ -141,7 +144,12 @@ class HRPolicyAgent:
             or search_cfg.index_name
         )
         self.search_endpoint = search_endpoint or os.getenv("AZURE_SEARCH_ENDPOINT", "")
-        self.search_api_key = search_api_key or os.getenv("AZURE_SEARCH_API_KEY")
+        use_managed_identity = os.getenv("USE_MANAGED_IDENTITY", "true").lower() == "true"
+        self.search_api_key = (
+            None
+            if use_managed_identity
+            else search_api_key or os.getenv("AZURE_SEARCH_API_KEY")
+        )
         self.search_query_type = search_query_type
         self.semantic_configuration_name = os.getenv(
             "AI_SEARCH_SEMANTIC_CONFIG", search_cfg.semantic_configuration
@@ -302,6 +310,8 @@ class HRPolicyAgent:
         except Exception as e:
             logger.error("Agent Framework failed: %s", e)
             return {
+                "status": "error",
+                "error_classification": type(e).__name__,
                 "answer": (
                     "I encountered an error while searching the HR policy "
                     "knowledge base. Please try again or contact your HR representative."
@@ -356,12 +366,10 @@ class HRPolicyAgent:
                 instructions = HR_POLICY_CONTEXT_SYSTEM_PROMPT
                 use_tool_steps = False
             except Exception as e:
-                logger.warning(
-                    "Search context provider unavailable (%s); "
-                    "falling back to the classic search tool.",
-                    e,
-                )
-                tools = [self.search_hr_policies]
+                raise RuntimeError(
+                    f"Unable to initialize requested retrieval mode "
+                    f"{self.retrieval_mode!r}"
+                ) from e
         else:
             tools = [self.search_hr_policies]
 
@@ -376,20 +384,61 @@ class HRPolicyAgent:
         prompt = self._build_prompt(
             question, conversation_history, use_tool_steps=use_tool_steps
         )
+        from opentelemetry import baggage
+
+        session_id = baggage.get_baggage("app.benchmark.session.id")
+        session = AgentSession(session_id=session_id if isinstance(session_id, str) else None)
 
         # Stream the agent response
         response_text = ""
-        async for chunk in agent.run(prompt, stream=True):
+        stream_started = perf_counter()
+        first_text_at: float | None = None
+        response_stream = agent.run(prompt, stream=True, session=session)
+        async for chunk in response_stream:
             if getattr(chunk, "text", None):
+                if first_text_at is None:
+                    first_text_at = perf_counter()
                 response_text += chunk.text
+        stream_ended = perf_counter()
+        final_response = await response_stream.get_final_response()
+
+        usage_details = final_response.usage_details or {}
+        usage = {
+            result_key: int(value)
+            for source_key, result_key in (
+                ("input_token_count", "input_tokens"),
+                ("cache_read_input_token_count", "cached_input_tokens"),
+                ("output_token_count", "output_tokens"),
+                ("reasoning_output_token_count", "reasoning_tokens"),
+            )
+            if (value := usage_details.get(source_key)) is not None
+        }
 
         citations, policy_refs = self._extract_citations_from_text(response_text)
+        timings = {
+            "ttlt_ms": (stream_ended - stream_started) * 1000,
+        }
+        if first_text_at is not None:
+            timings.update(
+                {
+                    "ttft_ms": (first_text_at - stream_started) * 1000,
+                    "stream_duration_ms": (stream_ended - first_text_at) * 1000,
+                }
+            )
 
         return {
+            "status": "success",
             "answer": response_text,
             "citations": citations,
             "policy_references": policy_refs,
             "confidence": 0.85 if citations else (0.6 if response_text else 0.0),
+            "usage": usage,
+            "response_id": final_response.response_id,
+            "conversation_id": session.session_id,
+            "timings": timings,
+            "stream_timing_boundary": (
+                "agent.run start to first text and stream completion"
+            ),
         }
 
     # ------------------------------------------------------------------
@@ -465,6 +514,8 @@ class HRPolicyAgent:
 
     def _empty_response(self) -> Dict[str, Any]:
         return {
+            "status": "error",
+            "error_classification": "AgentFrameworkUnavailable",
             "answer": (
                 "Agent Framework is not configured. Please set "
                 "AZURE_AI_PROJECT_ENDPOINT and install agent-framework."

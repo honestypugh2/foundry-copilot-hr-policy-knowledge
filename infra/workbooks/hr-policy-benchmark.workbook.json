@@ -1,0 +1,39 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# HR Policy Benchmark\nConnected Agent Framework benchmark health from Application Insights. Prompt and response content are not displayed."
+      },
+      "name": "overview"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppDependencies\n| where TimeGenerated > ago(24h)\n| where Name == \"benchmark.case\"\n| where isnotempty(tostring(Properties[\"app.benchmark.experiment.id\"]))\n| summarize samples=count(), failures=countif(Success == false), p50=percentile(DurationMs, 50), p95=percentile(DurationMs, 95), p99=percentile(DurationMs, 99) by experimentId=tostring(Properties[\"app.benchmark.experiment.id\"]), configurationId=tostring(Properties[\"app.benchmark.configuration.id\"])\n| order by p95 desc",
+        "size": 0,
+        "title": "Latency and failures by experiment",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "name": "latency"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppDependencies\n| where TimeGenerated > ago(24h)\n| where Name startswith \"chat \"\n| where isnotempty(tostring(Properties[\"app.benchmark.experiment.id\"]))\n| summarize inputTokens=sum(toint(Properties[\"gen_ai.usage.input_tokens\"])), outputTokens=sum(toint(Properties[\"gen_ai.usage.output_tokens\"])), responses=dcount(tostring(Properties[\"gen_ai.response.id\"])) by experimentId=tostring(Properties[\"app.benchmark.experiment.id\"]), responseModel=tostring(Properties[\"gen_ai.response.model\"])",
+        "size": 0,
+        "title": "Service-reported model usage",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "name": "usage"
+    }
+  ],
+  "fallbackResourceIds": [
+    "__WORKSPACE_ID__"
+  ]
+}

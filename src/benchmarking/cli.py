@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -13,13 +14,26 @@ from dotenv import load_dotenv
 from src.benchmarking.adapters.copilot_studio import CopilotStudioAdapter
 from src.benchmarking.adapters.direct_search import DirectSearchAdapter
 from src.benchmarking.aggregation import aggregate_results
-from src.benchmarking.models import BenchmarkCase, ExperimentManifest
+from src.benchmarking.models import BenchmarkCase, ExperimentManifest, PricingProfile
 from src.benchmarking.reporting import (
     write_jsonl,
     write_report_json,
     write_report_markdown,
 )
+from src.observability import enable_tracing, flush_tracing
 from src.benchmarking.runner import BenchmarkRunner
+
+
+def _verify_live_identity() -> None:
+    from src.config.azure_identity import verify_azure_cli_identity
+
+    verify_azure_cli_identity(
+        expected_tenant_id=os.environ.get("EXPECTED_AZURE_TENANT_ID", ""),
+        expected_subscription_id=os.environ.get(
+            "EXPECTED_AZURE_SUBSCRIPTION_ID", ""
+        ),
+        expected_principal_id=os.environ.get("EXPECTED_AZURE_PRINCIPAL_ID", ""),
+    )
 
 
 def _load_model_list(path: Path, model_type: type[Any]) -> list[Any]:
@@ -52,7 +66,18 @@ def _build_adapter(
     copilot_environment_id: str | None = None,
     copilot_agent_schema: str | None = None,
     copilot_token_endpoint: str | None = None,
+    agent_framework: bool = False,
 ):
+    if agent_framework:
+        if manifest.pattern != "Hosted":
+            raise ValueError("--agent-framework requires pattern 'Hosted'")
+        from src.agents.hr_policy_agent_af import HRPolicyAgent
+        from src.benchmarking.adapters.agent import AgentFrameworkAdapter
+        from src.search.agentic_context_provider import normalize_retrieval_mode
+
+        retrieval_mode = normalize_retrieval_mode(manifest.retrieval_mode)
+        agent = HRPolicyAgent(retrieval_mode=retrieval_mode)
+        return AgentFrameworkAdapter(agent.answer_question_async, retrieval_mode)
     if copilot_studio:
         from src.copilot_studio.service import CopilotStudioService
 
@@ -98,6 +123,8 @@ async def run_experiment(
     copilot_environment_id: str | None = None,
     copilot_agent_schema: str | None = None,
     copilot_token_endpoint: str | None = None,
+    agent_framework: bool = False,
+    pricing_profile: PricingProfile | None = None,
 ) -> None:
     adapter = _build_adapter(
         manifest,
@@ -107,8 +134,9 @@ async def run_experiment(
         copilot_environment_id=copilot_environment_id,
         copilot_agent_schema=copilot_agent_schema,
         copilot_token_endpoint=copilot_token_endpoint,
+        agent_framework=agent_framework,
     )
-    runner = BenchmarkRunner(manifest, adapter)
+    runner = BenchmarkRunner(manifest, adapter, pricing_profile)
 
     for _ in range(manifest.warmup_count):
         for case in cases:
@@ -140,11 +168,21 @@ async def run_experiment(
 
 
 def main(argv: list[str] | None = None) -> int:
-    load_dotenv()
+    load_dotenv(override=True)
+    if os.getenv("ENABLE_TRACING", "false").lower() == "true":
+        enable_tracing(instrument_ai_clients=False, sampling_ratio=1.0)
     parser = argparse.ArgumentParser(description="Run a controlled HR policy benchmark")
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--cases", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument(
+        "--pricing-profile",
+        type=Path,
+        help=(
+            "Versioned pricing-profile JSON. Its name:version must match the "
+            "manifest pricing_profile value."
+        ),
+    )
     parser.add_argument(
         "--fixture-responses",
         type=Path,
@@ -154,6 +192,11 @@ def main(argv: list[str] | None = None) -> int:
         "--copilot-studio",
         action="store_true",
         help="Run the manifest pattern end to end through the configured Copilot Studio agent",
+    )
+    parser.add_argument(
+        "--agent-framework",
+        action="store_true",
+        help="Run a Hosted manifest through the local Agent Framework path",
     )
     parser.add_argument(
         "--route-template",
@@ -177,22 +220,45 @@ def main(argv: list[str] | None = None) -> int:
     manifest = ExperimentManifest.model_validate_json(
         args.manifest.read_text(encoding="utf-8")
     )
+    pricing_profile = None
+    if args.pricing_profile is not None:
+        pricing_profile = PricingProfile.model_validate_json(
+            args.pricing_profile.read_text(encoding="utf-8")
+        )
+        profile_id = f"{pricing_profile.name}:{pricing_profile.version}"
+        if manifest.pricing_profile != profile_id:
+            parser.error(
+                "The manifest pricing_profile must equal the loaded profile "
+                f"identifier {profile_id!r}"
+            )
+    elif manifest.pricing_profile is not None:
+        parser.error(
+            "The manifest names a pricing_profile, so --pricing-profile is required"
+        )
     cases = _load_model_list(args.cases, BenchmarkCase)
     if not cases:
         parser.error("The case dataset must not be empty")
-    asyncio.run(
-        run_experiment(
-            manifest,
-            cases,
-            args.output_dir,
-            fixture_responses=args.fixture_responses,
-            copilot_studio=args.copilot_studio,
-            route_template=args.route_template,
-            copilot_environment_id=args.copilot_environment_id,
-            copilot_agent_schema=args.copilot_agent_schema,
-            copilot_token_endpoint=args.copilot_token_endpoint,
+    if args.fixture_responses is None:
+        _verify_live_identity()
+    try:
+        asyncio.run(
+            run_experiment(
+                manifest,
+                cases,
+                args.output_dir,
+                fixture_responses=args.fixture_responses,
+                copilot_studio=args.copilot_studio,
+                route_template=args.route_template,
+                copilot_environment_id=args.copilot_environment_id,
+                copilot_agent_schema=args.copilot_agent_schema,
+                copilot_token_endpoint=args.copilot_token_endpoint,
+                agent_framework=args.agent_framework,
+                pricing_profile=pricing_profile,
+            )
         )
-    )
+    finally:
+        if os.getenv("ENABLE_TRACING", "false").lower() == "true":
+            flush_tracing()
     return 0
 
 

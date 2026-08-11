@@ -71,6 +71,26 @@ class PricingRate(StrictModel):
     meter: str
     unit: str
     unit_price: float = Field(ge=0)
+    quantity_metric: Literal[
+        "input_tokens",
+        "uncached_input_tokens",
+        "cached_input_tokens",
+        "output_tokens",
+        "reasoning_tokens",
+    ] | None = None
+    quantity_per_unit: float | None = Field(default=None, gt=0)
+    provider_meter_name: str | None = None
+    provider_meter_id: str | None = None
+    source_url: str | None = None
+    effective_date: str | None = None
+
+    @model_validator(mode="after")
+    def validate_quantity_mapping(self) -> "PricingRate":
+        if (self.quantity_metric is None) != (self.quantity_per_unit is None):
+            raise ValueError(
+                "quantity_metric and quantity_per_unit must be configured together"
+            )
+        return self
 
 
 class PricingProfile(StrictModel):
@@ -180,6 +200,13 @@ class CaseResult(StrictModel):
     ttlt_ms: MetricValue
     stream_duration_ms: MetricValue
     input_tokens: MetricValue
+    cached_input_tokens: MetricValue = Field(
+        default_factory=lambda: MetricValue(
+            unit="tokens",
+            measurement_type="unavailable",
+            unavailable_reason=AvailabilityReason.NOT_EXPOSED,
+        )
+    )
     output_tokens: MetricValue
     reasoning_tokens: MetricValue
     evaluator_tokens: MetricValue
@@ -217,6 +244,13 @@ class ActivityTypeSummary(StrictModel):
     reasoning_tokens: int = 0
 
 
+class VariableCostSummary(StrictModel):
+    invocation_count: int = Field(ge=1)
+    priced_invocation_count: int = Field(ge=0)
+    mean_per_invocation: CostEstimate
+    run_total: CostEstimate
+
+
 class AggregateReport(StrictModel):
     schema_version: Literal["1.0"] = SCHEMA_VERSION
     experiment_id: str
@@ -230,5 +264,6 @@ class AggregateReport(StrictModel):
     by_category: dict[str, LatencySummary] = Field(default_factory=dict)
     by_stage: dict[str, LatencySummary] = Field(default_factory=dict)
     by_activity_type: dict[str, ActivityTypeSummary] = Field(default_factory=dict)
+    variable_cost: VariableCostSummary
     sample_warning: str | None = None
     provenance: dict[str, Any] = Field(default_factory=dict)

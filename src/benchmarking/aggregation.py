@@ -7,8 +7,11 @@ from statistics import fmean, pstdev
 from src.benchmarking.models import (
     ActivityTypeSummary,
     AggregateReport,
+    AvailabilityReason,
     CaseResult,
+    CostEstimate,
     LatencySummary,
+    VariableCostSummary,
 )
 
 
@@ -35,6 +38,77 @@ def _latency_summary(values: list[float]) -> LatencySummary | None:
         p50_ms=_percentile(values, 0.50),
         p95_ms=_percentile(values, 0.95),
         p99_ms=_percentile(values, 0.99),
+    )
+
+
+def _variable_cost_summary(results: list[CaseResult]) -> VariableCostSummary:
+    estimates = [result.estimated_variable_cost for result in results]
+    available = [estimate for estimate in estimates if estimate.amount is not None]
+    unavailable_reason = next(
+        (
+            estimate.unavailable_reason
+            for estimate in estimates
+            if estimate.unavailable_reason is not None
+        ),
+        AvailabilityReason.UNKNOWN,
+    )
+    if len(available) != len(estimates):
+        unavailable = CostEstimate(
+            measurement_type="unavailable",
+            unavailable_reason=unavailable_reason,
+            assumptions=[
+                f"Only {len(available)} of {len(estimates)} invocations had "
+                "complete service-reported quantities."
+            ],
+        )
+        return VariableCostSummary(
+            invocation_count=len(estimates),
+            priced_invocation_count=len(available),
+            mean_per_invocation=unavailable,
+            run_total=unavailable.model_copy(deep=True),
+        )
+
+    currencies = {estimate.currency for estimate in available}
+    profiles = {estimate.pricing_profile for estimate in available}
+    if len(currencies) != 1 or len(profiles) != 1:
+        unavailable = CostEstimate(
+            measurement_type="unavailable",
+            unavailable_reason=AvailabilityReason.UNKNOWN,
+            assumptions=[
+                "Variable costs use inconsistent currencies or pricing profiles."
+            ],
+        )
+        return VariableCostSummary(
+            invocation_count=len(estimates),
+            priced_invocation_count=len(available),
+            mean_per_invocation=unavailable,
+            run_total=unavailable.model_copy(deep=True),
+        )
+
+    total_amount = sum(float(estimate.amount) for estimate in available)
+    common = available[0]
+    common_fields = {
+        "currency": common.currency,
+        "measurement_type": "estimated",
+        "pricing_profile": common.pricing_profile,
+        "assumptions": common.assumptions,
+        "excluded_costs": common.excluded_costs,
+    }
+    return VariableCostSummary(
+        invocation_count=len(estimates),
+        priced_invocation_count=len(available),
+        mean_per_invocation=CostEstimate(
+            amount=total_amount / len(estimates),
+            formula="sum(per-invocation variable cost) / invocation_count",
+            measured_quantities={"invocation_count": float(len(estimates))},
+            **common_fields,
+        ),
+        run_total=CostEstimate(
+            amount=total_amount,
+            formula="sum(per-invocation variable cost)",
+            measured_quantities={"invocation_count": float(len(estimates))},
+            **common_fields,
+        ),
     )
 
 
@@ -103,6 +177,7 @@ def aggregate_results(results: list[CaseResult]) -> AggregateReport:
         )
 
     count = len(results)
+    variable_cost = _variable_cost_summary(results)
     successes = sum(result.status == "success" for result in results)
     errors = sum(result.status in {"error", "timeout"} for result in results)
     throttles = sum(result.throttled for result in results)
@@ -118,9 +193,25 @@ def aggregate_results(results: list[CaseResult]) -> AggregateReport:
         by_category=by_category,
         by_stage=by_stage,
         by_activity_type=by_activity_type,
+        variable_cost=variable_cost,
         sample_warning=(
             f"Only {count} measured samples; percentile estimates are unstable."
             if count < 30
             else None
         ),
+        provenance={
+            "estimated_variable_cost": variable_cost.mean_per_invocation.amount,
+            "estimated_variable_cost_currency": variable_cost.mean_per_invocation.currency,
+            "estimated_variable_cost_statistic": "mean_per_invocation",
+            "estimated_variable_cost_measurement_type": (
+                variable_cost.mean_per_invocation.measurement_type
+            ),
+            "estimated_variable_cost_pricing_profile": (
+                variable_cost.mean_per_invocation.pricing_profile
+            ),
+            "estimated_variable_cost_sample_count": (
+                variable_cost.priced_invocation_count
+            ),
+            "billed_cost_reconciliation": "separate_azure_cost_management",
+        },
     )

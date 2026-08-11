@@ -1,0 +1,138 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "${DS_AZURE_MONITOR}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "targets": [
+        {
+          "azureLogAnalytics": {
+            "query": "AppDependencies | where Name == \"benchmark.case\" | where isnotempty(tostring(Properties[\"app.benchmark.experiment.id\"])) | summarize p50=percentile(DurationMs, 50), p95=percentile(DurationMs, 95), p99=percentile(DurationMs, 99) by bin(TimeGenerated, 5m), experimentId=tostring(Properties[\"app.benchmark.experiment.id\"]) | order by TimeGenerated asc",
+            "resultFormat": "time_series",
+            "workspace": "${LOG_ANALYTICS_WORKSPACE_ID}"
+          },
+          "queryType": "Azure Log Analytics",
+          "refId": "A"
+        }
+      ],
+      "title": "Benchmark latency percentiles",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "${DS_AZURE_MONITOR}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "azureLogAnalytics": {
+            "query": "AppDependencies | where Name == \"benchmark.case\" | where isnotempty(tostring(Properties[\"app.benchmark.experiment.id\"])) | summarize failures=countif(Success == false), throttled=countif(tostring(Properties[\"http.response.status_code\"]) == \"429\")",
+            "resultFormat": "table",
+            "workspace": "${LOG_ANALYTICS_WORKSPACE_ID}"
+          },
+          "queryType": "Azure Log Analytics",
+          "refId": "A"
+        }
+      ],
+      "title": "Failures and throttling",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "${DS_AZURE_MONITOR}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "targets": [
+        {
+          "azureLogAnalytics": {
+            "query": "AppDependencies | where Name startswith \"chat \" | where isnotempty(tostring(Properties[\"app.benchmark.experiment.id\"])) | summarize inputTokens=sum(toint(Properties[\"gen_ai.usage.input_tokens\"])), outputTokens=sum(toint(Properties[\"gen_ai.usage.output_tokens\"])) by bin(TimeGenerated, 5m), responseModel=tostring(Properties[\"gen_ai.response.model\"])",
+            "resultFormat": "time_series",
+            "workspace": "${LOG_ANALYTICS_WORKSPACE_ID}"
+          },
+          "queryType": "Azure Log Analytics",
+          "refId": "A"
+        }
+      ],
+      "title": "Service-reported token usage",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "tags": [
+    "hr-policy",
+    "benchmark",
+    "foundry"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "HR Policy Benchmark",
+  "uid": "hr-policy-benchmark",
+  "version": 1
+}

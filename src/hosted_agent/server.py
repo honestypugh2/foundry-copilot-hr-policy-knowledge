@@ -46,7 +46,10 @@ AZURE_SEARCH_INDEX = os.environ.get(
     "AZURE_SEARCH_INDEX_NAME",
     os.environ.get("AZURE_SEARCH_INDEX", "hr-policy-index"),
 )
-AZURE_SEARCH_API_KEY = os.environ.get("AZURE_SEARCH_API_KEY")
+USE_MANAGED_IDENTITY = os.environ.get("USE_MANAGED_IDENTITY", "true").lower() == "true"
+AZURE_SEARCH_API_KEY = (
+    None if USE_MANAGED_IDENTITY else os.environ.get("AZURE_SEARCH_API_KEY")
+)
 AI_SEARCH_QUERY_TYPE = os.environ.get("AI_SEARCH_QUERY_TYPE", "semantic")
 AI_SEARCH_SEMANTIC_CONFIG = os.environ.get(
     "AI_SEARCH_SEMANTIC_CONFIG", "hr-semantic-config"
@@ -248,7 +251,7 @@ if os.environ.get("ENABLE_TRACING", "true").lower() == "true":
     try:
         from src.observability import enable_tracing
 
-        enable_tracing()
+        enable_tracing(instrument_ai_clients=False)
     except Exception as _trace_exc:  # pragma: no cover - never block hosting
         logger.warning("GenAI tracing not enabled: %s", _trace_exc)
 
@@ -258,7 +261,9 @@ credential = DefaultAzureCredential()
 # (classic search via the out-of-the-box context provider), or "context-agentic"
 # (agentic retrieval over the Foundry IQ knowledge base). The context-provider
 # modes run retrieval automatically before each turn.
-RETRIEVAL_MODE = os.environ.get("RETRIEVAL_MODE", "tool").lower()
+from src.search.agentic_context_provider import normalize_retrieval_mode  # noqa: E402
+
+RETRIEVAL_MODE = normalize_retrieval_mode(os.environ.get("RETRIEVAL_MODE"))
 
 _tools: list[Any] = [search_hr_policies]
 _context_providers: list[Any] | None = None
@@ -279,10 +284,10 @@ if RETRIEVAL_MODE in ("context-semantic", "context-agentic", "semantic", "agenti
         ]
         _tools = []
         logger.info("Hosted agent RAG mode: %s (context provider)", RETRIEVAL_MODE)
-    except Exception as _rag_exc:  # pragma: no cover - never block hosting
-        logger.warning(
-            "Context provider unavailable (%s); using classic search tool.", _rag_exc
-        )
+    except Exception as _rag_exc:  # pragma: no cover - deployment configuration
+        raise RuntimeError(
+            f"Unable to initialize requested retrieval mode {RETRIEVAL_MODE!r}"
+        ) from _rag_exc
 
 agent = Agent(
     client=FoundryChatClient(

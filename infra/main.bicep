@@ -52,6 +52,9 @@ param searchSku string = 'basic'
 @description('Principal ID for RBAC role assignments (e.g. your user or service principal objectId)')
 param principalId string = ''
 
+@description('Optional managed identity principal ID for the deployed Foundry Hosted Agent')
+param hostedAgentPrincipalId string = ''
+
 @description('Optional Entra app registration (client) ID to protect the backend Container App with Microsoft Entra authentication. Leave empty for public ingress (demo).')
 param backendAuthClientId string = ''
 
@@ -60,6 +63,9 @@ param searchLocation string = ''
 
 @description('Full backend container image reference (ACR). When empty, a placeholder image is used and azd updates it on deploy.')
 param backendImage string = ''
+
+@description('Optional email receiver for benchmark alerts')
+param benchmarkAlertEmail string = ''
 
 // ---------- Resource Group ----------
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
@@ -86,9 +92,11 @@ module resources './bicep/main.bicep' = {
     searchMcpApiVersion: searchMcpApiVersion
     searchSku: searchSku
     principalId: principalId
+    hostedAgentPrincipalId: hostedAgentPrincipalId
     backendAuthClientId: backendAuthClientId
     searchLocation: searchLocation
     backendImage: backendImage
+    benchmarkAlertEmail: benchmarkAlertEmail
   }
 }
 
@@ -100,6 +108,7 @@ output AZURE_GPT5_DEPLOYMENT string = resources.outputs.gpt5DeploymentName
 output AZURE_OPENAI_EMBEDDING_DEPLOYMENT string = resources.outputs.embeddingDeploymentName
 output AZURE_AI_FOUNDRY_RESOURCE string = resources.outputs.aiFoundryResourceName
 output AZURE_AI_PROJECT_NAME string = resources.outputs.aiProjectName
+output AZURE_AI_PROJECT_ID string = resources.outputs.aiProjectId
 output AZURE_AI_PROJECT_ENDPOINT string = resources.outputs.projectEndpoint
 output FOUNDRY_PROJECT_ENDPOINT string = resources.outputs.projectEndpoint
 output AZURE_SEARCH_ENDPOINT string = resources.outputs.searchEndpoint
@@ -120,3 +129,9 @@ output SERVICE_BACKEND_NAME string = resources.outputs.backendAppName
 output SERVICE_BACKEND_URI string = resources.outputs.backendAppUrl
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = resources.outputs.applicationInsightsConnectionString
 output APPLICATIONINSIGHTS_NAME string = resources.outputs.applicationInsightsName
+output AZURE_MANAGED_GRAFANA_NAME string = resources.outputs.grafanaName
+output AZURE_MANAGED_GRAFANA_ENDPOINT string = resources.outputs.grafanaEndpoint
+output AZURE_LOAD_TESTING_NAME string = resources.outputs.loadTestingName
+output AZURE_LOAD_TESTING_RESOURCE_ID string = resources.outputs.loadTestingResourceId
+output AZURE_BENCHMARK_ACTION_GROUP_RESOURCE_ID string = resources.outputs.benchmarkActionGroupResourceId
+output AZURE_BENCHMARK_WORKBOOK_RESOURCE_ID string = resources.outputs.benchmarkWorkbookResourceId

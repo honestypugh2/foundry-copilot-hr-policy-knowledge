@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "name": "azure-gpt-5-mini-global-standard-cache-aware",
+  "version": "2025-08-01",
+  "currency": "USD",
+  "effective_date": "2025-08-01",
+  "pricing_scope": "Azure public retail, East US, GPT-5 Mini 2025-08-07, Global Standard, non-batch, cache-aware",
+  "rates": [
+    {
+      "meter": "uncached_input_tokens_1m",
+      "unit": "1M tokens",
+      "unit_price": 0.25,
+      "quantity_metric": "uncached_input_tokens",
+      "quantity_per_unit": 1000000,
+      "provider_meter_name": "GPT 5 Mini Inpt Glbl 1M Tokens",
+      "provider_meter_id": "6d4c4956-4f18-535d-a63a-d56d74b1327b",
+      "source_url": "https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27eastus%27%20and%20meterName%20eq%20%27GPT%205%20Mini%20Inpt%20Glbl%201M%20Tokens%27",
+      "effective_date": "2025-08-01"
+    },
+    {
+      "meter": "cached_input_tokens_1m",
+      "unit": "1M tokens",
+      "unit_price": 0.025,
+      "quantity_metric": "cached_input_tokens",
+      "quantity_per_unit": 1000000,
+      "provider_meter_name": "GPT 5 Mini cchd Inpt Glbl 1M Tokens",
+      "provider_meter_id": "4b63ead2-cde6-5970-ae20-417a7dbbfc06",
+      "source_url": "https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27eastus%27%20and%20meterName%20eq%20%27GPT%205%20Mini%20cchd%20Inpt%20Glbl%201M%20Tokens%27",
+      "effective_date": "2025-08-01"
+    },
+    {
+      "meter": "output_tokens_1m",
+      "unit": "1M tokens",
+      "unit_price": 2.0,
+      "quantity_metric": "output_tokens",
+      "quantity_per_unit": 1000000,
+      "provider_meter_name": "GPT 5 Mini outpt Glbl 1M Tokens",
+      "provider_meter_id": "2d33aaf7-838f-5765-8a56-d7a7537125f5",
+      "source_url": "https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27eastus%27%20and%20meterName%20eq%20%27GPT%205%20Mini%20outpt%20Glbl%201M%20Tokens%27",
+      "effective_date": "2025-08-01"
+    }
+  ],
+  "assumptions": [
+    "Rates come from the Azure Retail Prices API product Azure OpenAI GPT5 and service Foundry Models, captured on 2026-08-10.",
+    "Applicability requires the verified gpt-5-mini 2025-08-07 GlobalStandard deployment.",
+    "The provider reports cached input as a subset of total input; uncached input is derived as total input minus cached input.",
+    "Costs use only service-reported total input, cached input, and output token quantities; missing or inconsistent quantities produce unavailable cost, never zero."
+  ],
+  "excluded_costs": [
+    "Azure AI Search fixed capacity and agentic retrieval reasoning.",
+    "Foundry Agent runtime, evaluator, monitoring, networking, and support charges.",
+    "Taxes, negotiated discounts, credits, reservations, and billing adjustments."
+  ]
+}

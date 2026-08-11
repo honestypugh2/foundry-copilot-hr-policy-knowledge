@@ -4,9 +4,8 @@ import { expect, test } from "@playwright/test";
 test("list, detail, compare, and Pareto workflow", async ({ page }, testInfo) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Choose the right retrieval path." })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Pattern B" })).toBeVisible();
-  await page.getByRole("button", { name: "Speed" }).click();
-  await expect(page.getByRole("heading", { name: "Pattern A" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No publishable recommendation" })).toBeVisible();
+  await expect(page.getByText("No compatible configuration passes all SLO and publication gates.")).toBeVisible();
   await expect(page.getByRole("link", { name: "synthetic-pattern-a", exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "synthetic-pattern-a", exact: true }).click();

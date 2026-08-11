@@ -1,5 +1,8 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
+requiredVersions:
+    extensions:
+        azure.ai.agents: ">=1.0.0-beta.4"
 name: foundry-copilot-hr-policy-knowledge
 metadata:
     template: foundry-copilot-hr-policy-knowledge
@@ -15,12 +18,66 @@ services:
     hr-policy-agent:
         project: src/hosted_agent
         host: azure.ai.agent
-        language: ""
-        config:
-            container:
-                resources:
-                    cpu: "0.5"
-                    memory: 1Gi
+        language: python
+        codeConfiguration:
+            runtime: python_3_13
+            entryPoint: server.py
+        kind: hosted
+        name: hr-policy-agent
+        description: HR policy assistant grounded in internal policy documents through Azure AI Search.
+        metadata:
+            tags:
+                - Agent Framework
+                - AI Agent Hosting
+                - Azure AI AgentServer
+                - Responses Protocol
+                - HR Knowledge
+        protocols:
+            - protocol: responses
+              version: 2.0.0
+        environmentVariables:
+            - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
+              value: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+            - name: RETRIEVAL_MODE
+              value: ${RETRIEVAL_MODE}
+            - name: USE_MANAGED_IDENTITY
+              value: "true"
+            - name: AZURE_SEARCH_ENDPOINT
+              value: ${AZURE_SEARCH_ENDPOINT}
+            - name: AZURE_SEARCH_INDEX_NAME
+              value: ${AZURE_SEARCH_INDEX_NAME}
+            - name: AZURE_SEARCH_KNOWLEDGE_SOURCE_NAME
+              value: ${AZURE_SEARCH_KNOWLEDGE_SOURCE_NAME}
+            - name: AZURE_SEARCH_KNOWLEDGE_BASE_NAME
+              value: ${AZURE_SEARCH_KNOWLEDGE_BASE_NAME}
+            - name: AZURE_SEARCH_KB_MODEL_DEPLOYMENT
+              value: ${AZURE_SEARCH_KB_MODEL_DEPLOYMENT}
+            - name: AZURE_SEARCH_KB_REASONING_EFFORT
+              value: ${AZURE_SEARCH_KB_REASONING_EFFORT}
+            - name: AZURE_SEARCH_KB_OUTPUT_MODE
+              value: ${AZURE_SEARCH_KB_OUTPUT_MODE}
+            - name: AZURE_SEARCH_MCP_API_VERSION
+              value: ${AZURE_SEARCH_MCP_API_VERSION}
+            - name: AI_SEARCH_QUERY_TYPE
+              value: semantic
+            - name: AI_SEARCH_SEMANTIC_CONFIG
+              value: hr-semantic-config
+            - name: AI_SEARCH_VECTOR_FIELD
+              value: policy_vector
+            - name: AI_SEARCH_CONTENT_FIELD
+              value: policy
+            - name: AI_SEARCH_TITLE_FIELD
+              value: parent_title
+            - name: AI_SEARCH_POLICY_NUMBER_FIELD
+              value: policy_number
+            - name: AI_SEARCH_BLOB_URL_FIELD
+              value: blob_url
+            - name: AI_SEARCH_TOP_K
+              value: "5"
+        container:
+            resources:
+                cpu: "0.5"
+                memory: 1Gi
 infra:
     provider: bicep
     path: infra

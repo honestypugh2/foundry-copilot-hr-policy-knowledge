@@ -1,0 +1,14 @@
+name: hr-policy-agent-curated-smoke
+agent:
+    name: hr-policy-agent
+    kind: hosted
+    version: "2"
+dataset:
+    local_uri: .foundry/datasets/hr-policy-agent-curated-v1.jsonl
+evaluators:
+    - name: hr-policy-agent-curated-smoke
+      version: "1"
+      local_uri: evaluators/hr-policy-agent-curated-smoke/rubric_dimensions.json
+options:
+    eval_model: gpt-5-mini
+max_samples: 15

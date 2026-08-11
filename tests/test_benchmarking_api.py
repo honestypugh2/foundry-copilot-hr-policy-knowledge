@@ -19,15 +19,41 @@ async def test_benchmarking_artifact_list_detail_and_comparison():
             "/api/benchmarking/comparisons",
             params={"baseline": "synthetic-pattern-a", "candidate": "synthetic-pattern-b"},
         )).json()
+        decision = (await client.get("/api/benchmarking/decisions")).json()
 
-    assert capabilities["capabilities"][0]["status"] == "available"
-    assert len(listing["items"]) == 3
+    assert len(capabilities["capabilities"]) == 16
+    decision_capability = next(
+        item
+        for item in capabilities["capabilities"]
+        if item["capability_id"] == "normalized-decision-contracts"
+    )
+    assert decision_capability["classification"] == "new_gap_coverage"
+    assert decision_capability["status"] == "available"
+    assert decision_capability["artifact_count"] == len(listing["items"])
+    telemetry_capability = next(
+        item
+        for item in capabilities["capabilities"]
+        if item["capability_id"] == "app-insights-agent-details"
+    )
+    assert telemetry_capability["authoritative_system"] == "Application Insights"
+    assert telemetry_capability["deep_link_type"] == "application_insights"
+    assert {
+        "synthetic-pattern-a",
+        "synthetic-pattern-b",
+        "synthetic-direct-search",
+    }.issubset({item["experiment_id"] for item in listing["items"]})
     assert detail.status_code == 200
     assert generated_detail.status_code == 200
     assert generated_detail.json()["aggregate"]["provenance"]["fixture_mode"] is True
     assert comparison["compatible_scope"] is True
     assert comparison["deltas"]["quality"]["absolute"] > 0
     assert comparison["deltas"]["estimated_variable_cost"]["absolute"] is None
+    assert decision["selected_scope"] is None
+    assert len(decision["available_scopes"]) > 1
+    assert set(decision["frontier_experiment_ids"]) == set()
+    assert decision["recommended_experiment_id"] is None
+    assert "Multiple comparable scopes are available; select one explicitly." in decision["blockers"]
+    assert decision["evidence"] == []
 
 
 async def test_benchmarking_artifact_ids_fail_closed():

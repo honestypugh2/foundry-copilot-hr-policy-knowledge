@@ -70,6 +70,7 @@ class AgentAnswerAdapter:
         usage = payload.get("usage") or {}
         for source_key, metric_key in (
             ("input_tokens", "input_tokens"),
+            ("cached_input_tokens", "cached_input_tokens"),
             ("output_tokens", "output_tokens"),
             ("reasoning_tokens", "reasoning_tokens"),
         ):
@@ -78,13 +79,31 @@ class AgentAnswerAdapter:
                 metrics[metric_key] = MetricValue(
                     value=int(value), unit="tokens", measurement_type="service_reported"
                 )
+        timings = payload.get("timings") or {}
+        for metric_key in ("ttft_ms", "ttlt_ms", "stream_duration_ms"):
+            value = timings.get(metric_key)
+            if (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and value >= 0
+            ):
+                metrics[metric_key] = MetricValue(
+                    value=float(value), unit="ms", measurement_type="measured"
+                )
         return InvocationResult(
+            status=payload.get("status", "success"),
+            error_classification=payload.get("error_classification"),
             answer=str(payload.get("answer") or ""),
             references=references,
             metrics=metrics,
             trace_id=payload.get("trace_id"),
             response_id=payload.get("response_id"),
             conversation_id=payload.get("conversation_id"),
+            raw_metadata={
+                "stream_timing_boundary": payload.get("stream_timing_boundary")
+            }
+            if payload.get("stream_timing_boundary")
+            else {},
         )
 
 
@@ -107,6 +126,21 @@ class HostedAgentAdapter(AgentAnswerAdapter):
             answer,
             pattern="Hosted",
             invocation_path="agent_framework_hosted",
+        )
+
+    @property
+    def pattern(self) -> Literal["Hosted"]:
+        return "Hosted"
+
+
+class AgentFrameworkAdapter(AgentAnswerAdapter):
+    """Measure the local Agent Framework path for one declared RAG mode."""
+
+    def __init__(self, answer: AgentCallable, retrieval_mode: str) -> None:
+        super().__init__(
+            answer,
+            pattern="Hosted",
+            invocation_path=f"agent_framework_local:{retrieval_mode}",
         )
 
     @property

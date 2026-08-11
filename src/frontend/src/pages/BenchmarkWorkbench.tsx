@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams, useSearch } from "wouter";
 import { AlertTriangle, ArrowRight, CheckCircle2, ChevronRight, ExternalLink, Gauge, ShieldCheck, Sparkles, Timer, Trophy } from "lucide-react";
-import { benchmarkApi, type ComparisonResponse, type ExperimentSummary, type PatternSummaryResponse } from "../services/benchmarking";
+import { benchmarkApi, type ComparisonResponse, type DecisionResponse, type ExperimentSummary, type PatternSummaryResponse } from "../services/benchmarking";
 
 const formatMs = (value: number | null) => value === null ? "Not measured" : `${Math.round(value)} ms`;
 const formatRate = (value: number | null) => value === null ? "Not measured" : `${(value * 100).toFixed(1)}%`;
@@ -11,6 +11,17 @@ function useExperiments() {
   const [error, setError] = useState("");
   useEffect(() => void benchmarkApi.experiments().then((data) => setItems(data.items)).catch((reason: Error) => setError(reason.message)), []);
   return { items, error };
+}
+
+function useDecision(goal: "quality" | "balanced" | "speed") {
+  const [decision, setDecision] = useState<DecisionResponse | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    setDecision(null);
+    setError("");
+    void benchmarkApi.decision(goal).then(setDecision).catch((reason: Error) => setError(reason.message));
+  }, [goal]);
+  return { decision, error };
 }
 
 function State({ message }: { message: string }) { return <div className="state"><AlertTriangle size={18} />{message}</div>; }
@@ -24,24 +35,19 @@ function ExperimentTable({ items }: { items: ExperimentSummary[] }) {
 export function Overview() {
   const { items, error } = useExperiments();
   const [goal, setGoal] = useState<"quality" | "balanced" | "speed">("quality");
-  if (error) return <State message={error} />;
-  const ranked = items.filter((item) => item.quality !== null && item.latency_p95_ms !== null && !item.sample_warning);
-  const recommended = [...ranked].sort((left, right) => {
-    if (goal === "quality") return (right.quality ?? 0) - (left.quality ?? 0);
-    if (goal === "speed") return (left.latency_p95_ms ?? Infinity) - (right.latency_p95_ms ?? Infinity);
-    const leftScore = (left.quality ?? 0) * left.success_rate / Math.log10((left.latency_p95_ms ?? 0) + 10);
-    const rightScore = (right.quality ?? 0) * right.success_rate / Math.log10((right.latency_p95_ms ?? 0) + 10);
-    return rightScore - leftScore;
-  })[0];
-  const alternative = ranked.find((item) => item.experiment_id !== recommended?.experiment_id);
+  const { decision, error: decisionError } = useDecision(goal);
+  if (error || decisionError) return <State message={error || decisionError} />;
+  const recommended = items.find((item) => item.experiment_id === decision?.recommended_experiment_id);
+  const alternativeId = decision?.evidence.find((item) => item.experiment_id !== recommended?.experiment_id && item.qualified)?.experiment_id;
+  const alternative = items.find((item) => item.experiment_id === alternativeId);
   const qualityDelta = recommended && alternative && recommended.quality !== null && alternative.quality !== null ? recommended.quality - alternative.quality : null;
   const speedRatio = recommended && alternative && recommended.latency_p95_ms && alternative.latency_p95_ms ? recommended.latency_p95_ms / alternative.latency_p95_ms : null;
   const synthetic = items.some((item) => item.provenance.synthetic === true || item.git_commit === "synthetic");
-  const decisionText = goal === "quality" ? "Best answer quality" : goal === "speed" ? "Fastest trusted response" : "Best quality-to-latency balance";
+  const decisionText = decision?.selection_method ?? "Evaluating compatible evidence";
 
   return <section className="page overview-page"><header className="page-head overview-head"><div><p className="eyebrow">Architecture decision intelligence</p><h1>Choose the right retrieval path.</h1><p className="lede">Turn controlled benchmark evidence into a clear architecture decision, with every tradeoff visible.</p></div><div className="evidence-summary"><span className="live-dot" /><div><strong>{items.length} runs analyzed</strong><small>{synthetic ? "Synthetic evidence · not production telemetry" : "Artifact-backed evidence"}</small></div></div></header>
-    {recommended ? <><section className="decision-panel" aria-labelledby="recommendation-heading"><div className="decision-main"><div className="decision-kicker"><Sparkles size={16} /> Current recommendation</div><h2 id="recommendation-heading">Pattern {recommended.pattern}</h2><p>{decisionText} for the evidence currently available.</p><div className="decision-actions"><Link className="primary-action" href={`/experiments/${recommended.experiment_id}`}>Inspect evidence <ArrowRight size={16} /></Link><Link className="secondary-action" href={`/compare?baseline=${alternative?.experiment_id ?? recommended.experiment_id}&candidate=${recommended.experiment_id}`}>Compare paths</Link></div></div><div className="decision-controls"><span>Optimize recommendation for</span><div className="segment" role="group" aria-label="Recommendation goal">{(["quality", "balanced", "speed"] as const).map((option) => <button key={option} className={goal === option ? "active" : ""} aria-pressed={goal === option} onClick={() => setGoal(option)}>{option === "quality" ? <Trophy size={15} /> : option === "balanced" ? <Gauge size={15} /> : <Timer size={15} />}{option}</button>)}</div></div><div className="decision-metrics"><div><span>Quality</span><strong>{formatRate(recommended.quality)}</strong><div className="meter"><i style={{ width: `${(recommended.quality ?? 0) * 100}%` }} /></div>{qualityDelta !== null && <small>{qualityDelta >= 0 ? "+" : ""}{(qualityDelta * 100).toFixed(0)} pts vs alternative</small>}</div><div><span>p95 latency</span><strong>{formatMs(recommended.latency_p95_ms)}</strong><div className="meter latency"><i style={{ width: `${Math.min(100, ((recommended.latency_p95_ms ?? 0) / 750) * 100)}%` }} /></div>{speedRatio !== null && <small>{speedRatio > 1 ? `${speedRatio.toFixed(1)}× slower` : `${(1 / speedRatio).toFixed(1)}× faster`} than alternative</small>}</div><div><span>Successful answers</span><strong>{formatRate(recommended.success_rate)}</strong><small>{recommended.count} measured samples</small></div></div></section>
-    <section className="insight-strip" aria-label="Decision notes"><div><strong>What this means</strong><p>{goal === "quality" ? `Pattern ${recommended.pattern} produces the strongest graded answers. Choose it when answer quality outweighs response time.` : goal === "speed" ? `Pattern ${recommended.pattern} returns trusted answers fastest. Choose it for latency-sensitive employee experiences.` : `Pattern ${recommended.pattern} currently offers the strongest combined quality, reliability, and latency score.`}</p></div><div><strong>Evidence boundary</strong><p>{synthetic ? "Results are synthetic and suitable for architecture comparison, not production claims." : "Results come from normalized controlled-run artifacts."}</p></div><div><strong>Next decision</strong><p>{alternative ? `Validate Pattern ${recommended.pattern} and Pattern ${alternative.pattern} with the same production-like question set.` : "Run another architecture pattern against this same dataset."}</p></div></section></> : <section className="empty-decision"><div><Sparkles size={22} /><h2>No decision evidence yet</h2><p>Run at least one benchmark with quality and latency measurements to generate a recommendation.</p><Link className="primary-action" href="/patterns">Review benchmark paths <ArrowRight size={16} /></Link></div></section>}
+    {recommended ? <><section className="decision-panel" aria-labelledby="recommendation-heading"><div className="decision-main"><div className="decision-kicker"><Sparkles size={16} /> Current recommendation</div><h2 id="recommendation-heading">Pattern {recommended.pattern}</h2><p>{decisionText}.</p><div className="decision-actions"><Link className="primary-action" href={`/experiments/${recommended.experiment_id}`}>Inspect evidence <ArrowRight size={16} /></Link><Link className="secondary-action" href={`/compare?baseline=${alternative?.experiment_id ?? recommended.experiment_id}&candidate=${recommended.experiment_id}`}>Compare paths</Link></div></div><div className="decision-controls"><span>Optimize recommendation for</span><div className="segment" role="group" aria-label="Recommendation goal">{(["quality", "balanced", "speed"] as const).map((option) => <button key={option} className={goal === option ? "active" : ""} aria-pressed={goal === option} onClick={() => setGoal(option)}>{option === "quality" ? <Trophy size={15} /> : option === "balanced" ? <Gauge size={15} /> : <Timer size={15} />}{option}</button>)}</div></div><div className="decision-metrics"><div><span>Quality</span><strong>{formatRate(recommended.quality)}</strong><div className="meter"><i style={{ width: `${(recommended.quality ?? 0) * 100}%` }} /></div>{qualityDelta !== null && <small>{qualityDelta >= 0 ? "+" : ""}{(qualityDelta * 100).toFixed(0)} pts vs alternative</small>}</div><div><span>p95 latency</span><strong>{formatMs(recommended.latency_p95_ms)}</strong><div className="meter latency"><i style={{ width: `${Math.min(100, ((recommended.latency_p95_ms ?? 0) / 750) * 100)}%` }} /></div>{speedRatio !== null && <small>{speedRatio > 1 ? `${speedRatio.toFixed(1)}× slower` : `${(1 / speedRatio).toFixed(1)}× faster`} than alternative</small>}</div><div><span>Successful answers</span><strong>{formatRate(recommended.success_rate)}</strong><small>{recommended.count} measured samples</small></div></div></section>
+    <section className="insight-strip" aria-label="Decision notes"><div><strong>What this means</strong><p>Pattern {recommended.pattern} passed compatibility, SLO, provenance, and Pareto gates for this objective.</p></div><div><strong>Evidence boundary</strong><p>{synthetic ? "Results are synthetic and cannot support a published recommendation." : "Results come from normalized controlled-run artifacts."}</p></div><div><strong>Next decision</strong><p>{alternative ? `Validate Pattern ${recommended.pattern} and Pattern ${alternative.pattern} with the same production-like question set.` : "Run another architecture pattern against this same dataset."}</p></div></section></> : <section className="empty-decision"><div><Sparkles size={22} /><h2>{items.length ? "No publishable recommendation" : "No decision evidence yet"}</h2><p>{items.length ? decision?.blockers.join(" ") || "Evaluating compatibility and SLO gates." : "Run at least two compatible benchmarks with complete quality, security, latency, reliability, and cost evidence."}</p><Link className="primary-action" href="/pareto">Inspect decision gates <ArrowRight size={16} /></Link></div></section>}
     <div className="section-title"><div><p className="eyebrow">Evidence ledger</p><h3>Every run, side by side</h3></div><Link href="/experiments">Explore all experiments <ArrowRight size={15} /></Link></div><ExperimentTable items={items.slice(0, 6)} /></section>;
 }
 
@@ -67,7 +73,7 @@ export function Patterns() {
   return <section className="page"><header className="page-head"><div><p className="eyebrow">Execution paths</p><h2>Pattern evidence</h2></div></header><div className="pattern-grid">{items.map((item) => <article key={item.pattern}><div className="pattern-label">{item.pattern}</div><h3>{item.experiment_count} experiments</h3><p>{item.automation_boundary}</p><small>{item.telemetry_boundary}</small></article>)}</div></section>;
 }
 
-export function Pareto() { const { items, error } = useExperiments(); if (error) return <State message={error} />; const points = items.filter((item) => item.latency_p95_ms !== null && item.quality !== null); return <section className="page"><header className="page-head"><div><p className="eyebrow">Quality versus latency</p><h2>Pareto and SLO</h2></div></header><div className="plot" aria-label="Quality and latency plot">{points.map((item) => <Link title={`${item.experiment_id}: ${formatMs(item.latency_p95_ms)}, ${formatRate(item.quality)}`} href={`/experiments/${item.experiment_id}`} className="plot-point" key={item.experiment_id} style={{ left: `${Math.min(90, 8 + (item.latency_p95_ms ?? 0) / 3)}%`, bottom: `${Math.min(90, 8 + (item.quality ?? 0) * 80)}%` }}><span>{item.pattern}</span></Link>)}<span className="x-label">p95 latency →</span><span className="y-label">quality →</span></div></section>; }
+export function Pareto() { const { items, error } = useExperiments(); const { decision, error: decisionError } = useDecision("balanced"); if (error || decisionError) return <State message={error || decisionError} />; const evidenceIds = new Set(decision?.evidence.map((item) => item.experiment_id) ?? []); const points = items.filter((item) => evidenceIds.has(item.experiment_id) && item.latency_p95_ms !== null && item.quality !== null); return <section className="page"><header className="page-head"><div><p className="eyebrow">Quality versus latency</p><h2>Pareto and SLO</h2></div></header>{decision?.blockers.map((blocker) => <State key={blocker} message={blocker} />)}<div className="plot" aria-label="Quality and latency plot">{points.map((item) => <Link title={`${item.experiment_id}: ${formatMs(item.latency_p95_ms)}, ${formatRate(item.quality)}`} href={`/experiments/${item.experiment_id}`} className={decision?.frontier_experiment_ids.includes(item.experiment_id) ? "plot-point frontier" : "plot-point excluded"} key={item.experiment_id} style={{ left: `${Math.min(90, 8 + (item.latency_p95_ms ?? 0) / 3)}%`, bottom: `${Math.min(90, 8 + (item.quality ?? 0) * 80)}%` }}><span>{item.pattern}</span></Link>)}<span className="x-label">p95 latency →</span><span className="y-label">quality →</span></div><div className="table-wrap"><table><thead><tr><th>Experiment</th><th>SLO</th><th>Pareto</th><th>Publication</th></tr></thead><tbody>{decision?.evidence.map((item) => <tr key={item.experiment_id}><td>{item.experiment_id}</td><td>{item.qualified ? "Pass" : item.qualification_failures?.join("; ") || "Fail"}</td><td>{item.on_pareto_frontier ? "Frontier" : "Excluded"}</td><td>{item.publication_ready ? "Ready" : item.publication_blockers?.join("; ") || "Blocked"}</td></tr>)}</tbody></table></div></section>; }
 
 export function Operations() {
   const resources = [
@@ -75,6 +81,8 @@ export function Operations() {
     ["Azure AI Search", "search"],
     ["Foundry", "foundry"],
     ["Load Testing", "load_testing"],
+    ["Azure Managed Grafana", "grafana"],
+    ["Azure Cost Management", "cost_management"],
   ] as const;
   const [links, setLinks] = useState<Record<string, { status: string; url?: string }>>({});
   useEffect(() => {

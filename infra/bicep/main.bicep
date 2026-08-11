@@ -53,6 +53,9 @@ param searchSku string
 @description('Principal ID for RBAC role assignments')
 param principalId string
 
+@description('Optional managed identity principal ID for the deployed Foundry Hosted Agent')
+param hostedAgentPrincipalId string = ''
+
 @description('Optional Entra app registration (client) ID used to protect the backend Container App with Microsoft Entra authentication (Container Apps built-in auth). Leave empty for public ingress (demo).')
 param backendAuthClientId string = ''
 
@@ -62,10 +65,16 @@ param searchLocation string = ''
 @description('Full backend container image reference (ACR). When empty, a placeholder image is used and azd updates it on deploy.')
 param backendImage string = ''
 
+@description('Optional email receiver for benchmark alerts')
+param benchmarkAlertEmail string = ''
+
 // ---------- Naming ----------
 var abbrs = loadJsonContent('./abbreviations.json')
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var resourceToken = toLower('${resourcePrefix}-${uniqueSuffix}')
+var loadTestingName = 'lt-${resourceToken}'
+var azurePortalResourceBase = 'https://portal.azure.com/#@${tenant().tenantId}/resource'
+var costManagementUrl = 'https://portal.azure.com/#view/Microsoft_Azure_CostManagement/Menu/~/costanalysis/scope/${uriComponent(subscription().id)}'
 
 // ============================================================================
 // 1. Microsoft Foundry (AIServices) — unified cognitive services account
@@ -251,6 +260,53 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
+resource grafana 'Microsoft.Dashboard/grafana@2024-10-01' = {
+  name: 'amg-${uniqueSuffix}'
+  location: location
+  identity: { type: 'SystemAssigned' }
+  sku: { name: 'Standard' }
+  properties: {
+    apiKey: 'Disabled'
+    deterministicOutboundIP: 'Disabled'
+    publicNetworkAccess: 'Enabled'
+    zoneRedundancy: 'Disabled'
+  }
+}
+
+module loadTesting 'br/public:avm/res/load-test-service/load-test:0.4.0' = {
+  params: {
+    name: loadTestingName
+    enableTelemetry: false
+    loadTestDescription: 'Non-production load testing for the HR policy benchmark.'
+    location: location
+    managedIdentities: {
+      systemAssigned: true
+    }
+  }
+}
+
+var monitoringReaderRoleId = '43d0d8ad-25c7-4714-9337-8ba259a9fe05'
+resource grafanaMonitoringReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(logAnalytics.id, grafana.id, monitoringReaderRoleId)
+  scope: logAnalytics
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', monitoringReaderRoleId)
+    principalId: grafana.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+var grafanaAdminRoleId = '22926164-76b3-42b3-bc55-97df8dab3e41'
+resource userGrafanaAdmin 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId)) {
+  name: guid(grafana.id, principalId, grafanaAdminRoleId)
+  scope: grafana
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', grafanaAdminRoleId)
+    principalId: principalId
+    principalType: 'User'
+  }
+}
+
 resource searchDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'search-operation-logs'
   scope: search
@@ -262,6 +318,16 @@ resource searchDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
         enabled: true
       }
     ]
+  }
+}
+
+module benchmarkObservability './benchmark-observability.bicep' = {
+  params: {
+    location: location
+    resourceToken: resourceToken
+    workspaceResourceId: logAnalytics.id
+    applicationInsightsResourceId: appInsights.id
+    alertEmail: benchmarkAlertEmail
   }
 }
 
@@ -378,12 +444,18 @@ resource backendApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT', value: docIntelligence.properties.endpoint }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
             { name: 'ENABLE_TRACING', value: 'true' }
+            { name: 'BENCHMARK_LINK_APPLICATION_INSIGHTS', value: '${azurePortalResourceBase}${appInsights.id}/overview' }
+            { name: 'BENCHMARK_LINK_GRAFANA', value: '${azurePortalResourceBase}${grafana.id}/overview' }
+            { name: 'BENCHMARK_LINK_FOUNDRY', value: '${azurePortalResourceBase}${aiProject.id}/overview' }
+            { name: 'BENCHMARK_LINK_SEARCH', value: '${azurePortalResourceBase}${search.id}/overview' }
+            { name: 'BENCHMARK_LINK_LOAD_TESTING', value: '${azurePortalResourceBase}${resourceId('Microsoft.LoadTestService/loadTests', loadTestingName)}/overview' }
+            { name: 'BENCHMARK_LINK_COST_MANAGEMENT', value: costManagementUrl }
             { name: 'PORT', value: '8000' }
           ]
         }
       ]
       scale: {
-        minReplicas: 0
+        minReplicas: 1
         maxReplicas: 3
       }
     }
@@ -485,8 +557,7 @@ resource storageBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
 }
 
 // Search Index Data Reader — lets the Foundry PROJECT managed identity query the
-// index. Required for Pattern B (prompt agent + MCP), Pattern A2 (Foundry IQ),
-// and the Hosted Agent — the Foundry side reads Search under the project identity.
+// index. Required for Pattern B (prompt agent + MCP) and Pattern A2 (Foundry IQ).
 var searchIndexDataReaderRoleId = '1407120a-92aa-4202-b7e9-c0e197c71c8f'
 resource projectSearchReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(search.id, aiProject.id, searchIndexDataReaderRoleId)
@@ -495,6 +566,15 @@ resource projectSearchReaderRole 'Microsoft.Authorization/roleAssignments@2022-0
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', searchIndexDataReaderRoleId)
     principalId: aiProject.identity.principalId
     principalType: 'ServicePrincipal'
+  }
+}
+
+module hostedAgentRbac './hosted-agent-rbac.bicep' = if (!empty(hostedAgentPrincipalId)) {
+  name: 'hosted-agent-rbac'
+  params: {
+    searchName: search.name
+    applicationInsightsName: appInsights.name
+    hostedAgentPrincipalId: hostedAgentPrincipalId
   }
 }
 
@@ -632,7 +712,8 @@ output gpt5DeploymentName string = gpt5DeploymentName
 output embeddingDeploymentName string = embeddingDeploymentName
 output aiFoundryResourceName string = aiServices.name
 output aiProjectName string = aiProject.name
-output projectEndpoint string = uri(aiServices.properties.endpoint, 'api/projects/${aiProject.name}')
+output aiProjectId string = aiProject.id
+output projectEndpoint string = aiProject.properties.endpoints['AI Foundry API']
 output searchEndpoint string = 'https://${search.name}.search.windows.net'
 output searchName string = search.name
 output knowledgeSourceName string = searchKnowledgeSourceName
@@ -650,3 +731,9 @@ output backendAppName string = backendApp.name
 output backendAppUrl string = 'https://${backendApp.properties.configuration.ingress.fqdn}'
 output applicationInsightsConnectionString string = appInsights.properties.ConnectionString
 output applicationInsightsName string = appInsights.name
+output grafanaName string = grafana.name
+output grafanaEndpoint string = grafana.properties.endpoint
+output loadTestingName string = loadTesting.outputs.name
+output loadTestingResourceId string = loadTesting.outputs.resourceId
+output benchmarkActionGroupResourceId string = benchmarkObservability.outputs.actionGroupResourceId
+output benchmarkWorkbookResourceId string = benchmarkObservability.outputs.workbookResourceId

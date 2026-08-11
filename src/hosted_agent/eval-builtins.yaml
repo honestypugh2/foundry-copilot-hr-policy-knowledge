@@ -1,0 +1,17 @@
+name: hr-policy-agent-curated-builtins-v1
+agent:
+    name: hr-policy-agent
+    kind: hosted
+    version: "2"
+dataset:
+    local_uri: .foundry/datasets/hr-policy-agent-curated-v1.jsonl
+evaluators:
+    - builtin.relevance
+    - builtin.task_adherence
+    - builtin.intent_resolution
+    - name: hr-policy-agent-curated-builtins-v1
+      version: "1"
+      local_uri: evaluators/hr-policy-agent-curated-builtins-v1/rubric_dimensions.json
+options:
+    eval_model: gpt-5-mini
+max_samples: 15

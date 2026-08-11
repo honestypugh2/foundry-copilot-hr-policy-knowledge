@@ -3,6 +3,7 @@
 from src.observability.tracing import (
     enable_tracing,
     disable_tracing,
+    flush_tracing,
     is_tracing_enabled,
 )
 from src.observability.benchmark_correlation import (
@@ -15,5 +16,6 @@ __all__ = [
     "benchmark_correlation_context",
     "enable_tracing",
     "disable_tracing",
+    "flush_tracing",
     "is_tracing_enabled",
 ]

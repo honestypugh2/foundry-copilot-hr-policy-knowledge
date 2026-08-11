@@ -12,6 +12,7 @@ from src.search.agentic_context_provider import (
     RETRIEVAL_MODE_TOOL,
     build_search_context_provider,
     is_context_mode,
+    normalize_retrieval_mode,
 )
 
 _HAS_PKG = importlib.util.find_spec("agent_framework_azure_ai_search") is not None
@@ -30,6 +31,15 @@ def test_is_context_mode():
     assert is_context_mode("semantic")
     assert not is_context_mode(RETRIEVAL_MODE_TOOL)
     assert not is_context_mode(None)
+
+
+def test_retrieval_mode_normalization_is_strict():
+    assert normalize_retrieval_mode(None) == RETRIEVAL_MODE_TOOL
+    assert normalize_retrieval_mode(" semantic ") == RETRIEVAL_MODE_CONTEXT_SEMANTIC
+    assert normalize_retrieval_mode("agentic") == RETRIEVAL_MODE_CONTEXT_AGENTIC
+
+    with pytest.raises(ValueError, match="Unsupported RETRIEVAL_MODE"):
+        normalize_retrieval_mode("typo")
 
 
 def test_build_semantic_provider():

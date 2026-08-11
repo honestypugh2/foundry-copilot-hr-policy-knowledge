@@ -2,7 +2,7 @@
 
 import os
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock
 
 # Must set env vars before importing app
 os.environ.setdefault("AZURE_AI_SEARCH_ENDPOINT", "https://test.search.windows.net")
@@ -93,6 +93,62 @@ async def test_chat_empty_question(client: AsyncClient, monkeypatch):
         })
         # The API should still respond (orchestrator handles empty queries)
         assert resp.status_code == 200
+
+
+@pytest.mark.anyio
+async def test_pattern_a_chat_normalizes_search_metadata(client: AsyncClient, monkeypatch):
+    monkeypatch.setenv("ORCHESTRATOR_PATTERN", "A")
+    fake_hit = {
+        "policy_number": "50010",
+        "parentTitle": "Types of Leave: Paid Time Off",
+        "content": "Employees accrue paid time off each pay period.",
+    }
+
+    with patch(
+        "src.search.integrated_vectorization_search.IntegratedVectorizationSearchService"
+    ) as search_service:
+        search_service.return_value.search.return_value = [fake_hit]
+        resp = await client.post(
+            "/api/chat",
+            json={"message": "What is the PTO policy?", "conversation_history": []},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["citations"] == [
+        {
+            "policy_number": "50010",
+            "title": "Types of Leave: Paid Time Off",
+        }
+    ]
+    assert data["policy_references"] == [
+        "Policy 50010 - Types of Leave: Paid Time Off"
+    ]
+    assert "Employees accrue paid time off" in data["answer"]
+    assert data["confidence"] == pytest.approx(0.7)
+
+
+@pytest.mark.anyio
+async def test_pattern_a_chat_refuses_when_search_has_no_hits(
+    client: AsyncClient, monkeypatch
+):
+    monkeypatch.setenv("ORCHESTRATOR_PATTERN", "A")
+
+    with patch(
+        "src.search.integrated_vectorization_search.IntegratedVectorizationSearchService"
+    ) as search_service:
+        search_service.return_value.search.return_value = []
+        resp = await client.post(
+            "/api/chat",
+            json={"message": "What is the parking policy?", "conversation_history": []},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "could not find a relevant HR policy" in data["answer"]
+    assert data["citations"] == []
+    assert data["policy_references"] == []
+    assert data["confidence"] == pytest.approx(0.0)
 
 
 @pytest.mark.anyio

@@ -5,7 +5,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from opentelemetry import trace
+
 from src.benchmarking.adapters.base import BenchmarkAdapter
+from src.benchmarking.costing import calculate_token_cost
 from src.benchmarking.evaluation import retrieval_metrics
 from src.benchmarking.models import (
     AvailabilityReason,
@@ -14,8 +17,11 @@ from src.benchmarking.models import (
     CostEstimate,
     ExperimentManifest,
     MetricValue,
+    PricingProfile,
 )
 from src.observability import benchmark_correlation_context
+
+_TRACER = trace.get_tracer(__name__)
 
 
 def _unavailable(unit: str, reason: AvailabilityReason) -> MetricValue:
@@ -27,15 +33,34 @@ def _unavailable(unit: str, reason: AvailabilityReason) -> MetricValue:
 
 
 class BenchmarkRunner:
-    def __init__(self, manifest: ExperimentManifest, adapter: BenchmarkAdapter) -> None:
+    def __init__(
+        self,
+        manifest: ExperimentManifest,
+        adapter: BenchmarkAdapter,
+        pricing_profile: PricingProfile | None = None,
+    ) -> None:
+        if pricing_profile is not None:
+            profile_id = f"{pricing_profile.name}:{pricing_profile.version}"
+            if manifest.pricing_profile != profile_id:
+                raise ValueError(
+                    "Manifest pricing_profile must match the loaded profile "
+                    f"{profile_id!r}"
+                )
+        elif manifest.pricing_profile is not None:
+            raise ValueError(
+                "Manifest pricing_profile requires a loaded PricingProfile"
+            )
         self._manifest = manifest
         self._adapter = adapter
+        self._pricing_profile = pricing_profile
 
     async def run(self, cases: list[BenchmarkCase]) -> list[CaseResult]:
         results: list[CaseResult] = []
         run_id = str(uuid4())
         for case in cases:
+            session_id = str(uuid4())
             started_at = datetime.now(timezone.utc)
+            benchmark_trace_id: str | None = None
             configuration_id = (
                 f"{self._manifest.pattern}:{self._manifest.retrieval_mode}:"
                 f"top{self._manifest.top}"
@@ -48,11 +73,23 @@ class BenchmarkRunner:
                         "configuration.id": configuration_id,
                         "run.id": run_id,
                         "case.id": case.case_id,
+                        "session.id": session_id,
                     }
                 ):
-                    invocation = await self._adapter.invoke(
-                        case.query, self._manifest.top
-                    )
+                    with _TRACER.start_as_current_span("benchmark.case") as span:
+                        span.set_attribute(
+                            "app.benchmark.invocation.path",
+                            self._adapter.invocation_path,
+                        )
+                        invocation = await self._adapter.invoke(
+                            case.query, self._manifest.top
+                        )
+                        span_context = span.get_span_context()
+                        benchmark_trace_id = (
+                            format(span_context.trace_id, "032x")
+                            if span_context.is_valid
+                            else None
+                        )
             except Exception as exc:
                 elapsed_ms = (datetime.now(timezone.utc) - started_at).total_seconds() * 1000
                 from src.benchmarking.adapters.base import InvocationResult
@@ -81,6 +118,14 @@ class BenchmarkRunner:
             metrics = invocation.metrics
             not_applicable = AvailabilityReason.NOT_APPLICABLE
             not_exposed = AvailabilityReason.NOT_EXPOSED
+            estimated_variable_cost = (
+                calculate_token_cost(self._pricing_profile, metrics)
+                if self._pricing_profile is not None
+                else CostEstimate(
+                    measurement_type="unavailable",
+                    unavailable_reason=AvailabilityReason.NOT_CONFIGURED,
+                )
+            )
             results.append(
                 CaseResult(
                     experiment_id=self._manifest.experiment_id,
@@ -106,6 +151,9 @@ class BenchmarkRunner:
                     input_tokens=metrics.get(
                         "input_tokens", _unavailable("tokens", not_exposed)
                     ),
+                    cached_input_tokens=metrics.get(
+                        "cached_input_tokens", _unavailable("tokens", not_exposed)
+                    ),
                     output_tokens=metrics.get(
                         "output_tokens", _unavailable("tokens", not_exposed)
                     ),
@@ -128,13 +176,10 @@ class BenchmarkRunner:
                         **invocation.local_metrics,
                         **ranked_metrics,
                     },
-                    estimated_variable_cost=CostEstimate(
-                        measurement_type="unavailable",
-                        unavailable_reason=AvailabilityReason.UNKNOWN,
-                    ),
-                    trace_id=invocation.trace_id,
+                    estimated_variable_cost=estimated_variable_cost,
+                    trace_id=invocation.trace_id or benchmark_trace_id,
                     response_id=invocation.response_id,
-                    conversation_id=invocation.conversation_id,
+                    conversation_id=invocation.conversation_id or session_id,
                 )
             )
         return results

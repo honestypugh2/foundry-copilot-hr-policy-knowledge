@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "name": "azure-gpt-5-mini-global-standard",
+  "version": "2025-08-01",
+  "currency": "USD",
+  "effective_date": "2025-08-01",
+  "pricing_scope": "Azure public retail, East US, GPT-5 Mini 2025-08-07, Global Standard, non-batch",
+  "rates": [
+    {
+      "meter": "input_tokens_1m",
+      "unit": "1M tokens",
+      "unit_price": 0.25,
+      "quantity_metric": "input_tokens",
+      "quantity_per_unit": 1000000,
+      "provider_meter_name": "GPT 5 Mini Inpt Glbl 1M Tokens",
+      "provider_meter_id": "6d4c4956-4f18-535d-a63a-d56d74b1327b",
+      "source_url": "https://prices.azure.com/api/retail/prices?$filter=contains(skuName,%27GPT%205%20Mini%27)",
+      "effective_date": "2025-08-01"
+    },
+    {
+      "meter": "output_tokens_1m",
+      "unit": "1M tokens",
+      "unit_price": 2.0,
+      "quantity_metric": "output_tokens",
+      "quantity_per_unit": 1000000,
+      "provider_meter_name": "GPT 5 Mini outpt Glbl 1M Tokens",
+      "provider_meter_id": "2d33aaf7-838f-5765-8a56-d7a7537125f5",
+      "source_url": "https://prices.azure.com/api/retail/prices?$filter=contains(skuName,%27GPT%205%20Mini%27)",
+      "effective_date": "2025-08-01"
+    }
+  ],
+  "assumptions": [
+    "Rates come from the Azure Retail Prices API product Azure OpenAI GPT5 and service Foundry Models.",
+    "Applicability requires a gpt-5-mini 2025-08-07 GlobalStandard deployment; repository IaC and captured runtime model metadata provide that evidence, while a fresh ARM read was blocked by Azure CLI identity drift on 2026-08-10.",
+    "Costs must be calculated from service-reported token quantities divided by 1000000; unavailable quantities produce unavailable cost, never zero."
+  ],
+  "excluded_costs": [
+    "Cached-input discounts unless cached token quantities are separately reported.",
+    "Azure AI Search fixed capacity and agentic retrieval reasoning.",
+    "Foundry Agent runtime, evaluator, monitoring, networking, and support charges.",
+    "Taxes, negotiated discounts, credits, reservations, and billing adjustments."
+  ]
+}

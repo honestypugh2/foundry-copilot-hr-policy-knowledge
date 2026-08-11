@@ -43,6 +43,14 @@ _CONTEXT_MODES = frozenset(
     }
 )
 
+_RETRIEVAL_MODE_ALIASES = {
+    RETRIEVAL_MODE_TOOL: RETRIEVAL_MODE_TOOL,
+    RETRIEVAL_MODE_CONTEXT_SEMANTIC: RETRIEVAL_MODE_CONTEXT_SEMANTIC,
+    RETRIEVAL_MODE_CONTEXT_AGENTIC: RETRIEVAL_MODE_CONTEXT_AGENTIC,
+    "semantic": RETRIEVAL_MODE_CONTEXT_SEMANTIC,
+    "agentic": RETRIEVAL_MODE_CONTEXT_AGENTIC,
+}
+
 # search_config.json output_mode -> provider literal.
 _OUTPUT_MODE_MAP = {
     "EXTRACTIVE": "extractive_data",
@@ -57,6 +65,24 @@ _VALID_EFFORTS = frozenset({"minimal", "medium", "low"})
 def is_context_mode(mode: Optional[str]) -> bool:
     """Return True if ``mode`` selects the out-of-the-box context provider."""
     return (mode or "").lower() in _CONTEXT_MODES
+
+
+def normalize_retrieval_mode(mode: Optional[str]) -> str:
+    """Return a canonical retrieval mode or reject an unknown value."""
+    candidate = (mode or RETRIEVAL_MODE_TOOL).strip().lower()
+    try:
+        return _RETRIEVAL_MODE_ALIASES[candidate]
+    except KeyError as exc:
+        valid = ", ".join(
+            (
+                RETRIEVAL_MODE_TOOL,
+                RETRIEVAL_MODE_CONTEXT_SEMANTIC,
+                RETRIEVAL_MODE_CONTEXT_AGENTIC,
+            )
+        )
+        raise ValueError(
+            f"Unsupported RETRIEVAL_MODE {candidate!r}; expected one of: {valid}"
+        ) from exc
 
 
 def _resolve_credential() -> Any:

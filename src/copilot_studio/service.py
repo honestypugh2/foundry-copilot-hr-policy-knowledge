@@ -34,9 +34,9 @@ class CopilotStudioService:
     Environment variables consumed:
         COPILOT_STUDIO_ENVIRONMENT_ID   Power Platform environment ID
         COPILOT_STUDIO_AGENT_SCHEMA     Agent schema name (e.g. crf6d_askHrAgent)
-        COPILOT_STUDIO_TOKEN_ENDPOINT   Full token endpoint URL (overrides auto-build)
+        COPILOT_STUDIO_TOKEN_ENDPOINT   Mobile app channel token endpoint URL
         COPILOT_STUDIO_ENDPOINT         API base URL (default: https://api.copilotstudio.microsoft.com)
-        COPILOT_STUDIO_REGION           Region prefix for token URL (e.g. unitedstates)
+        COPILOT_STUDIO_REGION           Region metadata (e.g. unitedstates)
     """
 
     def __init__(
@@ -58,7 +58,6 @@ class CopilotStudioService:
         )
         self.region = os.getenv("COPILOT_STUDIO_REGION", "unitedstates")
 
-        # Allow full override of the token endpoint
         self._token_endpoint_override = token_endpoint or os.getenv(
             "COPILOT_STUDIO_TOKEN_ENDPOINT", ""
         )
@@ -79,26 +78,21 @@ class CopilotStudioService:
 
     @property
     def is_configured(self) -> bool:
-        return bool(self.environment_id and self.agent_schema)
+        return bool(
+            self.environment_id
+            and self.agent_schema
+            and self._token_endpoint_override
+        )
 
     @property
     def token_endpoint_url(self) -> str:
-        """
-        Build the Direct Line token endpoint URL.
-
-        Format:
-        https://<region>.api.powerplatform.com/copilotstudio/
-          environments/<env_id>/agents/<schema>/directline/token
-          ?api-version=2022-03-01-preview
-        """
+        """Return the Mobile app channel token endpoint copied from Copilot Studio."""
         if self._token_endpoint_override:
             return self._token_endpoint_override
 
-        return (
-            f"https://{self.region}.api.powerplatform.com"
-            f"/copilotstudio/environments/{self.environment_id}"
-            f"/agents/{self.agent_schema}"
-            f"/directline/token?api-version=2022-03-01-preview"
+        raise RuntimeError(
+            "Copilot Studio token endpoint is not configured. Copy the Token Endpoint "
+            "from Channels > Mobile app and set COPILOT_STUDIO_TOKEN_ENDPOINT."
         )
 
     def get_config(self) -> dict[str, Any]:
@@ -127,7 +121,8 @@ class CopilotStudioService:
         if not self.is_configured:
             raise RuntimeError(
                 "Copilot Studio is not configured. "
-                "Set COPILOT_STUDIO_ENVIRONMENT_ID and COPILOT_STUDIO_AGENT_SCHEMA."
+                "Set COPILOT_STUDIO_ENVIRONMENT_ID, COPILOT_STUDIO_AGENT_SCHEMA, and "
+                "COPILOT_STUDIO_TOKEN_ENDPOINT from the published Mobile app channel."
             )
 
         url = self.token_endpoint_url
@@ -209,7 +204,7 @@ class CopilotStudioService:
             # Poll for bot response
             bot_responses: list[dict] = []
             watermark: Optional[str] = None
-            max_polls = 20
+            max_polls = 60
 
             for _ in range(max_polls):
                 import asyncio
@@ -230,7 +225,8 @@ class CopilotStudioService:
 
                 for activity in data.get("activities", []):
                     if (
-                        activity.get("from", {}).get("id") != "user"
+                        activity.get("id") != activity_id
+                        and activity.get("from", {}).get("id") != "user"
                         and activity.get("type") == "message"
                         and activity.get("text")
                     ):
@@ -245,4 +241,5 @@ class CopilotStudioService:
             "answer": combined_text,
             "activities": bot_responses,
             "activity_id": activity_id,
+            "timed_out": not bot_responses,
         }

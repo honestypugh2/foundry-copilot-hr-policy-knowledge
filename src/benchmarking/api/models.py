@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.benchmarking.decision import SloThresholds
+
 
 class ApiModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -19,14 +21,24 @@ CapabilityState = Literal[
     "not_applicable",
     "degraded",
 ]
+CapabilityClassification = Literal["reuse", "adapter", "new_gap_coverage"]
+ImplementationState = Literal["implemented", "partial", "external_reference"]
 
 
 class Capability(ApiModel):
+    capability_id: str
     name: str
+    classification: CapabilityClassification
     status: CapabilityState
+    implementation_status: ImplementationState
     freshness: str | None = None
     release_status: str
     source_version: str
+    authoritative_system: str
+    component: str | None = None
+    configuration_source: str | None = None
+    limitations: list[str] = Field(default_factory=list)
+    deep_link_type: str | None = None
     artifact_count: int = Field(default=0, ge=0)
 
 
@@ -56,6 +68,7 @@ class ExperimentSummary(ApiModel):
     security_pass_rate: float | None = None
     estimated_variable_cost: float | None = None
     sample_warning: str | None = None
+    comparison_scope: str
     provenance: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -100,6 +113,34 @@ class NativeLinkResponse(ApiModel):
     release_status: str
 
 
+class DecisionScope(ApiModel):
+    scope_id: str
+    experiment_ids: list[str]
+
+
+class DecisionEvidence(ApiModel):
+    experiment_id: str
+    pattern: str
+    qualified: bool
+    qualification_failures: list[str] = Field(default_factory=list)
+    on_pareto_frontier: bool
+    publication_ready: bool
+    publication_blockers: list[str] = Field(default_factory=list)
+
+
+class DecisionResponse(ApiModel):
+    schema_version: Literal["1.0"] = "1.0"
+    goal: Literal["quality", "balanced", "speed"]
+    thresholds: SloThresholds
+    selected_scope: str | None = None
+    available_scopes: list[DecisionScope] = Field(default_factory=list)
+    evidence: list[DecisionEvidence] = Field(default_factory=list)
+    frontier_experiment_ids: list[str] = Field(default_factory=list)
+    recommended_experiment_id: str | None = None
+    selection_method: str
+    blockers: list[str] = Field(default_factory=list)
+
+
 class BenchmarkApiContract(ApiModel):
     """Schema-only wrapper used to generate frontend transport types."""
 
@@ -108,3 +149,4 @@ class BenchmarkApiContract(ApiModel):
     comparison: ComparisonResponse
     pattern_summary: PatternSummaryResponse
     native_link: NativeLinkResponse
+    decision: DecisionResponse

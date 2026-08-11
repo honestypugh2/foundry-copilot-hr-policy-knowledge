@@ -10,7 +10,7 @@
 	--lime: #d8ff45;
 	--blue: #2457d6;
 	--coral: #f06a4f;
-	--amber: #a75d0b;
+	--amber: #985207;
 	color: var(--ink);
 	background: var(--paper);
 	font-family: "Aptos", "Segoe UI Variable Text", "Trebuchet MS", sans-serif;
@@ -55,7 +55,7 @@ aside footer small { color: #7f818a; margin: 6px 0 0 14px; }
 .evidence-summary .live-dot { background: var(--blue); box-shadow: 0 0 0 3px rgba(49, 92, 189, .12); margin-top: 5px; }
 .evidence-summary strong, .evidence-summary small { display: block; }
 .evidence-summary strong { font-size: 13px; }
-.evidence-summary small { max-width: 230px; color: #68736d; margin-top: 5px; font-size: 10px; line-height: 1.4; }
+.evidence-summary small { max-width: 230px; color: #59645e; margin-top: 5px; font-size: 10px; line-height: 1.4; }
 .decision-panel { display: grid; grid-template-columns: 1.05fr .9fr; background: var(--ink); color: white; border-radius: 7px; overflow: hidden; box-shadow: 0 18px 45px rgba(23, 35, 29, .13); }
 .decision-main { grid-row: span 2; padding: clamp(28px, 4vw, 48px); border-right: 1px solid #3b3d44; background-image: radial-gradient(circle at 12% 15%, rgba(36, 87, 214, .27), transparent 36%); }
 .decision-kicker { color: var(--lime); display: flex; gap: 8px; align-items: center; font-size: 11px; font-weight: 700; text-transform: uppercase; }
@@ -93,9 +93,9 @@ aside footer small { color: #7f818a; margin: 6px 0 0 14px; }
 .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); background: var(--surface); margin-bottom: 28px; border-radius: 6px; overflow: hidden; }
 .metric { padding: 18px; min-height: 108px; border-right: 1px solid var(--line); }
 .metric:last-child { border: 0; }
-.metric span { display: block; color: #68756f; font-size: 11px; text-transform: capitalize; }
+.metric span { display: block; color: #59645e; font-size: 11px; text-transform: capitalize; }
 .metric strong { display: block; font: 600 25px Georgia, serif; margin: 12px 0 4px; }
-.metric small, td small { color: #68736d; display: block; font-size: 10px; }
+.metric small, td small { color: #59645e; display: block; font-size: 10px; }
 .section-title { display: flex; justify-content: space-between; align-items: flex-end; margin: 0 0 14px; }
 .section-title h3 { margin: 0; font: 600 23px Georgia, serif; }
 .section-title a { display: flex; gap: 6px; align-items: center; padding-bottom: 2px; color: var(--green); font-size: 11px; font-weight: 700; }
@@ -137,7 +137,7 @@ td.numeric { font-variant-numeric: tabular-nums; font-weight: 600; }
 .plot { height: 420px; position: relative; border-left: 1px solid #77837c; border-bottom: 1px solid #77837c; background: linear-gradient(#d8ddd8 1px, transparent 1px), linear-gradient(90deg, #d8ddd8 1px, transparent 1px); background-size: 25% 25%; margin: 20px 35px; }
 .plot-point { position: absolute; width: 32px; height: 32px; display: grid; place-items: center; background: var(--lime); border: 2px solid var(--ink); border-radius: 50%; transform: translate(-50%, 50%); text-decoration: none; }
 .plot-point span { font: 800 9px ui-monospace, monospace; }
-.x-label, .y-label { position: absolute; color: #68756f; font-size: 10px; }
+.x-label, .y-label { position: absolute; color: #59645e; font-size: 10px; }
 .x-label { right: 0; bottom: -24px; }
 .y-label { left: -35px; top: 0; writing-mode: vertical-rl; transform: rotate(180deg); }
 code { font-size: 10px; color: #4a5851; }

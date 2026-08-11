@@ -9,6 +9,59 @@
           "title": "Artifact Count",
           "type": "integer"
         },
+        "authoritative_system": {
+          "title": "Authoritative System",
+          "type": "string"
+        },
+        "capability_id": {
+          "title": "Capability Id",
+          "type": "string"
+        },
+        "classification": {
+          "enum": [
+            "reuse",
+            "adapter",
+            "new_gap_coverage"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "component": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Component"
+        },
+        "configuration_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Configuration Source"
+        },
+        "deep_link_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deep Link Type"
+        },
         "freshness": {
           "anyOf": [
             {
@@ -20,6 +73,22 @@
           ],
           "default": null,
           "title": "Freshness"
+        },
+        "implementation_status": {
+          "enum": [
+            "implemented",
+            "partial",
+            "external_reference"
+          ],
+          "title": "Implementation Status",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
         },
         "name": {
           "title": "Name",
@@ -47,10 +116,14 @@
         }
       },
       "required": [
+        "capability_id",
         "name",
+        "classification",
         "status",
+        "implementation_status",
         "release_status",
-        "source_version"
+        "source_version",
+        "authoritative_system"
       ],
       "title": "Capability",
       "type": "object"
@@ -126,6 +199,162 @@
       "title": "ComparisonResponse",
       "type": "object"
     },
+    "DecisionEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "experiment_id": {
+          "title": "Experiment Id",
+          "type": "string"
+        },
+        "on_pareto_frontier": {
+          "title": "On Pareto Frontier",
+          "type": "boolean"
+        },
+        "pattern": {
+          "title": "Pattern",
+          "type": "string"
+        },
+        "publication_blockers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Publication Blockers",
+          "type": "array"
+        },
+        "publication_ready": {
+          "title": "Publication Ready",
+          "type": "boolean"
+        },
+        "qualification_failures": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Qualification Failures",
+          "type": "array"
+        },
+        "qualified": {
+          "title": "Qualified",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "experiment_id",
+        "pattern",
+        "qualified",
+        "on_pareto_frontier",
+        "publication_ready"
+      ],
+      "title": "DecisionEvidence",
+      "type": "object"
+    },
+    "DecisionResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "available_scopes": {
+          "items": {
+            "$ref": "#/$defs/DecisionScope"
+          },
+          "title": "Available Scopes",
+          "type": "array"
+        },
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blockers",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/DecisionEvidence"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "frontier_experiment_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Frontier Experiment Ids",
+          "type": "array"
+        },
+        "goal": {
+          "enum": [
+            "quality",
+            "balanced",
+            "speed"
+          ],
+          "title": "Goal",
+          "type": "string"
+        },
+        "recommended_experiment_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recommended Experiment Id"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "selected_scope": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selected Scope"
+        },
+        "selection_method": {
+          "title": "Selection Method",
+          "type": "string"
+        },
+        "thresholds": {
+          "$ref": "#/$defs/SloThresholds"
+        }
+      },
+      "required": [
+        "goal",
+        "thresholds",
+        "selection_method"
+      ],
+      "title": "DecisionResponse",
+      "type": "object"
+    },
+    "DecisionScope": {
+      "additionalProperties": false,
+      "properties": {
+        "experiment_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Experiment Ids",
+          "type": "array"
+        },
+        "scope_id": {
+          "title": "Scope Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope_id",
+        "experiment_ids"
+      ],
+      "title": "DecisionScope",
+      "type": "object"
+    },
     "Delta": {
       "additionalProperties": false,
       "properties": {
@@ -183,6 +412,10 @@
     "ExperimentSummary": {
       "additionalProperties": false,
       "properties": {
+        "comparison_scope": {
+          "title": "Comparison Scope",
+          "type": "string"
+        },
         "corpus_fingerprint": {
           "anyOf": [
             {
@@ -356,7 +589,8 @@
         "git_commit",
         "created_at",
         "count",
-        "success_rate"
+        "success_rate",
+        "comparison_scope"
       ],
       "title": "ExperimentSummary",
       "type": "object"
@@ -482,6 +716,48 @@
       ],
       "title": "PatternSummaryResponse",
       "type": "object"
+    },
+    "SloThresholds": {
+      "additionalProperties": false,
+      "properties": {
+        "maximum_estimated_variable_cost": {
+          "minimum": 0,
+          "title": "Maximum Estimated Variable Cost",
+          "type": "number"
+        },
+        "maximum_latency_p95_ms": {
+          "minimum": 0,
+          "title": "Maximum Latency P95 Ms",
+          "type": "number"
+        },
+        "minimum_quality": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Minimum Quality",
+          "type": "number"
+        },
+        "minimum_security_pass_rate": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Minimum Security Pass Rate",
+          "type": "number"
+        },
+        "minimum_success_rate": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Minimum Success Rate",
+          "type": "number"
+        }
+      },
+      "required": [
+        "minimum_quality",
+        "maximum_latency_p95_ms",
+        "minimum_success_rate",
+        "minimum_security_pass_rate",
+        "maximum_estimated_variable_cost"
+      ],
+      "title": "SloThresholds",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -492,6 +768,9 @@
     },
     "comparison": {
       "$ref": "#/$defs/ComparisonResponse"
+    },
+    "decision": {
+      "$ref": "#/$defs/DecisionResponse"
     },
     "experiments": {
       "$ref": "#/$defs/ExperimentListResponse"
@@ -508,7 +787,8 @@
     "experiments",
     "comparison",
     "pattern_summary",
-    "native_link"
+    "native_link",
+    "decision"
   ],
   "title": "BenchmarkApiContract",
   "type": "object"

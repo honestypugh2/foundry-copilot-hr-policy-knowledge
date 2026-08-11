@@ -1,0 +1,33 @@
+[
+  {
+    "id": "retrieval_first",
+    "description": "The response uses retrieved HR policy evidence before answering. For tool-mode runs, search_hr_policies is called before the final answer. For context-provider runs, retrieved context is present. The response does not rely on general knowledge.",
+    "weight": 5
+  },
+  {
+    "id": "evidence_grounding",
+    "description": "Every substantive policy claim is supported by retrieved evidence and is consistent with the row's ground_truth and expected_behavior. Unsupported details or altered policy meaning fail this criterion.",
+    "weight": 8
+  },
+  {
+    "id": "exact_policy_citation",
+    "description": "When expected_behavior names a policy, the answer cites that exact policy number and title in the form [Policy XXXXX - Title]. It does not substitute a different policy or fabricate a citation.",
+    "weight": 6
+  },
+  {
+    "id": "source_footer",
+    "description": "For an in-scope answer, the response ends with Source: followed by each policy number and title used. For an out-of-scope or corpus-unavailable answer, no fabricated source footer is present.",
+    "weight": 4
+  },
+  {
+    "id": "correct_abstention",
+    "description": "When retrieved evidence does not contain the answer, including an unavailable corpus policy, the agent states that the information was not found in the HR policy documents and directs the user to an HR representative. It does not answer from general knowledge.",
+    "weight": 7
+  },
+  {
+    "id": "directness_and_precision",
+    "description": "The answer directly addresses the question, preserves policy meaning, and omits unrelated material. It follows the row-specific expected_behavior rather than applying generic HR or legal intake requirements.",
+    "weight": 3,
+    "always_applicable": true
+  }
+]

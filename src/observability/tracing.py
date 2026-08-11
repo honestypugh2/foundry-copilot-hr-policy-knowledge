@@ -1,10 +1,11 @@
 """
 GenAI tracing for Foundry agents (P1.4 — cross-framework observability).
 
-Wires OpenTelemetry GenAI spans for every agent / model / tool call via
-``AIProjectInstrumentor``. This is Microsoft's framework-agnostic tracing story
-(June 2026): the same instrumentation works whether the agent runs on Foundry
-Agent Service, Agent Framework, or a hosted container.
+Configures OpenTelemetry export and benchmark correlation. Microsoft Agent
+Framework emits its own agent, model, workflow, and tool spans. The legacy
+``AIProjectInstrumentor`` path remains available for compatible clients, but is
+disabled by Agent Framework hosts because its OpenAI stream wrapper is
+incompatible with ``FoundryChatClient`` streaming.
 
 Export targets, in order of preference:
     1. **Azure Monitor / Foundry Observability** — when an Application Insights
@@ -52,6 +53,8 @@ def enable_tracing(
     connection_string: Optional[str] = None,
     *,
     enable_content_recording: bool = False,
+    instrument_ai_clients: bool = True,
+    sampling_ratio: float | None = None,
 ) -> bool:
     """Enable GenAI tracing for Foundry agent/model/tool calls.
 
@@ -64,6 +67,12 @@ def enable_tracing(
         enable_content_recording: Capture prompt/response content on spans.
             Defaults to ``False`` to avoid recording potentially sensitive HR
             data.
+        instrument_ai_clients: Apply ``AIProjectInstrumentor`` to model clients.
+            Disable when a client is incompatible with the OpenAI stream wrapper;
+            OpenTelemetry application spans and export remain enabled.
+        sampling_ratio: Optional Azure Monitor trace sampling ratio from 0.0 to
+            1.0. Controlled benchmarks use 1.0 so every measured invocation is
+            eligible for connected trace validation.
 
     Returns:
         ``True`` if instrumentation was enabled, ``False`` if the required
@@ -86,8 +95,9 @@ def enable_tracing(
 
     settings.tracing_implementation = "opentelemetry"
 
-    # Opt in to the experimental GenAI spans unless the caller overrode it.
-    os.environ.setdefault(_GENAI_TRACING_ENV, "true")
+    # The experimental flag wraps OpenAI streams and is only needed for the
+    # AI-client instrumentation path, not custom application spans.
+    os.environ[_GENAI_TRACING_ENV] = "true" if instrument_ai_clients else "false"
     os.environ[_CONTENT_RECORDING_ENV] = "true" if enable_content_recording else "false"
 
     conn = connection_string or os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
@@ -97,7 +107,20 @@ def enable_tracing(
         try:
             from azure.monitor.opentelemetry import configure_azure_monitor
 
-            configure_azure_monitor(connection_string=conn)
+            instrumentation_options = None
+            if not instrument_ai_clients:
+                instrumentation_options = {"openai": {"enabled": False}}
+            azure_monitor_options = {
+                "connection_string": conn,
+                "instrumentation_options": instrumentation_options,
+            }
+            if sampling_ratio is not None:
+                if not 0.0 <= sampling_ratio <= 1.0:
+                    raise ValueError("sampling_ratio must be between 0.0 and 1.0")
+                azure_monitor_options["sampling_ratio"] = sampling_ratio
+            configure_azure_monitor(
+                **azure_monitor_options,
+            )
             exporter = "azure-monitor"
         except ImportError:  # pragma: no cover - optional dependency
             logger.warning(
@@ -108,7 +131,8 @@ def enable_tracing(
     else:
         _configure_console_exporter()
 
-    AIProjectInstrumentor().instrument()
+    if instrument_ai_clients:
+        AIProjectInstrumentor().instrument()
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider
 
@@ -121,11 +145,24 @@ def enable_tracing(
         provider.add_span_processor(BenchmarkCorrelationSpanProcessor())
     _ENABLED = True
     logger.info(
-        "GenAI tracing enabled (exporter=%s, content_recording=%s)",
+        "GenAI tracing enabled (exporter=%s, content_recording=%s, "
+        "ai_client_instrumentation=%s)",
         exporter,
         enable_content_recording,
+        instrument_ai_clients,
     )
     return True
+
+
+def flush_tracing(timeout_millis: int = 30_000) -> bool:
+    """Flush pending spans before a short-lived process exits."""
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+
+    provider = trace.get_tracer_provider()
+    if not isinstance(provider, TracerProvider):
+        return False
+    return provider.force_flush(timeout_millis=timeout_millis)
 
 
 def _configure_console_exporter() -> None:

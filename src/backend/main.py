@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
     # Wire GenAI tracing first so agent/model/tool calls are captured as spans.
     if os.getenv("ENABLE_TRACING", "true").lower() == "true":
         try:
-            enable_tracing()
+            enable_tracing(instrument_ai_clients=False)
         except Exception as e:  # best-effort; never block startup
             logger.warning(f"Tracing setup failed: {e}")
 

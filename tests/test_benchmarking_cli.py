@@ -88,8 +88,45 @@ def test_cli_emits_versioned_offline_artifacts(tmp_path: Path):
     )["schema_version"] == "1.0"
 
 
+def test_cli_rejects_pricing_profile_not_named_by_manifest(tmp_path: Path):
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(_manifest().model_dump_json(), encoding="utf-8")
+    cases_path = tmp_path / "cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "case_id": "pricing-check",
+                    "query": "What is PTO?",
+                    "category": "direct_fact",
+                    "expected_behavior": "retrieve",
+                    "expected_source_ids": ["50010"],
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--manifest",
+                str(manifest_path),
+                "--cases",
+                str(cases_path),
+                "--fixture-responses",
+                str(tmp_path / "unused-fixtures.json"),
+                "--pricing-profile",
+                "experiments/pricing/azure-gpt-5-mini-global-standard-2025-08-01.json",
+                "--output-dir",
+                str(tmp_path / "reports"),
+            ]
+        )
+
+
 def test_cli_rejects_unconfigured_copilot_studio(tmp_path: Path, monkeypatch):
-    monkeypatch.setattr("src.benchmarking.cli.load_dotenv", lambda: None)
+    monkeypatch.setattr("src.benchmarking.cli.load_dotenv", lambda **_: None)
+    monkeypatch.setattr("src.benchmarking.cli._verify_live_identity", lambda: None)
     monkeypatch.delenv("COPILOT_STUDIO_ENVIRONMENT_ID", raising=False)
     monkeypatch.delenv("COPILOT_STUDIO_AGENT_SCHEMA", raising=False)
     manifest_path = tmp_path / "manifest.json"
@@ -122,6 +159,28 @@ def test_cli_rejects_unconfigured_copilot_studio(tmp_path: Path, monkeypatch):
                 "--copilot-studio",
             ]
         )
+
+
+def test_agent_framework_adapter_records_canonical_mode(monkeypatch):
+    class FakeAgent:
+        def __init__(self, *, retrieval_mode: str):
+            self.retrieval_mode = retrieval_mode
+
+        async def answer_question_async(self, query: str):
+            return {"answer": query, "citations": []}
+
+    monkeypatch.setattr(
+        "src.agents.hr_policy_agent_af.HRPolicyAgent",
+        FakeAgent,
+    )
+    manifest = _manifest().model_copy(
+        update={"pattern": "Hosted", "retrieval_mode": "semantic"}
+    )
+
+    adapter = _build_adapter(manifest, None, agent_framework=True)
+
+    assert adapter.pattern == "Hosted"
+    assert adapter.invocation_path == "agent_framework_local:context-semantic"
 
 
 def test_copilot_adapter_targets_explicit_real_agent(monkeypatch):

@@ -5,20 +5,33 @@ from __future__ import annotations
 import json
 import os
 import re
+from hashlib import sha256
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
+from src.benchmarking.capabilities import capability_inventory
 from src.benchmarking.api.models import (
     CapabilityResponse,
     ComparisonResponse,
+    Delta,
+    DecisionEvidence,
+    DecisionResponse,
+    DecisionScope,
     ExperimentListResponse,
     ExperimentSummary,
     NativeLinkResponse,
     PatternEvidence,
     PatternSummaryResponse,
 )
+from src.benchmarking.decision import (
+    DecisionCandidate,
+    SloThresholds,
+    pareto_frontier,
+    qualify_slos,
+)
+from src.benchmarking.models import ExperimentManifest
 
 router = APIRouter(prefix="/api/benchmarking", tags=["benchmarking"])
 _SAFE_ID = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -39,6 +52,25 @@ _LINK_ENV = {
     "load_testing": ("BENCHMARK_LINK_LOAD_TESTING", "GA"),
     "cost_management": ("BENCHMARK_LINK_COST_MANAGEMENT", "GA"),
 }
+_COMPARISON_SCOPE_FIELDS = (
+    "schema_version",
+    "git_commit",
+    "dirty_worktree",
+    "runner_version",
+    "dataset_name",
+    "dataset_version",
+    "corpus_fingerprint",
+    "index_fingerprint",
+    "region",
+    "client_location",
+    "warmup_count",
+    "measured_repetitions",
+    "concurrency",
+    "timeout_seconds",
+    "random_seed",
+    "pricing_profile",
+)
+_COMPARISON_SCOPE_VERSION = "comparison-scope-v1"
 
 
 def _root() -> Path:
@@ -93,40 +125,38 @@ def _summary(payload: dict[str, Any]) -> ExperimentSummary:
         security_pass_rate=provenance.get("security_pass_rate"),
         estimated_variable_cost=provenance.get("estimated_variable_cost"),
         sample_warning=aggregate.get("sample_warning"),
+        comparison_scope=_comparison_scope(payload),
         provenance=provenance,
     )
+
+
+def _scope_values(payload: dict[str, Any]) -> dict[str, Any]:
+    manifest = ExperimentManifest.model_validate(payload["manifest"])
+    return manifest.model_dump(
+        mode="json",
+        include=set(_COMPARISON_SCOPE_FIELDS),
+    )
+
+
+def _comparison_scope(payload: dict[str, Any]) -> str:
+    canonical = json.dumps(
+        {
+            "algorithm": _COMPARISON_SCOPE_VERSION,
+            "values": _scope_values(payload),
+        },
+        allow_nan=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return sha256(canonical.encode("utf-8")).hexdigest()[:24]
 
 
 @router.get("/capabilities", response_model=CapabilityResponse)
 def capabilities() -> CapabilityResponse:
     artifact_count = len(_artifact_paths())
-    return CapabilityResponse.model_validate(
-        {
-            "schema_version": "1.0",
-            "source_version": "local-artifacts-v1",
-            "capabilities": [
-                {
-                    "name": "experiments",
-                    "status": "available" if artifact_count else "not_configured",
-                    "freshness": "file-backed",
-                    "release_status": "GA",
-                    "source_version": "artifact-schema-1.0",
-                    "artifact_count": artifact_count,
-                },
-                {
-                    "name": "production_telemetry",
-                    "status": (
-                        "available"
-                        if os.getenv("BENCHMARK_LINK_APPLICATION_INSIGHTS")
-                        else "not_configured"
-                    ),
-                    "freshness": None,
-                    "release_status": "provider-dependent",
-                    "source_version": "genai-otel",
-                    "artifact_count": 0,
-                },
-            ],
-        }
+    return CapabilityResponse(
+        source_version="microsoft-asset-reuse-matrix-2026-08-03",
+        capabilities=capability_inventory(artifact_count),
     )
 
 
@@ -150,11 +180,15 @@ def experiment(experiment_id: str) -> dict[str, Any]:
 def comparison(
     baseline: str = Query(min_length=1), candidate: str = Query(min_length=1)
 ) -> ComparisonResponse:
-    baseline_summary = _summary(_load(baseline))
-    candidate_summary = _summary(_load(candidate))
+    baseline_payload = _load(baseline)
+    candidate_payload = _load(candidate)
+    baseline_summary = _summary(baseline_payload)
+    candidate_summary = _summary(candidate_payload)
     incompatibility_reasons = []
-    for field in ("dataset_name", "dataset_version", "corpus_fingerprint", "index_fingerprint"):
-        if getattr(baseline_summary, field) != getattr(candidate_summary, field):
+    baseline_scope = _scope_values(baseline_payload)
+    candidate_scope = _scope_values(candidate_payload)
+    for field in _COMPARISON_SCOPE_FIELDS:
+        if baseline_scope[field] != candidate_scope[field]:
             incompatibility_reasons.append(f"{field} differs")
     metrics = ("latency_p95_ms", "quality", "success_rate", "estimated_variable_cost")
     return ComparisonResponse(
@@ -169,6 +203,114 @@ def comparison(
             )
             for metric in metrics
         },
+    )
+
+
+@router.get("/decisions", response_model=DecisionResponse)
+def decisions(
+    goal: Literal["quality", "balanced", "speed"] = "balanced",
+    scope: str | None = Query(default=None, pattern=r"^[a-f0-9]{24}$"),
+    minimum_quality: float = Query(default=0.80, ge=0, le=1),
+    maximum_latency_p95_ms: float = Query(default=1000, ge=0),
+    minimum_success_rate: float = Query(default=0.95, ge=0, le=1),
+    minimum_security_pass_rate: float = Query(default=1.0, ge=0, le=1),
+    maximum_estimated_variable_cost: float = Query(default=0.05, ge=0),
+) -> DecisionResponse:
+    payloads = [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in _artifact_paths()
+    ]
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for payload in payloads:
+        grouped.setdefault(_comparison_scope(payload), []).append(payload)
+    available_scopes = [
+        DecisionScope(
+            scope_id=scope_id,
+            experiment_ids=sorted(item["manifest"]["experiment_id"] for item in items),
+        )
+        for scope_id, items in sorted(grouped.items())
+    ]
+    comparable_scopes = {
+        scope_id: items for scope_id, items in grouped.items() if len(items) >= 2
+    }
+    selected_scope = scope
+    blockers: list[str] = []
+    if selected_scope and selected_scope not in comparable_scopes:
+        blockers.append("Selected scope does not contain at least two compatible experiments.")
+        selected_scope = None
+    elif not selected_scope and len(comparable_scopes) == 1:
+        selected_scope = next(iter(comparable_scopes))
+    elif not selected_scope and len(comparable_scopes) > 1:
+        blockers.append("Multiple comparable scopes are available; select one explicitly.")
+    elif not selected_scope:
+        blockers.append("At least two compatible experiments are required for a decision.")
+
+    thresholds = SloThresholds(
+        minimum_quality=minimum_quality,
+        maximum_latency_p95_ms=maximum_latency_p95_ms,
+        minimum_success_rate=minimum_success_rate,
+        minimum_security_pass_rate=minimum_security_pass_rate,
+        maximum_estimated_variable_cost=maximum_estimated_variable_cost,
+    )
+    if not selected_scope:
+        return DecisionResponse(
+            goal=goal,
+            thresholds=thresholds,
+            available_scopes=available_scopes,
+            selection_method=_selection_method(goal),
+            blockers=blockers,
+        )
+
+    selected_payloads = comparable_scopes[selected_scope]
+    summaries = [_summary(payload) for payload in selected_payloads]
+    candidates = [
+        DecisionCandidate(
+            configuration_id=summary.experiment_id,
+            quality=summary.quality,
+            latency_p95_ms=summary.latency_p95_ms,
+            success_rate=summary.success_rate,
+            security_pass_rate=summary.security_pass_rate,
+            estimated_variable_cost=summary.estimated_variable_cost,
+            comparison_scope=selected_scope,
+        )
+        for summary in summaries
+    ]
+    frontier = pareto_frontier(candidates)
+    qualifications = {
+        item.configuration_id: item for item in qualify_slos(candidates, thresholds)
+    }
+    evidence: list[DecisionEvidence] = []
+    publishable_ids: list[str] = []
+    for payload, summary in zip(selected_payloads, summaries, strict=True):
+        qualification = qualifications[summary.experiment_id]
+        publication_blockers = _publication_blockers(payload, summary)
+        publication_ready = not publication_blockers
+        if qualification.qualified and publication_ready and summary.experiment_id in frontier:
+            publishable_ids.append(summary.experiment_id)
+        evidence.append(
+            DecisionEvidence(
+                experiment_id=summary.experiment_id,
+                pattern=summary.pattern,
+                qualified=qualification.qualified,
+                qualification_failures=qualification.failures,
+                on_pareto_frontier=summary.experiment_id in frontier,
+                publication_ready=publication_ready,
+                publication_blockers=publication_blockers,
+            )
+        )
+    recommended = _recommend(goal, summaries, publishable_ids)
+    if not recommended:
+        blockers.append("No compatible configuration passes all SLO and publication gates.")
+    return DecisionResponse(
+        goal=goal,
+        thresholds=thresholds,
+        selected_scope=selected_scope,
+        available_scopes=available_scopes,
+        evidence=evidence,
+        frontier_experiment_ids=frontier,
+        recommended_experiment_id=recommended,
+        selection_method=_selection_method(goal),
+        blockers=blockers,
     )
 
 
@@ -214,11 +356,83 @@ def native_link(resource_type: str, source_id: str) -> NativeLinkResponse:
     )
 
 
-def _delta(baseline: float | None, candidate: float | None) -> dict[str, float | None]:
+def _delta(baseline: float | None, candidate: float | None) -> Delta:
     if baseline is None or candidate is None:
-        return {"absolute": None, "relative": None}
+        return Delta()
     absolute = candidate - baseline
-    return {
-        "absolute": absolute,
-        "relative": absolute / baseline if baseline != 0 else None,
-    }
+    return Delta(
+        absolute=absolute,
+        relative=absolute / baseline if baseline != 0 else None,
+    )
+
+
+def _publication_blockers(
+    payload: dict[str, Any], summary: ExperimentSummary
+) -> list[str]:
+    blockers: list[str] = []
+    manifest = ExperimentManifest.model_validate(payload["manifest"])
+    if manifest.dirty_worktree:
+        blockers.append("dirty worktree")
+    if summary.sample_warning:
+        blockers.append(summary.sample_warning)
+    if summary.provenance.get("synthetic") is True or manifest.git_commit == "synthetic":
+        blockers.append("synthetic evidence")
+    return blockers
+
+
+def _selection_method(goal: str) -> str:
+    if goal == "quality":
+        return "highest quality, then lowest p95 latency and variable cost"
+    if goal == "speed":
+        return "lowest p95 latency, then highest quality and lowest variable cost"
+    return "minimum equal-weight normalized distance to the quality, latency, and cost ideal"
+
+
+def _recommend(
+    goal: str,
+    summaries: list[ExperimentSummary],
+    eligible_ids: list[str],
+) -> str | None:
+    eligible = [item for item in summaries if item.experiment_id in eligible_ids]
+    if not eligible:
+        return None
+    complete = [(item, _decision_values(item)) for item in eligible]
+    if goal == "quality":
+        return min(
+            complete,
+            key=lambda pair: (-pair[1][0], pair[1][1], pair[1][2]),
+        )[0].experiment_id
+    if goal == "speed":
+        return min(
+            complete,
+            key=lambda pair: (pair[1][1], -pair[1][0], pair[1][2]),
+        )[0].experiment_id
+    metrics = (
+        [values[0] for _, values in complete],
+        [values[1] for _, values in complete],
+        [values[2] for _, values in complete],
+    )
+    ranges = [(min(values), max(values)) for values in metrics]
+
+    def distance(values: tuple[float, float, float]) -> float:
+        normalized = []
+        for index, value in enumerate(values):
+            low, high = ranges[index]
+            normalized.append(0.0 if high == low else (value - low) / (high - low))
+        quality_distance = 1 - normalized[0]
+        return quality_distance**2 + normalized[1] ** 2 + normalized[2] ** 2
+
+    return min(
+        complete,
+        key=lambda pair: (distance(pair[1]), pair[0].experiment_id),
+    )[0].experiment_id
+
+
+def _decision_values(item: ExperimentSummary) -> tuple[float, float, float]:
+    if (
+        item.quality is None
+        or item.latency_p95_ms is None
+        or item.estimated_variable_cost is None
+    ):
+        raise ValueError("Recommendation candidate has incomplete decision metrics")
+    return item.quality, item.latency_p95_ms, item.estimated_variable_cost

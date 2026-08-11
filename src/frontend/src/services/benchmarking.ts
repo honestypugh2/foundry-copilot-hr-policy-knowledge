@@ -1,5 +1,6 @@
 import type {
   ComparisonResponse as ComparisonTransport,
+  DecisionResponse as DecisionTransport,
   ExperimentListResponse,
   ExperimentSummary as ExperimentTransport,
   NativeLinkResponse,
@@ -28,7 +29,21 @@ export interface ExperimentSummary {
   security_pass_rate: number | null;
   estimated_variable_cost: number | null;
   sample_warning: string | null;
+  comparison_scope: string;
   provenance: Record<string, unknown>;
+}
+
+export interface DecisionResponse {
+  schema_version: "1.0";
+  goal: "quality" | "balanced" | "speed";
+  thresholds: DecisionTransport["thresholds"];
+  selected_scope: string | null;
+  available_scopes: NonNullable<DecisionTransport["available_scopes"]>;
+  evidence: NonNullable<DecisionTransport["evidence"]>;
+  frontier_experiment_ids: string[];
+  recommended_experiment_id: string | null;
+  selection_method: string;
+  blockers: string[];
 }
 
 export interface ComparisonResponse {
@@ -77,6 +92,7 @@ function normalizeExperiment(item: ExperimentTransport): ExperimentSummary {
     security_pass_rate: item.security_pass_rate ?? null,
     estimated_variable_cost: item.estimated_variable_cost ?? null,
     sample_warning: item.sample_warning ?? null,
+    comparison_scope: item.comparison_scope,
     provenance: item.provenance ?? {},
   };
 }
@@ -84,6 +100,7 @@ function normalizeExperiment(item: ExperimentTransport): ExperimentSummary {
 export interface ExperimentProvider {
   experiments(): Promise<{ schema_version: "1.0"; items: ExperimentSummary[] }>;
   compare(baseline: string, candidate: string): Promise<ComparisonResponse>;
+  decision(goal: "quality" | "balanced" | "speed"): Promise<DecisionResponse>;
   pattern(pattern: string): Promise<PatternSummaryResponse>;
   nativeLink(resourceType: string, sourceId: string): Promise<NativeLinkResponse>;
 }
@@ -112,6 +129,23 @@ export const benchmarkApi: ExperimentProvider = {
           { absolute: delta.absolute ?? null, relative: delta.relative ?? null },
         ])
       ),
+    };
+  },
+  async decision(goal) {
+    const response = await getJson<DecisionTransport>(
+      `/decisions?goal=${encodeURIComponent(goal)}`
+    );
+    return {
+      schema_version: response.schema_version ?? "1.0",
+      goal: response.goal,
+      thresholds: response.thresholds,
+      selected_scope: response.selected_scope ?? null,
+      available_scopes: response.available_scopes ?? [],
+      evidence: response.evidence ?? [],
+      frontier_experiment_ids: response.frontier_experiment_ids ?? [],
+      recommended_experiment_id: response.recommended_experiment_id ?? null,
+      selection_method: response.selection_method,
+      blockers: response.blockers ?? [],
     };
   },
   async pattern(pattern: string) {

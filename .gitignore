@@ -161,3 +161,8 @@ docs/BenchmarkingBlogOutline.md
 docs/BenchmarkingDecisionSystem.md
 docs/ReactBenchmarkWorkbenchADR.md
 docs/BenchmarkMigrationLedger.md
+
+experiments/reports/
+experiments/cost-reconciliation/
+
+.foundry/

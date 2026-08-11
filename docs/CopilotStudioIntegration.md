@@ -1038,7 +1038,7 @@ two Direct Line helpers implemented in
 | `COPILOT_STUDIO_ENVIRONMENT_ID`       | Power Platform environment ID.                               | Yes      |
 | `COPILOT_STUDIO_AGENT_SCHEMA`         | Agent schema name (e.g. `<your_agent_schema>`).              | Yes      |
 | `COPILOT_STUDIO_REGION`               | Region (default: `unitedstates`).                            | No       |
-| `COPILOT_STUDIO_TOKEN_ENDPOINT`       | Full token endpoint URL (override).                          | No       |
+| `COPILOT_STUDIO_TOKEN_ENDPOINT`       | Exact Token Endpoint from **Channels > Mobile app**.         | Yes      |
 
 ---
 

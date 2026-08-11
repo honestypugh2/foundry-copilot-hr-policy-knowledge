@@ -16,6 +16,7 @@ _ALLOWED_KEYS = frozenset(
         "configuration.id",
         "run.id",
         "case.id",
+        "session.id",
     }
 )
 

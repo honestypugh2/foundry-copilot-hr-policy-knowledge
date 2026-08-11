@@ -82,6 +82,26 @@ def write_report_markdown(
         )
     if len(activity_rows) == 2:
         activity_rows.append("| Unavailable | 0 | 0 | n/a | 0 | 0 | 0 |")
+    mean_cost = report.variable_cost.mean_per_invocation
+    total_cost = report.variable_cost.run_total
+    if mean_cost.amount is None or total_cost.amount is None:
+        cost_rows = (
+            "Variable model cost unavailable: "
+            f"{mean_cost.unavailable_reason or 'unknown'}. Priced invocations: "
+            f"{report.variable_cost.priced_invocation_count}/"
+            f"{report.variable_cost.invocation_count}."
+        )
+    else:
+        cost_rows = "\n".join(
+            [
+                "| Metric | Value |",
+                "| --- | ---: |",
+                f"| Mean per invocation | {mean_cost.amount:.8f} {mean_cost.currency} |",
+                f"| Run total | {total_cost.amount:.8f} {total_cost.currency} |",
+                f"| Priced invocations | {report.variable_cost.priced_invocation_count} |",
+                f"| Pricing profile | `{mean_cost.pricing_profile}` |",
+            ]
+        )
     warning = f"\n> {report.sample_warning}\n" if report.sample_warning else ""
     fixture_notice = ""
     if report.provenance.get("fixture_mode"):
@@ -123,6 +143,13 @@ def write_report_markdown(
                 "## Service activity observations",
                 "",
                 "\n".join(activity_rows),
+                "",
+                "## Estimated variable model cost",
+                "",
+                cost_rows,
+                "",
+                "Actual Azure charges are reconciled separately in Azure Cost Management; "
+                "shared fixed resources are not attributed per request.",
                 "",
                 "Each stage or activity duration is summarized as an independent observation. "
                 "Parallel activity durations are never summed into a request critical path.",

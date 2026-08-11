@@ -6,10 +6,13 @@ from collections.abc import Callable
 from time import perf_counter
 from typing import Any, Literal
 
+from opentelemetry import trace
+
 from src.benchmarking.adapters.base import InvocationResult
 from src.benchmarking.models import MetricValue, RetrievalReference
 
 SearchCallable = Callable[[str, int], list[dict[str, Any]]]
+_TRACER = trace.get_tracer(__name__)
 
 
 class DirectSearchAdapter:
@@ -22,9 +25,14 @@ class DirectSearchAdapter:
         self._search = search
 
     async def invoke(self, query: str, top: int) -> InvocationResult:
-        started = perf_counter()
-        hits = self._search(query, top)
-        elapsed_ms = (perf_counter() - started) * 1000
+        with _TRACER.start_as_current_span("azure_search.query") as span:
+            span.set_attribute("app.benchmark.invocation.path", self.invocation_path)
+            span.set_attribute("azure.search.top", top)
+            started = perf_counter()
+            hits = self._search(query, top)
+            elapsed_ms = (perf_counter() - started) * 1000
+            span.set_attribute("azure.search.result.count", len(hits))
+            span.set_attribute("azure.search.client_wall_time_ms", elapsed_ms)
         references = [
             RetrievalReference(
                 source_id=str(

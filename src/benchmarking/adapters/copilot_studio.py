@@ -65,6 +65,7 @@ class CopilotStudioAdapter:
         elapsed_ms = (perf_counter() - started) * 1000
 
         answer = str(payload.get("answer") or "")
+        timed_out = bool(payload.get("timed_out"))
         citations = _citation_payloads(payload)
         references = [
             RetrievalReference(
@@ -91,6 +92,10 @@ class CopilotStudioAdapter:
                 for match in POLICY_CITATION.finditer(answer)
             ]
         return InvocationResult(
+            status="timeout" if timed_out else "success",
+            error_classification=(
+                "CopilotStudioResponseTimeout" if timed_out else None
+            ),
             answer=answer,
             references=references,
             activity=[

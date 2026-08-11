@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 
 import pytest
 
 from src.benchmarking.adapters import (
     CopilotStudioAdapter,
     DirectKnowledgeBaseAdapter,
+    DirectSearchAdapter,
     FoundryAgentAdapter,
     HostedAgentAdapter,
     PatternCLookupAdapter,
@@ -15,6 +17,51 @@ from src.benchmarking.adapters import (
 from src.benchmarking.models import BenchmarkCase
 from src.benchmarking.runner import BenchmarkRunner
 from tests.test_benchmarking_phase1 import _manifest
+
+
+async def test_direct_search_adapter_emits_safe_search_span(monkeypatch):
+    class FakeSpan:
+        def __init__(self):
+            self.attributes = {}
+
+        def set_attribute(self, key, value):
+            self.attributes[key] = value
+
+    class FakeTracer:
+        def __init__(self):
+            self.span = FakeSpan()
+
+        @contextmanager
+        def start_as_current_span(self, name):
+            assert name == "azure_search.query"
+            yield self.span
+
+    tracer = FakeTracer()
+    clock = iter([0.0, 0.025])
+    monkeypatch.setattr("src.benchmarking.adapters.direct_search._TRACER", tracer)
+    monkeypatch.setattr(
+        "src.benchmarking.adapters.direct_search.perf_counter",
+        lambda: next(clock),
+    )
+    query = "private HR query"
+    adapter = DirectSearchAdapter(
+        lambda received_query, top: [
+            {"policy_number": "50010", "title": "Paid Time Off"}
+        ]
+        if (received_query, top) == (query, 3)
+        else []
+    )
+
+    result = await adapter.invoke(query, 3)
+
+    assert result.references[0].source_id == "50010"
+    assert tracer.span.attributes == {
+        "app.benchmark.invocation.path": "direct_search_sdk",
+        "azure.search.top": 3,
+        "azure.search.result.count": 1,
+        "azure.search.client_wall_time_ms": 25.0,
+    }
+    assert query not in str(tracer.span.attributes)
 
 
 @pytest.mark.parametrize(
@@ -33,7 +80,17 @@ async def test_agent_adapters_measure_actual_invocation_without_second_retrieval
         return {
             "answer": "See [Policy 50010 - Paid Time Off].",
             "citations": [{"policy_number": "50010", "title": "Paid Time Off"}],
-            "usage": {"input_tokens": 12, "output_tokens": 8},
+            "usage": {
+                "input_tokens": 12,
+                "cached_input_tokens": 4,
+                "output_tokens": 8,
+            },
+            "timings": {
+                "ttft_ms": 10.0,
+                "ttlt_ms": 20.0,
+                "stream_duration_ms": 10.0,
+            },
+            "stream_timing_boundary": "agent.run start to stream completion",
             "response_id": "response-1",
         }
 
@@ -56,7 +113,12 @@ async def test_agent_adapters_measure_actual_invocation_without_second_retrieval
     assert calls == 1
     assert results[0].pattern == pattern
     assert results[0].service_elapsed_time_ms.unavailable_reason == "not_exposed_by_mcp"
+    assert results[0].cached_input_tokens.value == 4
+    assert results[0].cached_input_tokens.measurement_type == "service_reported"
     assert results[0].output_tokens.value == 8
+    assert results[0].ttft_ms.value == 10
+    assert results[0].ttlt_ms.value == 20
+    assert results[0].stream_duration_ms.value == 10
     assert results[0].response_id == "response-1"
 
 
@@ -214,3 +276,19 @@ async def test_copilot_studio_adapter_uses_explicit_policy_citation_fallback():
 
     assert result.references[0].source_id == "50020"
     assert result.references[0].title == "Part-time PTO"
+
+
+async def test_copilot_studio_adapter_classifies_response_timeout():
+    async def ask(query: str):
+        return {
+            "answer": "",
+            "activities": [],
+            "timed_out": True,
+            "conversation_id": "conversation-timeout",
+        }
+
+    result = await CopilotStudioAdapter(ask, pattern="B").invoke("PTO?", top=5)
+
+    assert result.status == "timeout"
+    assert result.error_classification == "CopilotStudioResponseTimeout"
+    assert result.conversation_id == "conversation-timeout"

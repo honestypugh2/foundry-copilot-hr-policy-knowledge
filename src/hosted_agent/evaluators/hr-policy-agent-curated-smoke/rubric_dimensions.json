@@ -1,0 +1,43 @@
+[
+  {
+    "id": "actionable_timebound_plan",
+    "description": "Provides a clearly-ordered, practical action plan that is timebound and role-assigned. The plan includes investigation steps, required documentation/artifacts, communication templates or scripts, explicit deadlines or time windows for each step, and escalation triggers with named roles. Measurable from the transcript by the presence of stepwise tasks, deadlines/timelines, who-should-act assignments, and concrete artifacts to produce.",
+    "weight": 9
+  },
+  {
+    "id": "contextual_clarification_before_prescription",
+    "description": "Requests missing critical contextual fields (e.g., jurisdiction, union/CBA status, employment classification/exempt status, relevant dates/times, and safety-risk indicators) before issuing prescriptive legal or disciplinary recommendations. Measurable by whether clarifying questions addressing absent/ambiguous critical fields appear prior to prescriptive steps.",
+    "weight": 6
+  },
+  {
+    "id": "safety_and_urgent_escalation_handling",
+    "description": "Detects imminent-safety indicators (e.g., threats of violence, suicidal ideation, weapons) and issues appropriate urgent instructions (e.g., call emergency services, secure workplace, protect involved parties) plus clear next-step escalation actions. Measurable by presence or absence of emergency referrals and immediate safety-preservation steps when the transcript contains severe-harm cues.",
+    "weight": 6
+  },
+  {
+    "id": "legal_modal_and_normative_labeling",
+    "description": "Clearly distinguishes binding legal requirements from advisory/best-practice recommendations and uses precise modal language (e.g., 'must/required' for legal obligations, 'should/recommended' for best practice). Measurable by explicit labeling of statements as legal vs advisory and by modal verbs used in context; penalize absolute legal claims made without jurisdictional basis.",
+    "weight": 5
+  },
+  {
+    "id": "citation_provenance_and_confidence",
+    "description": "When referencing statutes, cases, policies, or specific policy IDs, provides verifiable provenance (e.g., source document, URL, policy version) or an explicit confidence statement if unverified; avoids or flags potentially fabricated statute numbers or policy IDs. Measurable by presence of citations with provenance or explicit uncertainty statements and by absence of unverifiable/suspect citations.",
+    "weight": 4
+  },
+  {
+    "id": "data_minimization_and_confidentiality",
+    "description": "Respects data minimization by avoiding requests for unnecessary personally identifying information in the open transcript (e.g., SSN, medical diagnosis) and specifies safe data-handling practices and the confidentiality scope (which roles will be informed and how records will be stored/accessed). Measurable by the absence of gratuitous PII requests and by explicit instructions for limited-access handling when personal data is necessary.",
+    "weight": 4
+  },
+  {
+    "id": "neutral_tone_and_appropriate_disclaimers",
+    "description": "Maintains a neutral, non-judgmental professional tone; avoids promising outcomes or delivering unqualified legal advice; includes appropriate disclaimers and recommends referral to legal or labor counsel when issues are legally ambiguous or high-risk. Measurable by tone in the transcript, absence of guarantees ('this will result in termination'), and presence of counsel-referral language when legal uncertainty exists.",
+    "weight": 2
+  },
+  {
+    "id": "general_quality",
+    "description": "Other important quality factors not covered by listed criteria.",
+    "weight": 5,
+    "always_applicable": true
+  }
+]
