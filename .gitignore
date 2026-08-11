@@ -162,7 +162,18 @@ docs/BenchmarkingDecisionSystem.md
 docs/ReactBenchmarkWorkbenchADR.md
 docs/BenchmarkMigrationLedger.md
 
-experiments/reports/
+# Generated benchmark outputs are local by default. Explicit exceptions below
+# are reviewed fixtures or curated publication evidence.
+experiments/reports/*
+!experiments/reports/synthetic-pattern-a.json
+!experiments/reports/synthetic-pattern-b.json
+!experiments/reports/synthetic-direct-search/
+!experiments/reports/synthetic-direct-search/**
+!experiments/reports/publication-9c94215-20260810/
+!experiments/reports/publication-9c94215-20260810/**
+experiments/reports/publication-9c94215-20260810/inputs/
+experiments/reports/publication-9c94215-20260810/**/evaluation/judge-input.jsonl
+experiments/reports/publication-9c94215-20260810/**/evaluation/judge-raw.json
 experiments/cost-reconciliation/
 
 .foundry/
