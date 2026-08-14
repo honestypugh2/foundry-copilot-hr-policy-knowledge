@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "name": "copilot-studio-credits-feature-mix",
+  "version": "2026-08-01",
+  "rate_profile": "copilot-studio-credits-standard-harness:2026-08-01",
+  "description": "Per-pattern assumed billable feature events for one benchmarked question, used to produce a deterministic estimated Credits-per-message figure. This is a forward estimate from each agent's known configuration (like the Microsoft Copilot Studio agent usage estimator), NOT live telemetry. The Power Platform admin-center consumption export remains authoritative for billed Credits.",
+  "patterns": {
+    "A": {
+      "front_door_agent": "Ask HR Policy Agent A",
+      "events": [{ "meter": "generative_answer", "count": 1 }],
+      "note": "Generative answer grounded on Azure AI Search knowledge. No connector/agent action, no tenant graph grounding.",
+      "byo_foundry_tokens": false
+    },
+    "A2": {
+      "front_door_agent": "Ask HR Policy Agent A2G",
+      "events": [
+        { "meter": "generative_answer", "count": 1 },
+        { "meter": "agent_action", "count": 1 }
+      ],
+      "note": "Generative answer + one agent action for the Foundry IQ Knowledge Retrieval (API) tool call. GitHub Copilot harness; treat the retrieval tool as one agent action.",
+      "byo_foundry_tokens": false,
+      "uncertain_events": ["agent_action"]
+    },
+    "C": {
+      "front_door_agent": "Ask HR Policy Agent C",
+      "events": [
+        { "meter": "generative_answer", "count": 1 },
+        { "meter": "agent_action", "count": 1 }
+      ],
+      "note": "Generative answer + one agent action for the REST lookup tool (api/lookup). When the deterministic lookup route fires without generation, count classic_answer instead.",
+      "byo_foundry_tokens": false,
+      "uncertain_events": ["agent_action"]
+    },
+    "B": {
+      "front_door_agent": "Ask HR Policy Agent B foundry",
+      "events": [
+        { "meter": "generative_answer", "count": 1 },
+        { "meter": "agent_action", "count": 1 }
+      ],
+      "note": "Generative answer + one agent action to call the connected Foundry external agent. The Foundry model tokens are billed SEPARATELY on the per-token USD lane (byo_foundry_tokens=true).",
+      "byo_foundry_tokens": true,
+      "uncertain_events": ["agent_action"]
+    },
+    "Hosted": {
+      "front_door_agent": "Ask HR Policy Agent B",
+      "events": [
+        { "meter": "generative_answer", "count": 1 },
+        { "meter": "agent_action", "count": 1 }
+      ],
+      "note": "Hosted front door mirrors Pattern B: generative answer + connected-agent action, with Foundry model tokens billed separately.",
+      "byo_foundry_tokens": true,
+      "uncertain_events": ["agent_action"]
+    }
+  },
+  "assumptions": [
+    "One benchmarked question maps to one user message; multi-turn or retry inflation is not modeled.",
+    "agent_action counts are marked uncertain because Copilot Studio does not expose a per-message billable-event breakdown over Direct Line; confirm against the admin-center consumption grid.",
+    "Patterns whose Copilot Studio agent is currently non-responsive (B, Hosted front doors) have no live message evidence; their estimate is configuration-only until the agents are fixed."
+  ]
+}

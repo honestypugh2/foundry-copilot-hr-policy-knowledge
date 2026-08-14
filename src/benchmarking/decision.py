@@ -54,6 +54,18 @@ def pareto_frontier(candidates: list[DecisionCandidate]) -> list[str]:
     return sorted(frontier)
 
 
+def _fmt_pct(value: float) -> str:
+    return f"{value * 100:.1f}%"
+
+
+def _fmt_secs(value: float) -> str:
+    return f"{value / 1000:.1f}s"
+
+
+def _fmt_usd(value: float) -> str:
+    return f"${value:.4f}"
+
+
 def qualify_slos(
     candidates: list[DecisionCandidate], thresholds: SloThresholds
 ) -> list[Qualification]:
@@ -61,33 +73,43 @@ def qualify_slos(
     for candidate in candidates:
         failures: list[str] = []
         checks = (
-            ("quality", candidate.quality, lambda value: value >= thresholds.minimum_quality),
+            ("quality", candidate.quality, thresholds.minimum_quality, "below", _fmt_pct),
             (
                 "latency_p95_ms",
                 candidate.latency_p95_ms,
-                lambda value: value <= thresholds.maximum_latency_p95_ms,
+                thresholds.maximum_latency_p95_ms,
+                "exceeds",
+                _fmt_secs,
             ),
             (
                 "success_rate",
                 candidate.success_rate,
-                lambda value: value >= thresholds.minimum_success_rate,
+                thresholds.minimum_success_rate,
+                "below",
+                _fmt_pct,
             ),
             (
                 "security_pass_rate",
                 candidate.security_pass_rate,
-                lambda value: value >= thresholds.minimum_security_pass_rate,
+                thresholds.minimum_security_pass_rate,
+                "below",
+                _fmt_pct,
             ),
             (
                 "estimated_variable_cost",
                 candidate.estimated_variable_cost,
-                lambda value: value <= thresholds.maximum_estimated_variable_cost,
+                thresholds.maximum_estimated_variable_cost,
+                "exceeds",
+                _fmt_usd,
             ),
         )
-        for metric, value, check in checks:
+        for metric, value, threshold, relation, fmt in checks:
             if value is None:
                 failures.append(f"{metric}: unavailable")
-            elif not check(value):
-                failures.append(f"{metric}: threshold failed")
+                continue
+            failed = value > threshold if relation == "exceeds" else value < threshold
+            if failed:
+                failures.append(f"{metric}: {fmt(value)} {relation} {fmt(threshold)} SLO")
         qualifications.append(
             Qualification(
                 configuration_id=candidate.configuration_id,

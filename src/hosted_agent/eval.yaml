@@ -2,7 +2,7 @@ name: hr-policy-agent-curated-smoke
 agent:
     name: hr-policy-agent
     kind: hosted
-    version: "2"
+    version: "4"
 dataset:
     local_uri: .foundry/datasets/hr-policy-agent-curated-v1.jsonl
 evaluators:

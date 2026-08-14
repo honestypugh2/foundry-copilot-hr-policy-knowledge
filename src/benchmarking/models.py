@@ -156,6 +156,11 @@ class ExperimentManifest(StrictModel):
     output_mode: str
     model_deployment: str | None = None
     model_version: str | None = None
+    # Effective answer-generation model identity, present for every pattern so
+    # rows are comparable: a real deployment (e.g. "gpt-5-mini") where we control
+    # it, or an opaque platform marker (e.g. "microsoft_managed_standard_harness",
+    # "github_copilot_harness") where Copilot Studio owns the model.
+    answer_model: str | None = None
     retrieval_reasoning_effort: Literal["minimal", "low", "medium"] | None = None
     semantic_configuration: str | None = None
     search_sku: str | None = None
@@ -236,6 +241,20 @@ class LatencySummary(StrictModel):
     p99_ms: float
 
 
+class ConfidenceInterval(StrictModel):
+    lower: float = Field(ge=0, le=1)
+    upper: float = Field(ge=0, le=1)
+    confidence_level: float = Field(default=0.95, gt=0, lt=1)
+    method: Literal["wilson_score"] = "wilson_score"
+
+
+class ProportionSummary(StrictModel):
+    passed: int = Field(ge=0)
+    count: int = Field(ge=1)
+    pass_rate: float = Field(ge=0, le=1)
+    confidence_interval: ConfidenceInterval
+
+
 class ActivityTypeSummary(StrictModel):
     record_count: int
     elapsed_ms: LatencySummary | None = None
@@ -255,15 +274,23 @@ class AggregateReport(StrictModel):
     schema_version: Literal["1.0"] = SCHEMA_VERSION
     experiment_id: str
     count: int
+    success_count: int = Field(ge=0)
+    partial_count: int = Field(ge=0)
+    error_count: int = Field(ge=0)
+    timeout_count: int = Field(ge=0)
+    throttle_count: int = Field(ge=0)
     success_rate: float
     error_rate: float
     throttle_rate: float
+    rate_confidence_intervals: dict[str, ConfidenceInterval] = Field(default_factory=dict)
     client_wall_time: LatencySummary | None
     cold_client_wall_time: LatencySummary | None = None
     warm_client_wall_time: LatencySummary | None = None
     by_category: dict[str, LatencySummary] = Field(default_factory=dict)
     by_stage: dict[str, LatencySummary] = Field(default_factory=dict)
     by_activity_type: dict[str, ActivityTypeSummary] = Field(default_factory=dict)
+    quality_by_category: dict[str, ProportionSummary] = Field(default_factory=dict)
+    security_by_category: dict[str, ProportionSummary] = Field(default_factory=dict)
     variable_cost: VariableCostSummary
     sample_warning: str | None = None
     provenance: dict[str, Any] = Field(default_factory=dict)

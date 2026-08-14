@@ -32,6 +32,9 @@ class LoadTestReport(BaseModel):
     concurrency: int = Field(ge=1)
     spawn_rate: float = Field(gt=0)
     duration_seconds: int = Field(ge=1)
+    target: str | None = None
+    environment: str | None = None
+    tags: list[str] = Field(default_factory=list)
     endpoints: list[LoadEndpointResult]
 
 
@@ -55,7 +58,14 @@ def validate_load_target(target: str | None) -> str:
 
 
 def import_locust_csv(
-    path: Path, *, concurrency: int, spawn_rate: float, duration_seconds: int
+    path: Path,
+    *,
+    concurrency: int,
+    spawn_rate: float,
+    duration_seconds: int,
+    target: str | None = None,
+    environment: str | None = None,
+    tags: list[str] | None = None,
 ) -> LoadTestReport:
     endpoints: list[LoadEndpointResult] = []
     with path.open(newline="", encoding="utf-8-sig") as handle:
@@ -78,5 +88,8 @@ def import_locust_csv(
         concurrency=concurrency,
         spawn_rate=spawn_rate,
         duration_seconds=duration_seconds,
+        target=target,
+        environment=environment,
+        tags=tags or [],
         endpoints=endpoints,
     )

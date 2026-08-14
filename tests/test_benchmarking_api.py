@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from httpx import ASGITransport, AsyncClient
 
 from src.backend.main import app
+from src.benchmarking.api.endpoints import _publication_blockers, _summary
 
 
 async def test_benchmarking_artifact_list_detail_and_comparison():
@@ -37,11 +41,23 @@ async def test_benchmarking_artifact_list_detail_and_comparison():
     )
     assert telemetry_capability["authoritative_system"] == "Application Insights"
     assert telemetry_capability["deep_link_type"] == "application_insights"
+    grafana_capability = next(
+        item
+        for item in capabilities["capabilities"]
+        if item["capability_id"] == "grafana-dashboards"
+    )
+    assert grafana_capability["limitations"] == [
+        "The Grafana resource exists, but versioned dashboards and alert rules "
+        "are not yet committed."
+    ]
     assert {
         "synthetic-pattern-a",
         "synthetic-pattern-b",
         "synthetic-direct-search",
     }.issubset({item["experiment_id"] for item in listing["items"]})
+    assert next(
+        item for item in listing["items"] if item["experiment_id"] == "synthetic-direct-search"
+    )["retrieval_mode"] == "classic-hybrid"
     assert detail.status_code == 200
     assert generated_detail.status_code == 200
     assert generated_detail.json()["aggregate"]["provenance"]["fixture_mode"] is True
@@ -79,6 +95,9 @@ async def test_pattern_summary_and_native_links_fail_closed(monkeypatch):
         )
 
     assert pattern["item"]["automation_boundary"].startswith("automated direct Search")
+    assert pattern["item"]["implementation_status"] == "implemented"
+    assert pattern["item"]["evidence_status"] == "measured"
+    assert pattern["item"]["latest"]["provenance"]["fixture_mode"] is False
     assert unknown_pattern.status_code == 404
     assert unsafe_link["status"] == "degraded"
     assert unsafe_link["authoritative_url"] is None
@@ -99,3 +118,22 @@ async def test_comparison_reports_incompatible_provenance():
 
     assert comparison["compatible_scope"] is False
     assert "corpus_fingerprint differs" in comparison["incompatibility_reasons"]
+
+
+def test_native_evaluation_errors_block_publication():
+    report_path = Path(
+        "experiments/reports/synthetic-direct-search/"
+        "synthetic-direct-search.report.json"
+    )
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    provenance = payload["aggregate"]["provenance"]
+    provenance["evaluation_release_ready"] = False
+    provenance["evaluation_release_blockers"] = [
+        "General quality: 1 Error and 0 Invalid results",
+        "Compare meaning: 1 Error and 0 Invalid results",
+    ]
+
+    blockers = _publication_blockers(payload, _summary(payload))
+
+    assert "General quality: 1 Error and 0 Invalid results" in blockers
+    assert "Compare meaning: 1 Error and 0 Invalid results" in blockers

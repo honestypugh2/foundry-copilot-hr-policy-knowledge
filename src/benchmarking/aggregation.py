@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from math import sqrt
 from statistics import fmean, pstdev
 
 from src.benchmarking.models import (
@@ -9,10 +10,29 @@ from src.benchmarking.models import (
     AggregateReport,
     AvailabilityReason,
     CaseResult,
+    ConfidenceInterval,
     CostEstimate,
     LatencySummary,
     VariableCostSummary,
 )
+
+
+def wilson_score_interval(passed: int, count: int) -> ConfidenceInterval:
+    """Return a two-sided 95% Wilson score interval for a binomial proportion."""
+    if count < 1:
+        raise ValueError("Wilson score intervals require at least one observation")
+    if passed < 0 or passed > count:
+        raise ValueError("passed must be between zero and count")
+    z = 1.959963984540054
+    proportion = passed / count
+    denominator = 1 + z**2 / count
+    center = (proportion + z**2 / (2 * count)) / denominator
+    margin = (
+        z
+        * sqrt(proportion * (1 - proportion) / count + z**2 / (4 * count**2))
+        / denominator
+    )
+    return ConfidenceInterval(lower=max(0, center - margin), upper=min(1, center + margin))
 
 
 def _percentile(values: list[float], percentile: float) -> float:
@@ -179,14 +199,27 @@ def aggregate_results(results: list[CaseResult]) -> AggregateReport:
     count = len(results)
     variable_cost = _variable_cost_summary(results)
     successes = sum(result.status == "success" for result in results)
-    errors = sum(result.status in {"error", "timeout"} for result in results)
+    partials = sum(result.status == "partial" for result in results)
+    error_count = sum(result.status == "error" for result in results)
+    timeout_count = sum(result.status == "timeout" for result in results)
+    errors = error_count + timeout_count
     throttles = sum(result.throttled for result in results)
     return AggregateReport(
         experiment_id=results[0].experiment_id,
         count=count,
+        success_count=successes,
+        partial_count=partials,
+        error_count=error_count,
+        timeout_count=timeout_count,
+        throttle_count=throttles,
         success_rate=successes / count,
         error_rate=errors / count,
         throttle_rate=throttles / count,
+        rate_confidence_intervals={
+            "success_rate": wilson_score_interval(successes, count),
+            "error_rate": wilson_score_interval(errors, count),
+            "throttle_rate": wilson_score_interval(throttles, count),
+        },
         client_wall_time=latency,
         cold_client_wall_time=cold,
         warm_client_wall_time=warm,

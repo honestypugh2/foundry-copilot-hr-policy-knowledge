@@ -1,6 +1,6 @@
 """Optional local/non-production HTTP load workload for HR policy routes."""
 
-from locust import HttpUser, between, events, task
+from locust import HttpUser, between, events, tag, task
 
 from src.benchmarking.load import validate_load_target
 
@@ -13,6 +13,7 @@ def guard_target(environment, **_kwargs):
 class HRPolicyUser(HttpUser):
     wait_time = between(0.5, 1.5)
 
+    @tag("chat")
     @task(3)
     def chat(self):
         self.client.post(
@@ -21,6 +22,7 @@ class HRPolicyUser(HttpUser):
             name="POST /api/chat",
         )
 
+    @tag("lookup")
     @task(1)
     def lookup(self):
         self.client.post(

@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import subprocess
+import sys
 from typing import Any, Callable
 
 from azure.identity import AzureCliCredential
+from dotenv import load_dotenv
 
 
 def _token_claims(token: str) -> dict[str, Any]:
@@ -58,3 +61,27 @@ def verify_azure_cli_identity(
     if mismatches:
         raise RuntimeError("Azure identity preflight failed: " + "; ".join(mismatches))
     return actual
+
+
+def main() -> int:
+    """Verify the active CLI identity against the repository's pinned target."""
+    load_dotenv(override=True)
+    try:
+        actual = verify_azure_cli_identity(
+            expected_tenant_id=os.environ.get("EXPECTED_AZURE_TENANT_ID", ""),
+            expected_subscription_id=os.environ.get(
+                "EXPECTED_AZURE_SUBSCRIPTION_ID", ""
+            ),
+            expected_principal_id=os.environ.get(
+                "EXPECTED_AZURE_PRINCIPAL_ID", ""
+            ),
+        )
+    except Exception as exc:
+        print(f"Azure identity preflight failed: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(actual, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

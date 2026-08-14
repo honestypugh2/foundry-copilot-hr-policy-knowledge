@@ -44,6 +44,39 @@ Deterministic gates remain authoritative when an LLM judge disagrees. Judge
 means, pass rates, and calibration are supplemental signals and must remain
 visible rather than replacing negative findings.
 
+## View the evidence
+
+Start the backend and workbench in separate terminals:
+
+```bash
+source .venv/bin/activate
+ENABLE_TRACING=false \
+BENCHMARK_ARTIFACT_DIR="$PWD/experiments/reports" \
+python -m uvicorn src.backend.main:app --host 127.0.0.1 --port 8000
+```
+
+```bash
+cd src/frontend
+npm install
+npm run dev -- --host 127.0.0.1
+```
+
+Open `http://127.0.0.1:5174` and use:
+
+- **Experiments** for the run inventory and full aggregate detail.
+- **Compare** for scope-checked metric deltas.
+- **Pareto / SLO** for decision and publication gates.
+- **Evidence coverage** for implemented capabilities, partial integrations,
+  limitations, and external references.
+- **Operations** for server-managed links to Application Insights, Search,
+  Foundry, Load Testing, Grafana, and Cost Management.
+- **Provenance** for source commits and corpus/index fingerprints.
+
+The raw read-only API starts at `http://127.0.0.1:8000/api/benchmarking`.
+See
+[`docs/BenchmarkingDecisionSystem.md`](../docs/BenchmarkingDecisionSystem.md)
+for the complete metric-to-surface matrix and the remaining gaps.
+
 ## Offline smoke test
 
 The credential-free fixture validates contracts and report generation:

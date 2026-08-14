@@ -43,17 +43,25 @@ def test_retrieval_mode_normalization_is_strict():
 
 
 def test_build_semantic_provider():
+    from agent_framework_azure_ai_search import AzureAISearchContextProvider
+
     provider = build_search_context_provider(
         RETRIEVAL_MODE_CONTEXT_SEMANTIC, endpoint=_ENDPOINT, api_key=_KEY
     )
-    assert type(provider).__name__ == "AzureAISearchContextProvider"
+    assert isinstance(provider, AzureAISearchContextProvider)
+    assert provider.last_activity == []
 
 
 def test_build_agentic_provider():
+    from agent_framework_azure_ai_search import AzureAISearchContextProvider
+
     provider = build_search_context_provider(
         RETRIEVAL_MODE_CONTEXT_AGENTIC, endpoint=_ENDPOINT, api_key=_KEY
     )
-    assert type(provider).__name__ == "AzureAISearchContextProvider"
+    assert isinstance(provider, AzureAISearchContextProvider)
+    # Tracing subclass exposes captured KB query-planning activity.
+    assert provider.last_activity == []
+    assert hasattr(provider, "_agentic_search")
 
 
 def test_build_requires_endpoint(monkeypatch):

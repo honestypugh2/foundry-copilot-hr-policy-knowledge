@@ -12,6 +12,7 @@
   "pattern": "Hosted",
   "retrieval_mode": "tool",
   "invocation_path": "agent_framework_local:tool",
+  "answer_model": "gpt-5-mini",
   "output_mode": "answer_synthesis",
   "model_deployment": "gpt-5-mini",
   "semantic_configuration": "hr-semantic-config",

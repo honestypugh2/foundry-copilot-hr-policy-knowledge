@@ -49,7 +49,34 @@ cp .env.example .env
 | `ORCHESTRATOR_PATTERN`              | `A` (default) / `B` / `C` — selects the `/api/chat` backend path (read in `src/backend/main.py`) |
 | `SEARCH_MODE`                       | `integrated_vectorization` (default) or `legacy`. `legacy` uses `HRPolicySearchService`, which has its **own** index schema (build it via `src/indexing/reindex.py`) — not the integrated-vectorization index. |
 
-## 3. Index the knowledge base
+## 3. Provision Azure resources (do this before indexing)
+
+Indexing writes into an Azure AI Search service, an AI Services/OpenAI account,
+and a storage account that must already exist. Provision them first with the
+Azure Developer CLI from the repo root:
+
+```bash
+azd auth login
+azd env new hr-demo          # or select an existing env
+azd provision                # creates Search, Foundry project, storage, ACR,
+                             # Container Apps env, App Insights, Grafana, and
+                             # assigns the RBAC roles listed in infra/README.md
+```
+
+`azd provision` stands up infrastructure only (no app code push); use `azd up`
+if you also want to build and deploy the backend container in the same step.
+After it completes, copy the emitted endpoints into `.env` (the variables in the
+table above) and run the identity preflight before any further Azure call:
+
+```bash
+source .venv/bin/activate
+python -m src.config.azure_identity   # must exit 0 before continuing
+```
+
+Section 11 covers the full infrastructure/RBAC detail and the manual
+provisioning path; you only need `azd provision` here to unblock indexing.
+
+## 4. Index the knowledge base
 
 Integrated Vectorization is the default. It runs the indexer + skillset
 pipeline server-side (chunking and embedding happen in Azure AI Search).
@@ -79,7 +106,7 @@ uv run python scripts/index_knowledge_base_docintel_chunking.py --local-only
 See [DataPipelineAndTesting.md](DataPipelineAndTesting.md) for the full
 pipeline diagram and the list of Azure resources each option creates.
 
-## 4. (Optional) Provision Foundry IQ and PromptAgent resources (A2/B)
+## 5. (Optional) Provision Foundry IQ and PromptAgent resources (A2/B)
 
 Skip this step if you're starting with Pattern A. Run it for A2's direct Foundry
 IQ connection or B's force-grounded synthesis via `tool_choice="required"`.
@@ -106,7 +133,7 @@ uv run python -m src.agents.create_foundry_agent --cleanup
 See [FoundryAgentArchitecture.md](FoundryAgentArchitecture.md) for the
 agent's internal structure.
 
-## 5. Run the FastAPI backend
+## 6. Run the FastAPI backend
 
 ```bash
 uv run python -m src.backend.main
@@ -123,14 +150,14 @@ Two endpoints carry most of the load:
 These latency figures are illustrative and environment-dependent, not
 benchmark results.
 
-## 6. (Optional) Run a React frontend
+## 7. (Optional) Run a React frontend
 
 ```bash
 # Pure Agent Framework UI
 cd src/frontend && npm install && npm run dev          # http://localhost:5173
 ```
 
-## 7. Wire up Copilot Studio
+## 8. Wire up Copilot Studio
 
 Build and validate one Copilot Studio pattern at a time using
 [Build the Retrieval Patterns](patterns/README.md):
@@ -154,7 +181,7 @@ Custom-connector OpenAPI specs:
   (paste into the copilot's generative AI instructions or attach as a
   knowledge file).
 
-## 8. (Optional) Run the Hosted Agent runtime
+## 9. (Optional) Run the Hosted Agent runtime
 
 A self-contained Microsoft Agent Framework hosting container.
 
@@ -166,14 +193,14 @@ docker build -t hr-policy-hosted-agent .
 
 Reference: [Step 6: Host Your Agent](https://learn.microsoft.com/en-us/agent-framework/get-started/hosting?pivots=programming-language-python).
 
-## 9. Run the test suite
+## 10. Run the test suite
 
 ```bash
 uv run pytest tests/ -v
 uv run pytest tests/ -v -m mock     # tests that don't need Azure
 ```
 
-## 10. Deploy infrastructure
+## 11. Deploy infrastructure
 
 ```bash
 az deployment group create \
@@ -190,6 +217,6 @@ az deployment group create \
 | ------------------------------------------------ | -------------------------------------------------------------------- |
 | `403` from Foundry on agent creation             | Grant the project's managed identity `Search Index Data Reader`      |
 | `/api/chat` returns the local-search fallback    | `AZURE_AI_PROJECT_ENDPOINT` empty — set it in `.env` and restart     |
-| `/api/lookup` returns 0 documents                 | Index isn't populated — re-run step 3                                |
+| `/api/lookup` returns 0 documents                 | Index isn't populated — re-run step 4                                |
 | Copilot Studio doesn't call the right tool        | Tighten Action descriptions ([Lever 1](CopilotStudioIntegration.md)) |
 | Knowledge Base MCP errors with `404`              | KB MCP API version mismatch — check `agentic_retrieval.mcp.api_version` in `src/config/search_config.json` |

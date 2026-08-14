@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.benchmarking.cli import _build_adapter, main
+from src.benchmarking.cli import _build_adapter, _validate_execution_boundary, main
 from src.copilot_studio.service import CopilotStudioService
 from scripts.generate_copilot_benchmark_manifests import generate
 from tests.test_benchmarking_phase1 import _manifest
@@ -130,7 +130,10 @@ def test_cli_rejects_unconfigured_copilot_studio(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("COPILOT_STUDIO_ENVIRONMENT_ID", raising=False)
     monkeypatch.delenv("COPILOT_STUDIO_AGENT_SCHEMA", raising=False)
     manifest_path = tmp_path / "manifest.json"
-    manifest_path.write_text(_manifest().model_dump_json(), encoding="utf-8")
+    manifest = _manifest().model_copy(
+        update={"invocation_path": "copilot_studio_direct_line:test-agent"}
+    )
+    manifest_path.write_text(manifest.model_dump_json(), encoding="utf-8")
     cases_path = tmp_path / "cases.json"
     cases_path.write_text(
         json.dumps(
@@ -206,6 +209,21 @@ def test_copilot_adapter_targets_explicit_real_agent(monkeypatch):
     assert service.environment_id == "real-environment"
     assert service.agent_schema == "cr4ba_askHrPatternA"
     assert service.token_endpoint_url == "https://new.example/token"
+
+
+def test_execution_boundary_requires_matching_copilot_manifest_and_flag():
+    direct_manifest = _manifest()
+    copilot_manifest = direct_manifest.model_copy(
+        update={"invocation_path": "copilot_studio_direct_line:Default_AskHRPolicyAgent"}
+    )
+
+    with pytest.raises(ValueError, match="same execution boundary"):
+        _validate_execution_boundary(copilot_manifest, copilot_studio=False)
+    with pytest.raises(ValueError, match="same execution boundary"):
+        _validate_execution_boundary(direct_manifest, copilot_studio=True)
+
+    _validate_execution_boundary(copilot_manifest, copilot_studio=True)
+    _validate_execution_boundary(direct_manifest, copilot_studio=False)
 
 
 def test_copilot_manifest_identifies_real_agent_and_model(tmp_path: Path):

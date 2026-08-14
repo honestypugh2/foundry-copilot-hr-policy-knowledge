@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "name": "copilot-studio-credits-standard-harness",
+  "version": "2026-08-01",
+  "currency": "CREDITS",
+  "unit": "Copilot Credits per message",
+  "effective_date": "2026-08-01",
+  "pricing_scope": "Microsoft Copilot Studio standard harness, per-message Copilot Credit rate card (B2B / non-Microsoft-365-Copilot-licensed usage). Excludes bring-your-own-model (Azure Foundry) token charges, which are billed separately on the Foundry per-token lane.",
+  "source_url": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/requirements-messages-management",
+  "rates": [
+    { "meter": "classic_answer", "unit": "message", "credits": 1, "note": "Predefined authored response." },
+    { "meter": "generative_answer", "unit": "message", "credits": 2, "note": "AI-generated grounded answer (RAG over connected knowledge)." },
+    { "meter": "agent_action", "unit": "action", "credits": 5, "note": "Trigger, deep reasoning, topic transition, connected-agent call, or REST/connector tool call in generative orchestration." },
+    { "meter": "tenant_graph_grounding", "unit": "message", "credits": 10, "note": "RAG over the tenant Microsoft Graph. NOT used by these HR agents (they ground on Azure AI Search / Foundry IQ, not Graph)." },
+    { "meter": "agent_flow_actions_per_100", "unit": "100 actions", "credits": 13, "note": "Agent-flow action batches. Not used by the benchmarked patterns." },
+    { "meter": "ai_tools_basic_per_10_responses", "unit": "10 responses", "credits": 1, "note": "Prompt tool on a basic model; 0.1 credit per 1K tokens." },
+    { "meter": "ai_tools_standard_per_10_responses", "unit": "10 responses", "credits": 15, "note": "Prompt tool on a standard model; 1.5 credits per 1K tokens." },
+    { "meter": "ai_tools_premium_per_10_responses", "unit": "10 responses", "credits": 100, "note": "Prompt tool / reasoning model; 10 credits per 1K tokens." },
+    { "meter": "content_processing_per_page", "unit": "page", "credits": 8, "note": "Document/image content processing. Not used by the benchmarked patterns." }
+  ],
+  "assumptions": [
+    "Rates are the published standard-harness Copilot Credit rate card captured 2026-08-13 from the source_url.",
+    "Employee-facing (B2E) usage by a Microsoft 365 Copilot-licensed user is 'No charge' against these meters; this profile prices the B2B / unlicensed path so the benchmark reports a non-zero cost lane.",
+    "Bring-your-own-model (Azure Foundry) token usage is billed separately and is NOT represented here; for Pattern B and the Hosted front door, add the Foundry per-token USD lane on top of the connected-agent action credits.",
+    "Credits are a per-message unit and never convert to tokens or USD; do not add Credits to the Foundry USD lane."
+  ],
+  "excluded_costs": [
+    "Bring-your-own-model (Azure Foundry) token charges — priced separately on the Foundry per-token lane.",
+    "Copilot Studio base license / prepaid capacity, Power Platform request capacity, and Dataverse storage.",
+    "Voice tiers, taxes, discounts, reservations, and billing adjustments."
+  ]
+}

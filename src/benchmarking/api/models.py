@@ -52,12 +52,14 @@ class ExperimentSummary(ApiModel):
     schema_version: Literal["1.0"] = "1.0"
     experiment_id: str
     pattern: str
+    retrieval_mode: str
     dataset_name: str
     dataset_version: str
     git_commit: str
     corpus_fingerprint: str | None = None
     index_fingerprint: str | None = None
     model_deployment: str | None = None
+    answer_model: str | None = None
     created_at: str
     count: int = Field(ge=0)
     success_rate: float
@@ -95,6 +97,8 @@ class PatternEvidence(ApiModel):
     pattern: Literal["A", "A2", "B", "C", "Hosted"]
     automation_boundary: str
     telemetry_boundary: str
+    implementation_status: Literal["implemented", "partial"]
+    evidence_status: Literal["measured", "fixture_only", "run_required"]
     experiment_count: int = Field(ge=0)
     latest: ExperimentSummary | None = None
 
@@ -137,6 +141,8 @@ class DecisionResponse(ApiModel):
     evidence: list[DecisionEvidence] = Field(default_factory=list)
     frontier_experiment_ids: list[str] = Field(default_factory=list)
     recommended_experiment_id: str | None = None
+    leading_experiment_id: str | None = None
+    leading_reason: str | None = None
     selection_method: str
     blockers: list[str] = Field(default_factory=list)
 

@@ -137,7 +137,7 @@ for A, A-SP, A2, B, C, Hosted, and Hybrid scenarios.
 - **Docker Desktop** running — `azd` builds the backend and hosted-agent container images.
 - Python 3.10+ and [`uv`](https://docs.astral.sh/uv/).
 - Node.js 18+ (only if you run the React frontends).
-- Copilot Studio licence (Power Virtual Agents) for Patterns A / C.
+- Copilot Studio licence (Power Virtual Agents) for the Copilot Studio front-door patterns (A / A2 / B / C).
 
 ### 2. Clone, configure, install
 
@@ -175,7 +175,8 @@ environment without updating these values can deploy against the previous
 subscription.
 
 ```bash
-az account show --query '{subscription:name, subscriptionId:id, tenantId:tenantId}' -o table
+source .venv/bin/activate
+python -m src.config.azure_identity
 azd auth login --check-status
 
 azd env select hr-demo
@@ -311,8 +312,8 @@ Endpoints:
 ### 7. (Optional) Run the React frontend
 
 ```bash
-# Pure Agent Framework UI
-cd src/frontend && npm install && npm run dev          # http://localhost:5173
+# Benchmark Workbench (read-only decision UI); needs the backend running
+cd src/frontend && npm install && npm run dev          # http://localhost:5174
 ```
 
 ### 8. Wire up Copilot Studio
@@ -373,7 +374,7 @@ azd deploy --no-prompt
 The two-phase deployment provisions: AI Foundry + project, gpt-5-mini / gpt-5 / embeddings,
 Azure AI Search, Document Intelligence, Storage (`ask-hr-knowledge` container),
 **Azure Container Registry**, a **Container Apps environment + FastAPI backend**
-(Pattern C `/api/lookup` + Pattern B2 `/api/chat`), **Log Analytics + Application
+(Pattern C `/api/lookup` + Pattern B `/api/chat`), **Log Analytics + Application
 Insights**, and all RBAC — including the Foundry project managed identity's
 Search read role and the user's Foundry Project Manager role. It then builds and
 pushes the backend and **`hr-policy-agent`** Hosted Agent images and deploys them.
@@ -431,7 +432,7 @@ KB-level medium reasoning, `extractiveData`, or retrieval-instruction fields.
 │   ├── document_processing/          # Doc Intelligence + chunking
 │   ├── search/                       # Hybrid + integrated-vectorization clients
 │   ├── copilot_studio/service.py     # Direct-to-Engine API
-│   ├── frontend/                     # React 19 + TypeScript chat UI
+│   ├── frontend/                     # React 19 + TypeScript benchmark workbench (read-only)
 │   └── hosted_agent/                 # agent.yaml + server.py + Dockerfile
 ├── scripts/                          # Indexing + utilities
 │   ├── index_knowledge_base_docintel_chunking.py      # Option 1

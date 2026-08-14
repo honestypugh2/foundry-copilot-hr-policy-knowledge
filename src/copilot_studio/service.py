@@ -16,6 +16,7 @@ References:
 import logging
 import os
 from typing import Any, Optional
+from urllib.parse import unquote, urlparse
 
 import httpx
 from azure.identity import (
@@ -45,6 +46,7 @@ class CopilotStudioService:
         environment_id: str | None = None,
         agent_schema: str | None = None,
         token_endpoint: str | None = None,
+        directline_secret: str | None = None,
     ):
         self.environment_id = environment_id or os.getenv(
             "COPILOT_STUDIO_ENVIRONMENT_ID", ""
@@ -58,9 +60,31 @@ class CopilotStudioService:
         )
         self.region = os.getenv("COPILOT_STUDIO_REGION", "unitedstates")
 
+        # A Direct Line channel secret (GitHub Copilot harness) is an alternative
+        # to the Mobile app token endpoint (Standard harness).
+        self._directline_secret = directline_secret or os.getenv(
+            "COPILOT_STUDIO_TOKEN_SECRET", ""
+        )
         self._token_endpoint_override = token_endpoint or os.getenv(
             "COPILOT_STUDIO_TOKEN_ENDPOINT", ""
         )
+        endpoint_parts = [
+            unquote(part)
+            for part in urlparse(self._token_endpoint_override).path.split("/")
+            if part
+        ]
+        if self.agent_schema and "botsbyschema" in endpoint_parts:
+            schema_index = endpoint_parts.index("botsbyschema") + 1
+            endpoint_schema = (
+                endpoint_parts[schema_index]
+                if schema_index < len(endpoint_parts)
+                else ""
+            )
+            if endpoint_schema != self.agent_schema:
+                raise ValueError(
+                    "COPILOT_STUDIO_TOKEN_ENDPOINT agent schema does not match "
+                    "COPILOT_STUDIO_AGENT_SCHEMA"
+                )
 
         # Build credential chain for Entra ID auth
         use_managed = os.getenv("USE_MANAGED_IDENTITY", "true").lower() == "true"
@@ -81,7 +105,7 @@ class CopilotStudioService:
         return bool(
             self.environment_id
             and self.agent_schema
-            and self._token_endpoint_override
+            and (self._token_endpoint_override or self._directline_secret)
         )
 
     @property
@@ -102,7 +126,7 @@ class CopilotStudioService:
             "agent_schema": self.agent_schema,
             "region": self.region,
             "is_configured": self.is_configured,
-            "token_endpoint_url": self.token_endpoint_url if self.is_configured else None,
+            "token_endpoint_url": self._token_endpoint_override or None,
         }
 
     # ------------------------------------------------------------------ #
@@ -122,8 +146,26 @@ class CopilotStudioService:
             raise RuntimeError(
                 "Copilot Studio is not configured. "
                 "Set COPILOT_STUDIO_ENVIRONMENT_ID, COPILOT_STUDIO_AGENT_SCHEMA, and "
-                "COPILOT_STUDIO_TOKEN_ENDPOINT from the published Mobile app channel."
+                "COPILOT_STUDIO_TOKEN_ENDPOINT (Standard harness) or "
+                "COPILOT_STUDIO_TOKEN_SECRET (GitHub Copilot harness)."
             )
+
+        # GitHub Copilot harness exposes a Direct Line channel secret instead of
+        # a Mobile app token endpoint: exchange it for a short-lived token.
+        if not self._token_endpoint_override and self._directline_secret:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    "https://directline.botframework.com/v3/directline/tokens/generate",
+                    headers={"Authorization": f"Bearer {self._directline_secret}"},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+            logger.info("Direct Line token generated from channel secret")
+            return {
+                "token": data.get("token", ""),
+                "conversationId": data.get("conversationId", ""),
+                "expires_in": data.get("expires_in", 900),
+            }
 
         url = self.token_endpoint_url
         logger.info(f"Requesting Direct Line token from {url}")

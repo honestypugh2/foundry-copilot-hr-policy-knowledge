@@ -30,9 +30,18 @@ def test_locust_csv_import_stays_separate_from_experiment_results(tmp_path: Path
         encoding="utf-8",
     )
     report = import_locust_csv(
-        stats, concurrency=2, spawn_rate=1, duration_seconds=10
+        stats,
+        concurrency=2,
+        spawn_rate=1,
+        duration_seconds=10,
+        target="http://localhost:8000",
+        environment="local-synthetic",
+        tags=["chat"],
     )
     assert report.workload_type == "load_test"
+    assert report.target == "http://localhost:8000"
+    assert report.environment == "local-synthetic"
+    assert report.tags == ["chat"]
     assert len(report.endpoints) == 1
     assert report.endpoints[0].failure_count == 1
     assert report.endpoints[0].p95_ms == 180

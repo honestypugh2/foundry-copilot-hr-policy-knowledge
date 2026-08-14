@@ -112,7 +112,14 @@ async def test_cold_warm_and_error_aggregation_use_client_wall_time_only(monkeyp
     results.append(failed)
     report = aggregate_results(results)
     assert report.count == 3
+    assert report.success_count == 2
+    assert report.partial_count == 0
+    assert report.error_count == 1
+    assert report.timeout_count == 0
+    assert report.throttle_count == 0
     assert report.error_rate == pytest.approx(1 / 3)
+    assert report.rate_confidence_intervals["error_rate"].lower < report.error_rate
+    assert report.rate_confidence_intervals["error_rate"].upper > report.error_rate
     assert report.client_wall_time.count == 2
     assert report.cold_client_wall_time.p50_ms == pytest.approx(30)
     assert report.warm_client_wall_time.p50_ms == pytest.approx(10)
@@ -222,5 +229,5 @@ def test_pareto_and_slo_decisions_reject_unknowns_and_explain_failures():
         ),
     )
     assert qualifications[0].qualified
-    assert "quality: threshold failed" in qualifications[1].failures
+    assert any(f.startswith("quality:") and "below" in f for f in qualifications[1].failures)
     assert "estimated_variable_cost: unavailable" in qualifications[2].failures

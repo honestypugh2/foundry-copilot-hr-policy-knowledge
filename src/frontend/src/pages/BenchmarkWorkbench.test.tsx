@@ -1,11 +1,12 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Overview, Pareto } from "./BenchmarkWorkbench";
+import { Coverage, Overview, Pareto } from "./BenchmarkWorkbench";
 
 const experiment = {
   schema_version: "1.0",
   experiment_id: "synthetic-pattern-a",
   pattern: "A",
+  retrieval_mode: "classic-hybrid",
   dataset_name: "synthetic-hr-gold",
   dataset_version: "1.0",
   git_commit: "synthetic",
@@ -53,12 +54,35 @@ const decision = {
   blockers: ["No compatible configuration passes all SLO and publication gates."],
 };
 
+const capabilities = [{
+  capability_id: "grafana-dashboards",
+  name: "Application Insights dashboards with Grafana",
+  classification: "reuse",
+  status: "not_configured",
+  implementation_status: "partial",
+  release_status: "GA",
+  source_version: "azure-monitor",
+  authoritative_system: "Azure Managed Grafana",
+  component: "infra/bicep/main.bicep",
+  configuration_source: "BENCHMARK_LINK_GRAFANA",
+  limitations: ["Versioned dashboards and alert rules are not yet committed."],
+  deep_link_type: "grafana",
+  artifact_count: 0,
+}];
+
 function mockBenchmarkApi(items = [experiment]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = String(input);
+    const pattern = url.match(/\/patterns\/([^/]+)\/summary/)?.[1];
     return new Response(JSON.stringify(
-      url.includes("/decisions")
+      url.includes("/links/")
+        ? { schema_version: "1.0", resource_type: url.includes("application_insights") ? "application_insights" : "test", source_id: "current", status: "not_configured", authoritative_url: null, release_status: url.includes("application_insights") ? "Preview" : "GA" }
+      : url.includes("/decisions")
         ? { ...decision, evidence: items.length ? decision.evidence : [], selected_scope: items.length ? decision.selected_scope : null }
+        : url.includes("/capabilities")
+          ? { schema_version: "1.0", source_version: "test", capabilities }
+        : pattern
+          ? { schema_version: "1.0", item: { pattern, automation_boundary: `automated ${pattern}`, telemetry_boundary: "test telemetry", implementation_status: "implemented", evidence_status: pattern === "A" && items.length ? "fixture_only" : "run_required", experiment_count: pattern === "A" ? items.length : 0, latest: pattern === "A" ? items[0] ?? null : null } }
         : { schema_version: "1.0", items }
     ));
   });
@@ -71,9 +95,14 @@ describe("benchmark workbench", () => {
     mockBenchmarkApi();
     render(<Overview />);
 
+    expect(await screen.findByRole("heading", { name: "Grounded agent — architecture benchmark" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Azure tools explain each system. This benchmark helps you choose across them." })).toBeInTheDocument();
+    expect(screen.getByText("Cross-pattern comparison")).toBeInTheDocument();
+    expect(screen.getByText("Copilot Studio", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("Production · Azure services lead")).toBeInTheDocument();
     expect(await screen.findByText("158 ms")).toBeInTheDocument();
     expect(screen.getByText("84.0%")).toBeInTheDocument();
-    expect(screen.getByText("No publishable recommendation")).toBeInTheDocument();
+    expect(screen.getByText("No comparable evidence to recommend yet")).toBeInTheDocument();
     expect(screen.queryByText("$0")).not.toBeInTheDocument();
   });
 
@@ -89,6 +118,20 @@ describe("benchmark workbench", () => {
     const { container } = render(<Pareto />);
 
     await waitFor(() => expect(container.querySelector(".plot-point")).toBeInTheDocument());
-    expect(screen.getByLabelText("Quality and latency plot")).toBeInTheDocument();
+    expect(screen.getByLabelText("Quality versus p95 latency scatter")).toBeInTheDocument();
+  });
+
+  it("renders source-specific evidence investigation guidance", async () => {
+    mockBenchmarkApi();
+    render(<Coverage />);
+
+    expect(await screen.findByText("Request duration and failure trends in Performance")).toBeInTheDocument();
+    expect(screen.getByText("Agent details: Preview")).toBeInTheDocument();
+    expect(screen.getByText("Agent Monitoring: Preview")).toBeInTheDocument();
+    expect(screen.getByText("Open Performance, select the operation", { exact: false })).toBeInTheDocument();
+    expect(screen.getAllByText("How to investigate")).toHaveLength(6);
+    expect(screen.getByText("BENCHMARK_LINK_APPLICATION_INSIGHTS")).toBeInTheDocument();
+    expect(screen.queryByText("Benchmark Blog Outline readiness")).not.toBeInTheDocument();
+    expect(screen.queryByText("All repository and Microsoft capabilities")).not.toBeInTheDocument();
   });
 });

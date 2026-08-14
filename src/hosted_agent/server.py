@@ -243,6 +243,31 @@ OUTPUT FORMAT:
 """
 
 
+# Used for the context-provider retrieval modes (context-semantic / context-agentic),
+# where excerpts are injected automatically before each turn instead of via a tool.
+HR_POLICY_CONTEXT_INSTRUCTIONS = """\
+You are an HR Policy Assistant for the "Ask HR" system.
+Relevant HR policy excerpts are automatically retrieved and provided to you as
+context before each question. Answer employee questions using ONLY that provided
+context.
+
+CRITICAL RULES:
+1. Only answer based on the retrieved HR policy context provided to you.
+2. If the information is not present in the context, respond:
+   "I could not find this information in the HR policy documents. Please contact
+   your HR representative for assistance."
+3. Always cite the specific policy number and title when referencing information.
+4. Be precise — do not paraphrase in ways that change meaning.
+5. Handle vernacular terms (e.g., "PTO" -> "Paid Time Off").
+
+OUTPUT FORMAT:
+- Start with a direct answer to the question.
+- Include specific policy citations: [Policy XXXXX - Title].
+- Quote relevant sections when precision matters.
+- End with "Source: [Policy Number - Policy Title]" for each referenced policy.
+"""
+
+
 # ---------------------------------------------------------------------------
 # Create Agent + Server
 # ---------------------------------------------------------------------------
@@ -261,7 +286,7 @@ credential = DefaultAzureCredential()
 # (classic search via the out-of-the-box context provider), or "context-agentic"
 # (agentic retrieval over the Foundry IQ knowledge base). The context-provider
 # modes run retrieval automatically before each turn.
-from src.search.agentic_context_provider import normalize_retrieval_mode  # noqa: E402
+from retrieval import normalize_retrieval_mode  # noqa: E402
 
 RETRIEVAL_MODE = normalize_retrieval_mode(os.environ.get("RETRIEVAL_MODE"))
 
@@ -271,7 +296,7 @@ _instructions = HR_POLICY_INSTRUCTIONS
 
 if RETRIEVAL_MODE in ("context-semantic", "context-agentic", "semantic", "agentic"):
     try:
-        from src.search.agentic_context_provider import build_search_context_provider
+        from retrieval import build_search_context_provider
 
         _context_providers = [
             build_search_context_provider(
@@ -284,6 +309,10 @@ if RETRIEVAL_MODE in ("context-semantic", "context-agentic", "semantic", "agenti
         ]
         _tools = []
         logger.info("Hosted agent RAG mode: %s (context provider)", RETRIEVAL_MODE)
+        # Context modes inject excerpts before each turn, so use the context
+        # instructions instead of the tool-calling prompt (which references a
+        # search tool that is intentionally not registered in these modes).
+        _instructions = HR_POLICY_CONTEXT_INSTRUCTIONS
     except Exception as _rag_exc:  # pragma: no cover - deployment configuration
         raise RuntimeError(
             f"Unable to initialize requested retrieval mode {RETRIEVAL_MODE!r}"

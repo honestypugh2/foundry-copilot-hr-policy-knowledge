@@ -17,6 +17,7 @@ export type Status = "available" | "unavailable" | "not_configured" | "not_autho
 export type Capabilities = Capability[];
 export type SchemaVersion = "1.0";
 export type SourceVersion1 = string;
+export type AnswerModel = string | null;
 export type ComparisonScope = string;
 export type CorpusFingerprint = string | null;
 export type Count = number;
@@ -33,6 +34,7 @@ export type LatencyP99Ms = number | null;
 export type ModelDeployment = string | null;
 export type Pattern = string;
 export type Quality = number | null;
+export type RetrievalMode = string;
 export type SampleWarning = string | null;
 export type SchemaVersion1 = "1.0";
 export type SecurityPassRate = number | null;
@@ -56,6 +58,8 @@ export type Qualified = boolean;
 export type Evidence = DecisionEvidence[];
 export type FrontierExperimentIds = string[];
 export type Goal = "quality" | "balanced" | "speed";
+export type LeadingExperimentId = string | null;
+export type LeadingReason = string | null;
 export type RecommendedExperimentId = string | null;
 export type SchemaVersion3 = "1.0";
 export type SelectedScope = string | null;
@@ -74,7 +78,9 @@ export type SchemaVersion5 = "1.0";
 export type SourceId = string;
 export type Status1 = "available" | "unavailable" | "not_configured" | "not_authorized" | "not_applicable" | "degraded";
 export type AutomationBoundary = string;
+export type EvidenceStatus = "measured" | "fixture_only" | "run_required";
 export type ExperimentCount = number;
+export type ImplementationStatus1 = "implemented" | "partial";
 export type Pattern2 = "A" | "A2" | "B" | "C" | "Hosted";
 export type TelemetryBoundary = string;
 export type SchemaVersion6 = "1.0";
@@ -120,6 +126,7 @@ export interface ComparisonResponse {
   schema_version?: SchemaVersion2;
 }
 export interface ExperimentSummary {
+  answer_model?: AnswerModel;
   comparison_scope: ComparisonScope;
   corpus_fingerprint?: CorpusFingerprint;
   count: Count;
@@ -137,6 +144,7 @@ export interface ExperimentSummary {
   pattern: Pattern;
   provenance?: Provenance;
   quality?: Quality;
+  retrieval_mode: RetrievalMode;
   sample_warning?: SampleWarning;
   schema_version?: SchemaVersion1;
   security_pass_rate?: SecurityPassRate;
@@ -158,6 +166,8 @@ export interface DecisionResponse {
   evidence?: Evidence;
   frontier_experiment_ids?: FrontierExperimentIds;
   goal: Goal;
+  leading_experiment_id?: LeadingExperimentId;
+  leading_reason?: LeadingReason;
   recommended_experiment_id?: RecommendedExperimentId;
   schema_version?: SchemaVersion3;
   selected_scope?: SelectedScope;
@@ -202,7 +212,9 @@ export interface PatternSummaryResponse {
 }
 export interface PatternEvidence {
   automation_boundary: AutomationBoundary;
+  evidence_status: EvidenceStatus;
   experiment_count: ExperimentCount;
+  implementation_status: ImplementationStatus1;
   latest?: ExperimentSummary | null;
   pattern: Pattern2;
   telemetry_boundary: TelemetryBoundary;

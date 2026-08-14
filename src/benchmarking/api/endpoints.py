@@ -12,6 +12,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Query
 
 from src.benchmarking.capabilities import capability_inventory
+from src.benchmarking.copilot_credits import estimate_pattern
 from src.benchmarking.api.models import (
     CapabilityResponse,
     ComparisonResponse,
@@ -96,8 +97,47 @@ def _load(experiment_id: str) -> dict[str, Any]:
     for path in _artifact_paths():
         payload = json.loads(path.read_text(encoding="utf-8"))
         if payload.get("manifest", {}).get("experiment_id") == experiment_id:
-            return payload
+            return _attach_copilot_credits(payload)
     raise HTTPException(status_code=404, detail="Experiment not found")
+
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_CREDIT_RATE_CARD = (
+    _REPO_ROOT
+    / "experiments/pricing/copilot-studio-credits-standard-harness-2026-08-01.json"
+)
+_CREDIT_FEATURE_MIX = (
+    _REPO_ROOT / "experiments/pricing/copilot-studio-credits-feature-mix.json"
+)
+
+
+def _attach_copilot_credits(payload: dict[str, Any]) -> dict[str, Any]:
+    """Attach a deterministic Credits estimate for Copilot Studio front-door runs."""
+    aggregate = payload.get("aggregate") or {}
+    provenance = aggregate.get("provenance") or {}
+    if provenance.get("measurement_boundary") != "copilot_studio_direct_line":
+        return payload
+    pattern = str(payload.get("manifest", {}).get("pattern") or "")
+    messages = int(aggregate.get("count") or 0) or 1
+    try:
+        estimate = estimate_pattern(
+            pattern,
+            rate_card_path=_CREDIT_RATE_CARD,
+            feature_mix_path=_CREDIT_FEATURE_MIX,
+            messages=messages,
+        )
+    except (ValueError, FileNotFoundError):
+        return payload
+    provenance["copilot_credits"] = {
+        "credits_per_message": estimate.credits_per_message,
+        "estimated_total_credits": estimate.estimated_total_credits,
+        "messages": estimate.messages,
+        "byo_foundry_tokens": estimate.byo_foundry_tokens,
+        "has_uncertain_events": estimate.has_uncertain_events,
+        "rate_profile": estimate.rate_profile,
+    }
+    aggregate["provenance"] = provenance
+    return payload
 
 
 def _summary(payload: dict[str, Any]) -> ExperimentSummary:
@@ -109,12 +149,14 @@ def _summary(payload: dict[str, Any]) -> ExperimentSummary:
         schema_version=aggregate["schema_version"],
         experiment_id=manifest["experiment_id"],
         pattern=manifest["pattern"],
+        retrieval_mode=manifest["retrieval_mode"],
         dataset_name=manifest["dataset_name"],
         dataset_version=manifest["dataset_version"],
         git_commit=manifest["git_commit"],
         corpus_fingerprint=manifest.get("corpus_fingerprint"),
         index_fingerprint=manifest.get("index_fingerprint"),
         model_deployment=manifest.get("model_deployment"),
+        answer_model=manifest.get("answer_model"),
         created_at=manifest["created_at"],
         count=aggregate["count"],
         success_rate=aggregate["success_rate"],
@@ -163,7 +205,7 @@ def capabilities() -> CapabilityResponse:
 @router.get("/experiments", response_model=ExperimentListResponse)
 def experiments() -> ExperimentListResponse:
     items = [
-        _summary(json.loads(path.read_text(encoding="utf-8")))
+        _summary(_attach_copilot_credits(json.loads(path.read_text(encoding="utf-8"))))
         for path in _artifact_paths()
     ]
     return ExperimentListResponse(
@@ -210,9 +252,9 @@ def comparison(
 def decisions(
     goal: Literal["quality", "balanced", "speed"] = "balanced",
     scope: str | None = Query(default=None, pattern=r"^[a-f0-9]{24}$"),
-    minimum_quality: float = Query(default=0.80, ge=0, le=1),
-    maximum_latency_p95_ms: float = Query(default=1000, ge=0),
-    minimum_success_rate: float = Query(default=0.95, ge=0, le=1),
+    minimum_quality: float = Query(default=0.85, ge=0, le=1),
+    maximum_latency_p95_ms: float = Query(default=30000, ge=0),
+    minimum_success_rate: float = Query(default=0.99, ge=0, le=1),
     minimum_security_pass_rate: float = Query(default=1.0, ge=0, le=1),
     maximum_estimated_variable_cost: float = Query(default=0.05, ge=0),
 ) -> DecisionResponse:
@@ -299,8 +341,41 @@ def decisions(
             )
         )
     recommended = _recommend(goal, summaries, publishable_ids)
+    leading_id: str | None = None
+    leading_reason: str | None = None
     if not recommended:
         blockers.append("No compatible configuration passes all SLO and publication gates.")
+        complete_ids = {
+            summary.experiment_id
+            for summary in summaries
+            if summary.quality is not None
+            and summary.latency_p95_ms is not None
+            and summary.estimated_variable_cost is not None
+        }
+        qualified_ids = [
+            item.experiment_id
+            for item in evidence
+            if item.qualified and item.experiment_id in complete_ids
+        ]
+        frontier_ids = [eid for eid in frontier if eid in complete_ids]
+        for tier in (qualified_ids, frontier_ids, sorted(complete_ids)):
+            leading_id = _recommend(goal, summaries, tier)
+            if leading_id:
+                break
+        if leading_id:
+            lead = next(item for item in evidence if item.experiment_id == leading_id)
+            if lead.qualified and lead.publication_blockers:
+                leading_reason = "Clears every SLO; pending publication — " + "; ".join(
+                    lead.publication_blockers
+                )
+            elif lead.qualified:
+                leading_reason = "Clears every SLO gate"
+            elif lead.qualification_failures:
+                leading_reason = f"Best on {goal}; not yet SLO-qualified — " + "; ".join(
+                    lead.qualification_failures
+                )
+            else:
+                leading_reason = f"Best available on {goal}"
     return DecisionResponse(
         goal=goal,
         thresholds=thresholds,
@@ -309,6 +384,8 @@ def decisions(
         evidence=evidence,
         frontier_experiment_ids=frontier,
         recommended_experiment_id=recommended,
+        leading_experiment_id=leading_id,
+        leading_reason=leading_reason,
         selection_method=_selection_method(goal),
         blockers=blockers,
     )
@@ -320,13 +397,23 @@ def pattern_summary(pattern: str) -> PatternSummaryResponse:
         raise HTTPException(status_code=404, detail="Unknown pattern")
     matching = [item for item in experiments().items if item.pattern == pattern]
     automation, telemetry = _PATTERN_BOUNDARIES[pattern]
+    measured = [
+        item
+        for item in matching
+        if item.git_commit != "synthetic" and item.provenance.get("fixture_mode") is not True
+    ]
+    evidence_status = (
+        "measured" if measured else "fixture_only" if matching else "run_required"
+    )
     return PatternSummaryResponse(
         item=PatternEvidence(
             pattern=pattern,  # type: ignore[arg-type]
             automation_boundary=automation,
             telemetry_boundary=telemetry,
+            implementation_status="implemented",
+            evidence_status=evidence_status,
             experiment_count=len(matching),
-            latest=matching[0] if matching else None,
+            latest=(measured or matching or [None])[0],
         )
     )
 
@@ -377,6 +464,30 @@ def _publication_blockers(
         blockers.append(summary.sample_warning)
     if summary.provenance.get("synthetic") is True or manifest.git_commit == "synthetic":
         blockers.append("synthetic evidence")
+    aggregate = payload["aggregate"]
+    if summary.provenance.get("measurement_boundary") != "copilot_studio_direct_line":
+        blockers.append("Copilot Studio front-door evidence required")
+    if not aggregate.get("quality_by_category"):
+        blockers.append("category-level deterministic quality required")
+    if not aggregate.get("rate_confidence_intervals"):
+        blockers.append("rate confidence intervals required")
+    required_counts = (
+        "success_count",
+        "partial_count",
+        "error_count",
+        "timeout_count",
+        "throttle_count",
+    )
+    if any(field not in aggregate for field in required_counts):
+        blockers.append("explicit outcome counts required")
+    if summary.quality is None or summary.security_pass_rate is None:
+        blockers.append("deterministic quality and security evidence required")
+    if summary.provenance.get("evaluation_release_ready") is False:
+        blockers.extend(summary.provenance.get("evaluation_release_blockers") or [
+            "native Copilot Studio evaluation contains nondecisive results"
+        ])
+    if summary.estimated_variable_cost is None:
+        blockers.append("estimated variable cost required")
     return blockers
 
 

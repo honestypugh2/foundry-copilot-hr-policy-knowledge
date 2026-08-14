@@ -289,7 +289,6 @@ class HRPolicyWorkflowOrchestrator:
         # Agent service selector (driven by AGENT_SERVICE env var, see .env):
         #   "agent-framework" (default) -> src.agents.hr_policy_agent_af.HRPolicyAgent
         #       Microsoft Agent Framework SDK with FoundryChatClient + @tool
-        #       (matches dealer_agent.py / compliance_agent.py pattern)
         #   "foundry"                   -> src.agents.hr_policy_agent.HRPolicyAgent
         #       Microsoft Foundry Agent Service via chat_client.as_agent(...)
         raw_service = (

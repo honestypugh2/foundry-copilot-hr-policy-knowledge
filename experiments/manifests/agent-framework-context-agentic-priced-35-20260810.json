@@ -12,6 +12,7 @@
   "pattern": "Hosted",
   "retrieval_mode": "context-agentic",
   "invocation_path": "agent_framework_local:context-agentic",
+  "answer_model": "gpt-5-mini",
   "output_mode": "answer_synthesis",
   "model_deployment": "gpt-5-mini",
   "model_version": "2025-08-07",

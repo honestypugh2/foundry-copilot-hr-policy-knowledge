@@ -38,6 +38,8 @@ competing setup flows.
 | --- | --- |
 | [PatternSetupAndBenchmarkGuide.md](PatternSetupAndBenchmarkGuide.md) | Benchmark boundaries, code ownership, and comparison entry points. |
 | [CopilotStudioBenchmarking.md](CopilotStudioBenchmarking.md) | Configure five isolated pattern agents and run Direct Line comparisons. |
+| [BenchmarkingDecisionSystem.md](BenchmarkingDecisionSystem.md) | The evidence system: rules, workbench, gates, cost lanes, and roadmap. |
+| [ReuseForYourUseCase.md](ReuseForYourUseCase.md) | Fork the benchmark for another RAG/agent use case (~80% reusable). |
 | [BenchmarkLoadTesting.md](BenchmarkLoadTesting.md) | Capacity/load experiments kept separate from controlled runs. |
 
 ## Published article

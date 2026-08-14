@@ -287,6 +287,30 @@
           "title": "Goal",
           "type": "string"
         },
+        "leading_experiment_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Leading Experiment Id"
+        },
+        "leading_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Leading Reason"
+        },
         "recommended_experiment_id": {
           "anyOf": [
             {
@@ -412,6 +436,18 @@
     "ExperimentSummary": {
       "additionalProperties": false,
       "properties": {
+        "answer_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Answer Model"
+        },
         "comparison_scope": {
           "title": "Comparison Scope",
           "type": "string"
@@ -546,6 +582,10 @@
           "default": null,
           "title": "Quality"
         },
+        "retrieval_mode": {
+          "title": "Retrieval Mode",
+          "type": "string"
+        },
         "sample_warning": {
           "anyOf": [
             {
@@ -584,6 +624,7 @@
       "required": [
         "experiment_id",
         "pattern",
+        "retrieval_mode",
         "dataset_name",
         "dataset_version",
         "git_commit",
@@ -657,10 +698,27 @@
           "title": "Automation Boundary",
           "type": "string"
         },
+        "evidence_status": {
+          "enum": [
+            "measured",
+            "fixture_only",
+            "run_required"
+          ],
+          "title": "Evidence Status",
+          "type": "string"
+        },
         "experiment_count": {
           "minimum": 0,
           "title": "Experiment Count",
           "type": "integer"
+        },
+        "implementation_status": {
+          "enum": [
+            "implemented",
+            "partial"
+          ],
+          "title": "Implementation Status",
+          "type": "string"
         },
         "latest": {
           "anyOf": [
@@ -693,6 +751,8 @@
         "pattern",
         "automation_boundary",
         "telemetry_boundary",
+        "implementation_status",
+        "evidence_status",
         "experiment_count"
       ],
       "title": "PatternEvidence",

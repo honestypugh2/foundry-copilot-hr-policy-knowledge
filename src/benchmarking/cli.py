@@ -57,6 +57,30 @@ def _fixture_search(path: Path):
     return search
 
 
+def _validate_execution_boundary(
+    manifest: ExperimentManifest,
+    *,
+    copilot_studio: bool,
+    foundry_hosted_agent: str | None = None,
+) -> None:
+    manifest_uses_copilot = manifest.invocation_path.startswith(
+        "copilot_studio_direct_line:"
+    )
+    if manifest_uses_copilot != copilot_studio:
+        raise ValueError(
+            "Manifest invocation_path and --copilot-studio must identify the same "
+            "execution boundary"
+        )
+    manifest_uses_hosted = manifest.invocation_path.startswith(
+        "foundry_hosted_agent:"
+    )
+    if manifest_uses_hosted != bool(foundry_hosted_agent):
+        raise ValueError(
+            "Manifest invocation_path and --foundry-hosted-agent must identify the "
+            "same execution boundary"
+        )
+
+
 def _build_adapter(
     manifest: ExperimentManifest,
     fixture_responses: Path | None,
@@ -66,8 +90,18 @@ def _build_adapter(
     copilot_environment_id: str | None = None,
     copilot_agent_schema: str | None = None,
     copilot_token_endpoint: str | None = None,
+    copilot_directline_secret: str | None = None,
     agent_framework: bool = False,
+    foundry_hosted_agent: str | None = None,
 ):
+    if foundry_hosted_agent:
+        if manifest.pattern != "Hosted":
+            raise ValueError("--foundry-hosted-agent requires pattern 'Hosted'")
+        from src.benchmarking.adapters.foundry_hosted import (
+            build_foundry_hosted_adapter,
+        )
+
+        return build_foundry_hosted_adapter(foundry_hosted_agent)
     if agent_framework:
         if manifest.pattern != "Hosted":
             raise ValueError("--agent-framework requires pattern 'Hosted'")
@@ -85,6 +119,7 @@ def _build_adapter(
             environment_id=copilot_environment_id,
             agent_schema=copilot_agent_schema,
             token_endpoint=copilot_token_endpoint,
+            directline_secret=copilot_directline_secret,
         )
         if not service.is_configured:
             raise ValueError(
@@ -96,20 +131,81 @@ def _build_adapter(
             pattern=manifest.pattern,
             route_template=route_template,
         )
-    if manifest.pattern != "A":
-        raise ValueError(
-            "The CLI currently automates Pattern A only; use normalized imports "
-            "for externally driven patterns"
-        )
     if fixture_responses is not None:
+        if manifest.pattern != "A":
+            raise ValueError("Fixture responses currently support Pattern A only")
         return DirectSearchAdapter(_fixture_search(fixture_responses))
+    if manifest.pattern == "A":
+        from src.search.integrated_vectorization_search import (
+            IntegratedVectorizationSearchService,
+        )
 
-    from src.search.integrated_vectorization_search import (
-        IntegratedVectorizationSearchService,
+        service = IntegratedVectorizationSearchService()
+        return DirectSearchAdapter(service.search)
+    if manifest.pattern == "A2":
+        from azure.identity import AzureCliCredential
+        from azure.search.documents.knowledgebases import KnowledgeBaseRetrievalClient
+        from azure.search.documents.knowledgebases.models import (
+            KnowledgeBaseMessage,
+            KnowledgeBaseMessageTextContent,
+            KnowledgeBaseRetrievalRequest,
+        )
+        from src.benchmarking.adapters.knowledge_base import DirectKnowledgeBaseAdapter
+
+        client = KnowledgeBaseRetrievalClient(
+            endpoint=os.environ["AZURE_SEARCH_ENDPOINT"],
+            credential=AzureCliCredential(process_timeout=30),
+            knowledge_base_name=os.environ["AZURE_SEARCH_KNOWLEDGE_BASE_NAME"],
+            api_version=manifest.api_version or "2026-05-01-preview",
+        )
+
+        def retrieve(query: str, top: int) -> dict[str, Any]:
+            response = client.retrieve(
+                KnowledgeBaseRetrievalRequest(
+                    messages=[
+                        KnowledgeBaseMessage(
+                            role="user",
+                            content=[KnowledgeBaseMessageTextContent(text=query)],
+                        )
+                    ],
+                    max_output_documents=top,
+                    include_activity=True,
+                    output_mode="extractiveData",
+                )
+            )
+            return response.as_dict()
+
+        return DirectKnowledgeBaseAdapter(retrieve)
+    if manifest.pattern == "B":
+        from src.agents.hr_policy_agent import HRPolicyAgent
+        from src.benchmarking.adapters.agent import FoundryAgentAdapter
+
+        agent = HRPolicyAgent(use_agent=True)
+
+        async def answer(query: str) -> dict[str, Any]:
+            if not agent._initialized:
+                await agent.initialize()
+            if agent._openai is None:
+                raise RuntimeError(
+                    "Pattern B benchmark requires the Foundry PromptAgent; local Search fallback is prohibited"
+                )
+            return await agent.answer_question_async(query)
+
+        return FoundryAgentAdapter(answer)
+    if manifest.pattern == "C":
+        from src.benchmarking.adapters.pattern_c import PatternCLookupAdapter
+        from src.search.integrated_vectorization_search import (
+            IntegratedVectorizationSearchService,
+        )
+        from src.search.search_service import expand_query_with_glossary
+
+        service = IntegratedVectorizationSearchService()
+        return PatternCLookupAdapter(
+            lambda query, top: service.search(expand_query_with_glossary(query), top=top)
+        )
+    raise ValueError(
+        "Hosted manifests require --agent-framework or --copilot-studio"
     )
-
-    service = IntegratedVectorizationSearchService()
-    return DirectSearchAdapter(service.search)
 
 
 async def run_experiment(
@@ -123,9 +219,16 @@ async def run_experiment(
     copilot_environment_id: str | None = None,
     copilot_agent_schema: str | None = None,
     copilot_token_endpoint: str | None = None,
+    copilot_directline_secret: str | None = None,
     agent_framework: bool = False,
+    foundry_hosted_agent: str | None = None,
     pricing_profile: PricingProfile | None = None,
 ) -> None:
+    _validate_execution_boundary(
+        manifest,
+        copilot_studio=copilot_studio,
+        foundry_hosted_agent=foundry_hosted_agent,
+    )
     adapter = _build_adapter(
         manifest,
         fixture_responses,
@@ -134,7 +237,9 @@ async def run_experiment(
         copilot_environment_id=copilot_environment_id,
         copilot_agent_schema=copilot_agent_schema,
         copilot_token_endpoint=copilot_token_endpoint,
+        copilot_directline_secret=copilot_directline_secret,
         agent_framework=agent_framework,
+        foundry_hosted_agent=foundry_hosted_agent,
     )
     runner = BenchmarkRunner(manifest, adapter, pricing_profile)
 
@@ -155,6 +260,8 @@ async def run_experiment(
                 "copilot_studio_direct_line" if copilot_studio else adapter.invocation_path
             ),
             "workload_type": "controlled_experiment",
+            "model_deployment": manifest.model_deployment,
+            "answer_model": manifest.answer_model,
         }
     )
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -199,6 +306,13 @@ def main(argv: list[str] | None = None) -> int:
         help="Run a Hosted manifest through the local Agent Framework path",
     )
     parser.add_argument(
+        "--foundry-hosted-agent",
+        help=(
+            "Run a Hosted manifest against the deployed Foundry hosted agent of "
+            "this name (managed-runtime boundary), e.g. 'hr-policy-agent'"
+        ),
+    )
+    parser.add_argument(
         "--route-template",
         default="{query}",
         help="Optional Copilot routing prompt containing {query}; real per-pattern agents should use the default",
@@ -214,6 +328,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--copilot-token-endpoint",
         help="Mobile-channel token endpoint for the real agent (overrides .env)",
+    )
+    parser.add_argument(
+        "--copilot-lane",
+        help=(
+            "Resolve per-lane Copilot Studio config from .env by suffix, e.g. "
+            "HOSTED/B/A2 -> COPILOT_STUDIO_AGENT_SCHEMA_<LANE>, "
+            "COPILOT_STUDIO_TOKEN_ENDPOINT_<LANE> (Standard harness) or "
+            "COPILOT_STUDIO_TOKEN_SECRET_<LANE> (GitHub Copilot harness). "
+            "Keeps secrets out of the command line."
+        ),
     )
     args = parser.parse_args(argv)
 
@@ -238,6 +362,29 @@ def main(argv: list[str] | None = None) -> int:
     cases = _load_model_list(args.cases, BenchmarkCase)
     if not cases:
         parser.error("The case dataset must not be empty")
+    copilot_agent_schema = args.copilot_agent_schema
+    copilot_token_endpoint = args.copilot_token_endpoint
+    copilot_directline_secret = None
+    if args.copilot_lane:
+        lane = args.copilot_lane.strip().upper()
+        copilot_agent_schema = copilot_agent_schema or os.getenv(
+            f"COPILOT_STUDIO_AGENT_SCHEMA_{lane}"
+        )
+        copilot_token_endpoint = copilot_token_endpoint or os.getenv(
+            f"COPILOT_STUDIO_TOKEN_ENDPOINT_{lane}"
+        )
+        copilot_directline_secret = (
+            os.getenv(f"COPILOT_STUDIO_TOKEN_SECRET_{lane}")
+            or os.getenv(f"COPILOT_STUDIO_DIRECTLINE_SECRET_{lane}")
+            or os.getenv(f"COPILOT_STUDIO_SECRET_{lane}")
+        )
+        if not copilot_agent_schema or not (
+            copilot_token_endpoint or copilot_directline_secret
+        ):
+            parser.error(
+                f"--copilot-lane {lane} requires COPILOT_STUDIO_AGENT_SCHEMA_{lane} and "
+                f"COPILOT_STUDIO_TOKEN_ENDPOINT_{lane} or COPILOT_STUDIO_TOKEN_SECRET_{lane}"
+            )
     if args.fixture_responses is None:
         _verify_live_identity()
     try:
@@ -250,9 +397,11 @@ def main(argv: list[str] | None = None) -> int:
                 copilot_studio=args.copilot_studio,
                 route_template=args.route_template,
                 copilot_environment_id=args.copilot_environment_id,
-                copilot_agent_schema=args.copilot_agent_schema,
-                copilot_token_endpoint=args.copilot_token_endpoint,
+                copilot_agent_schema=copilot_agent_schema,
+                copilot_token_endpoint=copilot_token_endpoint,
+                copilot_directline_secret=copilot_directline_secret,
                 agent_framework=args.agent_framework,
+                foundry_hosted_agent=args.foundry_hosted_agent,
                 pricing_profile=pricing_profile,
             )
         )

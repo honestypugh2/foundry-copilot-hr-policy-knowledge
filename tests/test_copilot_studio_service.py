@@ -38,6 +38,21 @@ def test_copilot_studio_uses_exact_mobile_token_endpoint(monkeypatch):
     assert service.get_config()["token_endpoint_url"] == token_endpoint
 
 
+def test_copilot_studio_rejects_token_endpoint_for_another_agent(monkeypatch):
+    monkeypatch.setenv("USE_MANAGED_IDENTITY", "false")
+    token_endpoint = (
+        "https://defaulttenant.d7.environment.api.powerplatform.com/"
+        "powervirtualagents/botsbyschema/Default_OtherAgent/directline/token"
+    )
+
+    with pytest.raises(ValueError, match="agent schema does not match"):
+        CopilotStudioService(
+            environment_id="Default-tenant-id",
+            agent_schema="Default_AskHRPolicyAgent",
+            token_endpoint=token_endpoint,
+        )
+
+
 @pytest.mark.asyncio
 async def test_send_message_ignores_channel_rewritten_user_activity(monkeypatch):
     monkeypatch.setenv("USE_MANAGED_IDENTITY", "false")

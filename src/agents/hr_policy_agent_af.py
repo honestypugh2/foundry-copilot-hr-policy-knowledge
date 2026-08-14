@@ -415,6 +415,13 @@ class HRPolicyAgent:
         }
 
         citations, policy_refs = self._extract_citations_from_text(response_text)
+        # Agentic context provider records the KB query-planning activity
+        # (sub-queries) that the base provider retrieves but does not expose.
+        activity: list[dict[str, Any]] = []
+        for provider in context_providers:
+            captured = getattr(provider, "last_activity", None)
+            if captured:
+                activity = list(captured)
         timings = {
             "ttlt_ms": (stream_ended - stream_started) * 1000,
         }
@@ -433,6 +440,7 @@ class HRPolicyAgent:
             "policy_references": policy_refs,
             "confidence": 0.85 if citations else (0.6 if response_text else 0.0),
             "usage": usage,
+            "activity": activity,
             "response_id": final_response.response_id,
             "conversation_id": session.session_id,
             "timings": timings,

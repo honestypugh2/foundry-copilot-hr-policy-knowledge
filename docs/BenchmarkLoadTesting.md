@@ -17,6 +17,10 @@ uv run locust -f locustfile.py --host http://localhost:8000 --headless \
   --users 2 --spawn-rate 1 --run-time 10s --csv artifacts/load/smoke
 ```
 
+Use `--tags chat` or `--tags lookup` when the article makes a capacity claim
+about only one route. Running without `--tags` intentionally exercises both
+routes and must be described as a mixed workload.
+
 Remote targets require `LOAD_TEST_CONFIRM_TARGET` to equal the exact hostname
 and `LOAD_TEST_ENVIRONMENT` must not be `prod` or `production`. Production
 targets are intentionally rejected. Store credentials outside the Locust file.

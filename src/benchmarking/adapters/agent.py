@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 from time import perf_counter
 from typing import Any, Literal
 
+from src.benchmarking.activity import parse_activity
 from src.benchmarking.adapters.base import InvocationResult
 from src.benchmarking.models import (
     AvailabilityReason,
@@ -96,6 +97,7 @@ class AgentAnswerAdapter:
             answer=str(payload.get("answer") or ""),
             references=references,
             metrics=metrics,
+            activity=parse_activity(payload.get("activity")),
             trace_id=payload.get("trace_id"),
             response_id=payload.get("response_id"),
             conversation_id=payload.get("conversation_id"),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from pathlib import Path
 
 
@@ -41,7 +42,9 @@ def test_hosted_eval_dataset_adapts_every_curated_case() -> None:
 def test_hosted_eval_config_uses_curated_data_and_builtin_evaluators() -> None:
     config = _HOSTED_EVAL_CONFIG.read_text(encoding="utf-8")
 
-    assert 'version: "2"' in config
+    assert "name: hr-policy-agent" in config
+    assert "kind: hosted" in config
+    assert re.search(r'version: "\d+"', config)
     assert "hr-policy-agent-curated-v1.jsonl" in config
     for evaluator in (
         "builtin.relevance",
