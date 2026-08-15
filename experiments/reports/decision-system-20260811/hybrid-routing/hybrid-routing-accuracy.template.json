@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "artifact_type": "hybrid_routing_accuracy",
+  "_template": true,
+  "_instructions": "TEMPLATE — not measured results. To produce a real artifact: run each prompt from experiments/datasets/hybrid-routing-prompts-v1.json through the deployed hybrid Copilot Studio agent, open the Activity tab, and record the observed_tools actually invoked per prompt. Set observed_tools, then correct = (observed_tools covers all expected_tools in order for compound). Fill measured_at/agent_schema/directline_conversation_ids. Compute routing_accuracy = correct_count / total. Remove _template and _instructions. Save alongside this file as hybrid-routing-accuracy-<date>.json.",
+  "cost_lane_note": "Routing accuracy is the only hybrid-unique signal; latency/quality/cost/security for hybrid are inherited from the component patterns (C locator + B/Hosted content) and are NOT re-measured here.",
+  "dataset_name": "hybrid-routing-prompts-v1",
+  "dataset_version": null,
+  "measured_at": null,
+  "agent_display_name": null,
+  "agent_schema": null,
+  "measurement_relationship": "activity_tab_tool_selection_observation",
+  "tool_vocabulary": ["lookupHRPolicyDocument", "askHRPolicy", "knowledge_base"],
+  "routing_accuracy": null,
+  "correct_count": null,
+  "total": 12,
+  "by_intent": {
+    "locator": { "correct": null, "count": 5 },
+    "content": { "correct": null, "count": 5 },
+    "compound": { "correct": null, "count": 2 }
+  },
+  "cases": [
+    {
+      "prompt_id": "loc-1",
+      "intent": "locator",
+      "expected_tools": ["lookupHRPolicyDocument"],
+      "observed_tools": [],
+      "correct": null,
+      "directline_conversation_id": null,
+      "notes": null
+    }
+  ]
+}

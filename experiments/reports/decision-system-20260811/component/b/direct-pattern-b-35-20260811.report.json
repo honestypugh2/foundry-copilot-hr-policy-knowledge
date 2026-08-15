@@ -1,0 +1,211 @@
+{
+  "manifest": {
+    "schema_version": "1.0",
+    "experiment_id": "direct-pattern-b-35-20260811",
+    "created_at": "2026-08-11T15:29:51Z",
+    "git_commit": "853e2a083222ac927590f82b4bf3e3409fae73a1",
+    "dirty_worktree": true,
+    "runner_version": "0.1.0",
+    "dataset_name": "copilot-hr-policy-v1",
+    "dataset_version": "69d9e8e657698c4013b87e5fe9018c7bcc24b0fe7995b3abe4b5906ae5ce7539",
+    "corpus_fingerprint": "d8a305ac74ad445e2558f57f0e1bf066e0abc704fea09e6edbb0a7866d046303",
+    "index_fingerprint": "2b5ba982cdf77e2031dba7aedde09f17a110ba13288a95db72b4f5bd2e146592",
+    "pattern": "B",
+    "retrieval_mode": "foundry-agent-mcp",
+    "invocation_path": "foundry_responses_agent_mcp",
+    "api_version": "2026-05-01-preview",
+    "output_mode": "answer_synthesis",
+    "model_deployment": "gpt-5-mini",
+    "model_version": null,
+    "retrieval_reasoning_effort": "medium",
+    "semantic_configuration": "hr-semantic-config",
+    "search_sku": "basic",
+    "search_replicas": null,
+    "search_partitions": null,
+    "vector_configuration": {},
+    "output_document_limit": null,
+    "output_token_limit": null,
+    "query_filter": null,
+    "knowledge_source_settings": {},
+    "prompt_version": null,
+    "agent_version": null,
+    "configuration_version": null,
+    "region": "eastus2",
+    "client_location": null,
+    "top": 5,
+    "warmup_count": 1,
+    "measured_repetitions": 5,
+    "concurrency": 1,
+    "timeout_seconds": 120.0,
+    "random_seed": 0,
+    "pricing_profile": null,
+    "answer_model": "gpt-5-mini"
+  },
+  "aggregate": {
+    "schema_version": "1.0",
+    "experiment_id": "direct-pattern-b-35-20260811",
+    "count": 35,
+    "success_count": 35,
+    "partial_count": 0,
+    "error_count": 0,
+    "timeout_count": 0,
+    "throttle_count": 0,
+    "success_rate": 1.0,
+    "error_rate": 0.0,
+    "throttle_rate": 0.0,
+    "rate_confidence_intervals": {
+      "success_rate": {
+        "lower": 0.9010990076755959,
+        "upper": 0.9999999999999999,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      },
+      "error_rate": {
+        "lower": 6.938893903907228e-18,
+        "upper": 0.09890099232440402,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      },
+      "throttle_rate": {
+        "lower": 6.938893903907228e-18,
+        "upper": 0.09890099232440402,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      }
+    },
+    "client_wall_time": {
+      "count": 35,
+      "minimum_ms": 25430.964065999433,
+      "maximum_ms": 672492.5844120007,
+      "mean_ms": 51620.536202628864,
+      "standard_deviation_ms": 106785.9702513534,
+      "p50_ms": 30942.470260000846,
+      "p95_ms": 54202.16630690041,
+      "p99_ms": 467385.27642943844
+    },
+    "cold_client_wall_time": null,
+    "warm_client_wall_time": null,
+    "by_category": {
+      "adversarial_out_of_domain": {
+        "count": 5,
+        "minimum_ms": 26763.214620994404,
+        "maximum_ms": 33780.85468499921,
+        "mean_ms": 29546.426162397256,
+        "standard_deviation_ms": 2699.890448666643,
+        "p50_ms": 28005.872251000255,
+        "p95_ms": 33352.61217739899,
+        "p99_ms": 33695.20618347917
+      },
+      "direct_fact": {
+        "count": 5,
+        "minimum_ms": 25430.964065999433,
+        "maximum_ms": 40620.27434899937,
+        "mean_ms": 30610.256122001738,
+        "standard_deviation_ms": 5231.839396993316,
+        "p50_ms": 28983.68771099922,
+        "p95_ms": 38500.64289580041,
+        "p99_ms": 40196.34805835958
+      },
+      "disambiguation": {
+        "count": 5,
+        "minimum_ms": 27874.65838999924,
+        "maximum_ms": 38546.41478999838,
+        "mean_ms": 33021.310855400225,
+        "standard_deviation_ms": 4341.462217970102,
+        "p50_ms": 30942.470260000846,
+        "p95_ms": 38404.64696059789,
+        "p99_ms": 38518.06122411828
+      },
+      "document_location": {
+        "count": 5,
+        "minimum_ms": 26789.00640000211,
+        "maximum_ms": 672492.5844120007,
+        "mean_ms": 157588.0513088021,
+        "standard_deviation_ms": 257457.6045978617,
+        "p50_ms": 29487.621525004215,
+        "p95_ms": 544311.3566668004,
+        "p99_ms": 646856.3388629607
+      },
+      "exact_lookup": {
+        "count": 5,
+        "minimum_ms": 27062.36932900356,
+        "maximum_ms": 31946.712329998263,
+        "mean_ms": 29449.17531160172,
+        "standard_deviation_ms": 2078.1969430053664,
+        "p50_ms": 29735.93343500397,
+        "p95_ms": 31843.317219399614,
+        "p99_ms": 31926.033307878533
+      },
+      "multi_policy_synthesis": {
+        "count": 5,
+        "minimum_ms": 30731.930948997615,
+        "maximum_ms": 42867.708361998666,
+        "mean_ms": 37282.3367185978,
+        "standard_deviation_ms": 4190.61772069644,
+        "p50_ms": 36292.29847899842,
+        "p95_ms": 42411.13293799863,
+        "p99_ms": 42776.39327719866
+      },
+      "paraphrase_synonym": {
+        "count": 5,
+        "minimum_ms": 30519.226360003813,
+        "maximum_ms": 69235.79622800025,
+        "mean_ms": 43846.196939601214,
+        "standard_deviation_ms": 14197.137150373777,
+        "p50_ms": 40475.31803399761,
+        "p95_ms": 64940.473393400316,
+        "p99_ms": 68376.73166108027
+      }
+    },
+    "by_stage": {},
+    "by_activity_type": {},
+    "quality_by_category": {},
+    "security_by_category": {},
+    "variable_cost": {
+      "invocation_count": 35,
+      "priced_invocation_count": 0,
+      "mean_per_invocation": {
+        "amount": null,
+        "currency": null,
+        "measurement_type": "unavailable",
+        "pricing_profile": null,
+        "formula": null,
+        "measured_quantities": {},
+        "assumptions": [
+          "Only 0 of 35 invocations had complete service-reported quantities."
+        ],
+        "excluded_costs": [],
+        "unavailable_reason": "not_configured"
+      },
+      "run_total": {
+        "amount": null,
+        "currency": null,
+        "measurement_type": "unavailable",
+        "pricing_profile": null,
+        "formula": null,
+        "measured_quantities": {},
+        "assumptions": [
+          "Only 0 of 35 invocations had complete service-reported quantities."
+        ],
+        "excluded_costs": [],
+        "unavailable_reason": "not_configured"
+      }
+    },
+    "sample_warning": null,
+    "provenance": {
+      "estimated_variable_cost": null,
+      "estimated_variable_cost_currency": null,
+      "estimated_variable_cost_statistic": "mean_per_invocation",
+      "estimated_variable_cost_measurement_type": "unavailable",
+      "estimated_variable_cost_pricing_profile": null,
+      "estimated_variable_cost_sample_count": 0,
+      "billed_cost_reconciliation": "separate_azure_cost_management",
+      "manifest_schema_version": "1.0",
+      "fixture_mode": false,
+      "measurement_boundary": "foundry_responses_agent_mcp",
+      "workload_type": "controlled_experiment",
+      "answer_model": "gpt-5-mini",
+      "model_deployment": "gpt-5-mini"
+    }
+  }
+}

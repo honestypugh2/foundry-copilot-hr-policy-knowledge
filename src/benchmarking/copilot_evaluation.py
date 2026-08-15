@@ -45,6 +45,32 @@ DEFAULT_REQUIRED_METHODS = ("General quality", "Compare meaning")
 NATIVE_STATUSES = {"Pass", "Fail", "Error", "Invalid"}
 POLICY_REFERENCE = re.compile(r"\bPolicy\s+(?P<number>\d{5})\b", re.IGNORECASE)
 
+# GitHub Copilot Harness "Conversation" export: one turn per column, single
+# GeneralQuality method, no API run artifact to cross-check.
+CONVERSATION_EXPORT_COLUMNS = {
+    "conversation",
+    "expectedResponse",
+    "actualResponse",
+    "testMethodType_1",
+    "result_1",
+    "passingScore_1",
+    "explanation_1",
+}
+_CONVERSATION_SPLIT = re.compile(r"\bAgent response:\s*", re.IGNORECASE)
+_CONVERSATION_QUESTION = re.compile(r"^\s*Question:\s*", re.IGNORECASE)
+
+
+def _parse_conversation_cell(cell: str) -> tuple[str, str]:
+    """Split a GitHub Copilot Harness conversation cell into question and answer."""
+    parts = _CONVERSATION_SPLIT.split(cell, maxsplit=1)
+    if len(parts) != 2:
+        raise ValueError("Conversation cell missing an 'Agent response:' delimiter")
+    question = _CONVERSATION_QUESTION.sub("", parts[0]).strip()
+    answer = parts[1].strip()
+    if not question or not answer:
+        raise ValueError("Conversation cell has an empty question or answer")
+    return question, answer
+
 
 def sanitize_native_run(run: dict[str, Any]) -> dict[str, Any]:
     """Keep correlation/status evidence without grader explanations or payload text."""
@@ -424,6 +450,156 @@ def import_copilot_evaluation(
         "native_release_ready": not release_blockers,
         "native_release_blockers": release_blockers,
         "native_methods": csv_method_summaries,
+        "deterministic_quality": _summary(
+            [record["deterministic_pass"] for record in quality_records]
+        ),
+        "deterministic_security": _summary(
+            [record["deterministic_pass"] for record in security_records]
+        ),
+        "quality_by_category": summarize_deterministic_categories(quality_records),
+        "security_by_category": summarize_deterministic_categories(security_records),
+        "cases": records,
+    }
+
+
+def import_github_copilot_conversation_evaluation(
+    *,
+    export_csv_path: Path,
+    cases_path: Path,
+    specifications_path: Path,
+    experiment_id: str,
+    dataset_version: str,
+    quality_method: str = "General quality",
+    run_name: str | None = None,
+) -> dict[str, Any]:
+    """Normalize a GitHub Copilot Harness 'Conversation' evaluation export.
+
+    This harness embeds each turn in one column, carries a single GeneralQuality
+    method, and emits no API run artifact to cross-check. Deterministic gates
+    re-grade the agent responses; the native GeneralQuality status is recorded
+    for provenance only (it penalizes correct refusals, so it is not trusted).
+    """
+    cases = {
+        case.case_id: case
+        for case in (
+            BenchmarkCase.model_validate(item) for item in _load_array(cases_path)
+        )
+    }
+    specifications = _load_array(specifications_path)
+    expected_by_question: dict[str, tuple[BenchmarkCase | None, dict[str, Any]]] = {}
+    for specification in specifications:
+        case = cases.get(str(specification["case_id"]))
+        query = str(specification.get("query") or (case.query if case else "")).strip()
+        if not query:
+            raise ValueError(f"No query configured for {specification['case_id']}")
+        if query in expected_by_question:
+            raise ValueError(f"Duplicate benchmark question: {query!r}")
+        expected_by_question[query] = (case, specification)
+
+    with export_csv_path.open(encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        if set(reader.fieldnames or []) != CONVERSATION_EXPORT_COLUMNS:
+            raise ValueError(
+                "Export columns do not match the GitHub Copilot Harness "
+                "conversation schema"
+            )
+        source_rows = list(reader)
+
+    records: list[dict[str, Any]] = []
+    native_statuses: list[str] = []
+    seen_questions: set[str] = set()
+    for source in source_rows:
+        question, answer = _parse_conversation_cell(
+            str(source.get("conversation") or "")
+        )
+        if question not in expected_by_question:
+            raise ValueError(f"Unknown evaluation question: {question!r}")
+        if question in seen_questions:
+            raise ValueError(f"Duplicate conversation row for {question!r}")
+        seen_questions.add(question)
+        case, specification = expected_by_question[question]
+        native_statuses.append(str(source.get("result_1") or "").strip())
+        citations = [
+            {"policy_number": match.group("number")}
+            for match in POLICY_REFERENCE.finditer(answer)
+        ]
+        deterministic_pass, metrics = deterministic_grade(
+            answer=answer,
+            citations=citations,
+            specification=specification,
+        )
+        records.append(
+            {
+                "case_id": specification["case_id"],
+                "category": case.category if case else "security",
+                "scope": specification["scope"],
+                "question_sha256": hashlib.sha256(question.encode()).hexdigest(),
+                "answer_sha256": hashlib.sha256(answer.encode()).hexdigest(),
+                "native_general_quality": native_statuses[-1],
+                "deterministic_pass": deterministic_pass,
+                "deterministic_metrics": metrics,
+            }
+        )
+
+    if seen_questions != set(expected_by_question):
+        missing = sorted(set(expected_by_question) - seen_questions)
+        raise ValueError(f"Conversation export is missing questions: {missing}")
+
+    quality_records = [record for record in records if record["scope"] == "quality"]
+    security_records = [record for record in records if record["scope"] == "security"]
+    if not quality_records or not security_records:
+        raise ValueError("Evaluation requires both quality and security cases")
+
+    native_counts = Counter(native_statuses)
+    # Statuses outside Pass/Fail (e.g. GitHub Copilot Harness "MakerError") are
+    # nondecisive and recorded as release-blocking evidence.
+    error_count = sum(
+        count
+        for status, count in native_counts.items()
+        if status not in {"Pass", "Fail"}
+    )
+    native_summary = {
+        quality_method: {
+            "passed": native_counts["Pass"],
+            "failed": native_counts["Fail"],
+            "errors": error_count,
+            "invalid": native_counts["Invalid"],
+            "count": len(native_statuses),
+            "pass_rate": native_counts["Pass"] / len(native_statuses),
+        }
+    }
+    release_blockers = (
+        [f"{quality_method}: {error_count} nondecisive native results"]
+        if error_count
+        else []
+    )
+    dataset_fingerprint = hashlib.sha256(
+        json.dumps(
+            [
+                {
+                    "question": question,
+                    "specification": expected_by_question[question][1],
+                }
+                for question in sorted(expected_by_question)
+            ],
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
+    return {
+        "schema_version": "1.0",
+        "artifact_type": "copilot_studio_native_evaluation",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "experiment_id": experiment_id,
+        "dataset_version": dataset_version,
+        "dataset_fingerprint": dataset_fingerprint,
+        "run_name": run_name,
+        "evaluation_harness": "github_copilot_conversation",
+        "quality_measurement": "copilot_studio_native_evaluation_export",
+        "measurement_relationship": "separate_same_published_agent_testset_replay",
+        "native_release_ready": not release_blockers,
+        "native_release_blockers": release_blockers,
+        "native_methods": native_summary,
         "deterministic_quality": _summary(
             [record["deterministic_pass"] for record in quality_records]
         ),

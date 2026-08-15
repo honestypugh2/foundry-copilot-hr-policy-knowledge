@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "artifact_type": "copilot_studio_credits_snapshot",
+  "cost_lane": "copilot_studio_per_message_credits",
+  "captured_at": "2026-08-15",
+  "source": "Copilot Studio -> Operate -> Cost",
+  "billing_model": "pay-as-you-go",
+  "unit": "Copilot Studio Credits",
+  "currency": null,
+  "period": "month-to-date 2026-08",
+  "total_credits": 635.1,
+  "measurement_type": "native_credits",
+  "measurement_relationship": "monthly_tenant_aggregate_out_of_band",
+  "usd_conversion": "unavailable_here",
+  "notes": [
+    "Copilot Studio front-door patterns (A, A2, C) meter usage in Credits, not tokens or USD-per-token; this is the second cost lane and is never joined to the Foundry per-token USD lane.",
+    "Figures are month-to-date TENANT aggregate across all agent usage (benchmark runs, manual testing, evaluations, native eval runs); they are NOT a per-45-case-run cost.",
+    "Under pay-as-you-go, Credits are billed to Azure under Microsoft Copilot Studio; the billed USD is reconciled separately in Azure Cost Management (billed_cost_reconciliation=separate_azure_cost_management).",
+    "Operate -> Cost showed 4 of 7 agents; Pattern B (crf9c_AskHRPolicyAgentBfoundry) and Hosted (crf9c_AskHRPolicyAgentB) are among the 3 hidden agents and are not captured here. Their variable cost is measured in the Foundry per-token USD lane.",
+    "Per-agent x per-feature values are transcribed from the portal screenshot; feature totals reconcile exactly to 635.1, per-agent sub-feature splits are approximate (portal rounding / hidden +N features)."
+  ],
+  "by_feature_credits": {
+    "Process Agent": 351.1,
+    "Classic answer": 165,
+    "Generative answer": 84,
+    "Agent action": 35
+  },
+  "by_agent": [
+    {
+      "display_name": "Ask HR Policy Agent A2G",
+      "pattern": "UNMAPPED_needs_confirmation",
+      "agent_schema": null,
+      "credits": 243.93,
+      "features": { "Process Agent": 243.93 },
+      "note": "Not present in committed manifests; likely an A2 Foundry-IQ generative variant. Confirm before attributing to a pattern."
+    },
+    {
+      "display_name": "Ask HR Policy Agent",
+      "pattern": "A",
+      "agent_schema": "Default_AskHRPolicyAgent",
+      "credits": 146,
+      "features": { "Classic answer": 98, "Generative answer": 48 }
+    },
+    {
+      "display_name": "Ask HR Policy Agent C",
+      "pattern": "C",
+      "agent_schema": "crf9c_AskHRPolicyAgentC",
+      "credits": 129,
+      "features": { "Classic answer": 58, "Generative answer": 38, "Agent action": 35 },
+      "note": "Sub-feature values approximate; sum (131) differs slightly from portal total (129) due to a hidden +1 feature / rounding."
+    },
+    {
+      "display_name": "Ask HR Policy Agent new",
+      "pattern": "A2",
+      "agent_schema": "crf9c_askhrpolicyagentnew_jnP-W0",
+      "credits": 107.17,
+      "features": { "Process Agent": 107.17 }
+    }
+  ],
+  "excluded_agents": [
+    { "pattern": "B", "agent_schema": "crf9c_AskHRPolicyAgentBfoundry", "reason": "hidden in Operate->Cost (4 of 7 shown); cost measured in Foundry per-token USD lane" },
+    { "pattern": "Hosted", "agent_schema": "crf9c_AskHRPolicyAgentB", "reason": "hidden in Operate->Cost (4 of 7 shown); cost measured in Foundry per-token USD lane" }
+  ]
+}

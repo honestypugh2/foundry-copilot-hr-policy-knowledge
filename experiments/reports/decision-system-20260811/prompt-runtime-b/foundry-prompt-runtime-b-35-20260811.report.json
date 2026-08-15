@@ -1,0 +1,374 @@
+{
+  "manifest": {
+    "schema_version": "1.0",
+    "experiment_id": "foundry-prompt-runtime-b-35-20260811",
+    "created_at": "2026-08-11T21:30:00Z",
+    "git_commit": "fe3a17c",
+    "dirty_worktree": true,
+    "runner_version": "0.1.0",
+    "dataset_name": "copilot-hr-policy-release-v2",
+    "dataset_version": "sha256:b0ddc82ddec2e5eb7235182dd77ad75e39039d9e1cf9086bde258897982e09e2",
+    "corpus_fingerprint": "d8a305ac74ad445e2558f57f0e1bf066e0abc704fea09e6edbb0a7866d046303",
+    "index_fingerprint": "2b5ba982cdf77e2031dba7aedde09f17a110ba13288a95db72b4f5bd2e146592",
+    "pattern": "B",
+    "retrieval_mode": "tool",
+    "invocation_path": "foundry_hosted_agent:HRPolicyAgent",
+    "api_version": "2025-05-15-preview",
+    "output_mode": "answer_synthesis",
+    "model_deployment": "gpt-5-mini",
+    "model_version": "2025-08-07",
+    "answer_model": "gpt-5-mini",
+    "retrieval_reasoning_effort": "medium",
+    "semantic_configuration": "hr-semantic-config",
+    "search_sku": "basic",
+    "search_replicas": null,
+    "search_partitions": null,
+    "vector_configuration": {},
+    "output_document_limit": null,
+    "output_token_limit": null,
+    "query_filter": null,
+    "knowledge_source_settings": {},
+    "prompt_version": "HRPolicyAgent-v2",
+    "agent_version": "deployed-HRPolicyAgent-v2",
+    "configuration_version": "foundry-prompt-runtime",
+    "region": "eastus2",
+    "client_location": null,
+    "top": 5,
+    "warmup_count": 1,
+    "measured_repetitions": 5,
+    "concurrency": 1,
+    "timeout_seconds": 120.0,
+    "random_seed": 0,
+    "pricing_profile": "azure-gpt-5-mini-global-standard-cache-aware:2025-08-01"
+  },
+  "aggregate": {
+    "schema_version": "1.0",
+    "experiment_id": "foundry-prompt-runtime-b-35-20260811",
+    "count": 45,
+    "success_count": 45,
+    "partial_count": 0,
+    "error_count": 0,
+    "timeout_count": 0,
+    "throttle_count": 0,
+    "success_rate": 1.0,
+    "error_rate": 0.0,
+    "throttle_rate": 0.0,
+    "rate_confidence_intervals": {
+      "success_rate": {
+        "lower": 0.9213484012671117,
+        "upper": 1.0,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      },
+      "error_rate": {
+        "lower": 0.0,
+        "upper": 0.07865159873288836,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      },
+      "throttle_rate": {
+        "lower": 0.0,
+        "upper": 0.07865159873288836,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      }
+    },
+    "client_wall_time": {
+      "count": 45,
+      "minimum_ms": 934.638739003276,
+      "maximum_ms": 75593.90494599938,
+      "mean_ms": 26114.521564289073,
+      "standard_deviation_ms": 13419.85908218985,
+      "p50_ms": 24229.395080001268,
+      "p95_ms": 43205.86023520009,
+      "p99_ms": 65255.54423595958
+    },
+    "cold_client_wall_time": null,
+    "warm_client_wall_time": null,
+    "by_category": {
+      "adversarial_out_of_domain": {
+        "count": 5,
+        "minimum_ms": 20793.1125340001,
+        "maximum_ms": 33589.09369400135,
+        "mean_ms": 24044.890222599497,
+        "standard_deviation_ms": 4800.02755190325,
+        "p50_ms": 21832.497065999632,
+        "p95_ms": 31351.92757100085,
+        "p99_ms": 33141.66046940125
+      },
+      "direct_fact": {
+        "count": 5,
+        "minimum_ms": 20179.19758700009,
+        "maximum_ms": 32821.23333700292,
+        "mean_ms": 25534.277331800695,
+        "standard_deviation_ms": 4261.16662938228,
+        "p50_ms": 25070.545053000387,
+        "p95_ms": 31609.922821001965,
+        "p99_ms": 32578.97123380273
+      },
+      "disambiguation": {
+        "count": 5,
+        "minimum_ms": 23818.592662999436,
+        "maximum_ms": 30076.473991997773,
+        "mean_ms": 26316.422293199867,
+        "standard_deviation_ms": 2814.7288818786037,
+        "p50_ms": 24229.395080001268,
+        "p95_ms": 29946.212511798512,
+        "p99_ms": 30050.42169595792
+      },
+      "document_location": {
+        "count": 5,
+        "minimum_ms": 18432.121945999825,
+        "maximum_ms": 24011.28940200215,
+        "mean_ms": 22231.491558400012,
+        "standard_deviation_ms": 2113.3217570690117,
+        "p50_ms": 23290.590165997855,
+        "p95_ms": 24002.168306402018,
+        "p99_ms": 24009.465182882122
+      },
+      "exact_lookup": {
+        "count": 5,
+        "minimum_ms": 18809.96725099976,
+        "maximum_ms": 43209.39565200024,
+        "mean_ms": 27986.07121660025,
+        "standard_deviation_ms": 10280.03882374665,
+        "p50_ms": 21371.562211999844,
+        "p95_ms": 42057.39459940014,
+        "p99_ms": 42978.99544148022
+      },
+      "multi_policy_synthesis": {
+        "count": 5,
+        "minimum_ms": 21760.863808998693,
+        "maximum_ms": 75593.90494599938,
+        "mean_ms": 41317.15694779996,
+        "standard_deviation_ms": 18476.174622025872,
+        "p50_ms": 35055.55408500004,
+        "p95_ms": 69113.4676703994,
+        "p99_ms": 74297.81749087939
+      },
+      "paraphrase_synonym": {
+        "count": 5,
+        "minimum_ms": 24448.14539700019,
+        "maximum_ms": 31381.155212999147,
+        "mean_ms": 26551.15984120057,
+        "standard_deviation_ms": 2516.8615585672374,
+        "p50_ms": 25613.04316600217,
+        "p95_ms": 30406.055161999393,
+        "p99_ms": 31186.135202799196
+      },
+      "security_prompt_injection": {
+        "count": 5,
+        "minimum_ms": 934.638739003276,
+        "maximum_ms": 1367.981282000983,
+        "mean_ms": 1070.5095662007807,
+        "standard_deviation_ms": 154.50643901465418,
+        "p50_ms": 1026.879002001806,
+        "p95_ms": 1305.1145966004697,
+        "p99_ms": 1355.4079449208803
+      },
+      "security_secret_disclosure": {
+        "count": 5,
+        "minimum_ms": 34626.23667799926,
+        "maximum_ms": 52097.63060499972,
+        "mean_ms": 39978.71510080004,
+        "standard_deviation_ms": 6314.239425122007,
+        "p50_ms": 37245.74249999932,
+        "p95_ms": 49676.14627619987,
+        "p99_ms": 51613.33373923975
+      }
+    },
+    "by_stage": {},
+    "by_activity_type": {},
+    "quality_by_category": {
+      "adversarial_out_of_domain": {
+        "passed": 0,
+        "count": 1,
+        "pass_rate": 0.0,
+        "confidence_interval": {
+          "lower": 0.0,
+          "upper": 0.7934506856227626,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "direct_fact": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "disambiguation": {
+        "passed": 0,
+        "count": 1,
+        "pass_rate": 0.0,
+        "confidence_interval": {
+          "lower": 0.0,
+          "upper": 0.7934506856227626,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "document_location": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "exact_lookup": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "multi_policy_synthesis": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "paraphrase_synonym": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      }
+    },
+    "security_by_category": {
+      "security_prompt_injection": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "security_secret_disclosure": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      }
+    },
+    "variable_cost": {
+      "invocation_count": 45,
+      "priced_invocation_count": 0,
+      "mean_per_invocation": {
+        "amount": null,
+        "currency": null,
+        "measurement_type": "unavailable",
+        "pricing_profile": null,
+        "formula": null,
+        "measured_quantities": {},
+        "assumptions": [
+          "Only 0 of 45 invocations had complete service-reported quantities."
+        ],
+        "excluded_costs": [],
+        "unavailable_reason": "not_exposed"
+      },
+      "run_total": {
+        "amount": null,
+        "currency": null,
+        "measurement_type": "unavailable",
+        "pricing_profile": null,
+        "formula": null,
+        "measured_quantities": {},
+        "assumptions": [
+          "Only 0 of 45 invocations had complete service-reported quantities."
+        ],
+        "excluded_costs": [],
+        "unavailable_reason": "not_exposed"
+      }
+    },
+    "sample_warning": null,
+    "provenance": {
+      "estimated_variable_cost": null,
+      "estimated_variable_cost_currency": null,
+      "estimated_variable_cost_statistic": "mean_per_invocation",
+      "estimated_variable_cost_measurement_type": "unavailable",
+      "estimated_variable_cost_pricing_profile": null,
+      "estimated_variable_cost_sample_count": 0,
+      "billed_cost_reconciliation": "separate_azure_cost_management",
+      "manifest_schema_version": "1.0",
+      "fixture_mode": false,
+      "measurement_boundary": "foundry_hosted_agent:HRPolicyAgent",
+      "workload_type": "controlled_experiment",
+      "model_deployment": "gpt-5-mini",
+      "answer_model": "gpt-5-mini",
+      "quality": 0.7142857142857143,
+      "quality_measurement": "separate_deployed_hosted_agent_replay",
+      "security_pass_rate": 1.0,
+      "security_measurement": "separate_deployed_hosted_agent_replay",
+      "measurement_relationship": "separate_deployed_hosted_agent_replay",
+      "evaluation_id": "bccb755f-f634-429e-94ff-ec49c13f98a6",
+      "evaluation_artifact": "foundry-prompt-runtime-b-35-20260811.evaluation.json",
+      "judge_scores": {
+        "relevance": {
+          "count": 7,
+          "mean": 4.857142857142857,
+          "pass_rate": 1.0,
+          "threshold": 3.0,
+          "scale": "1-5"
+        },
+        "intent_resolution": {
+          "count": 7,
+          "mean": 4.714285714285714,
+          "pass_rate": 1.0,
+          "threshold": 3.0,
+          "scale": "1-5"
+        }
+      },
+      "judge_calibration": {
+        "relevance": {
+          "count": 7,
+          "agreement_rate": 0.7142857142857143,
+          "false_positive_count": 2,
+          "false_negative_count": 0,
+          "reference": "deterministic case gate"
+        },
+        "intent_resolution": {
+          "count": 7,
+          "agreement_rate": 0.7142857142857143,
+          "false_positive_count": 2,
+          "false_negative_count": 0,
+          "reference": "deterministic case gate"
+        }
+      },
+      "judge_model_deployment": "gpt-5-mini",
+      "judge_rubric_version": "responses-relevance-intent-v1",
+      "judge_role": "supplemental; deterministic gates remain authoritative"
+    }
+  }
+}

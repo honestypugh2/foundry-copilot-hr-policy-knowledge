@@ -1,0 +1,30 @@
+{
+  "id": "85f6486d-48eb-4ba2-9764-281af8f2aa22",
+  "environmentId": "default-8632ad35-17e0-4994-978b-61afd7ed90d7",
+  "cdsBotId": "71618b21-e491-f111-8075-000d3a59db72",
+  "ownerId": "4d6f7622-37d7-4824-a290-182a9fd5001a",
+  "testSetId": "edadb7d2-82df-422b-a563-6c99bbb43c4b",
+  "state": "Completed",
+  "startTime": "2026-08-11T19:04:53.6053807+00:00",
+  "endTime": "2026-08-11T19:08:32.1803882+00:00",
+  "name": "Ask HR Pattern A release-v2",
+  "totalTestCases": 9,
+  "mcsConnectionId": "0a32ccb1137f4300830e42023d02b23a",
+  "testCasesResults": [
+    {"testCaseId":"10bd6e14-9981-43dd-b246-c280e211ba4d","state":"Completed","metricsResults":[{"type":"GeneralQuality","result":{"status":"Pass"}},{"type":"CompareMeaning","result":{"status":"Pass"}}]},
+    {"testCaseId":"014cd8fc-cd81-45ba-aa90-6bf06a1d282a","state":"Completed","metricsResults":[{"type":"GeneralQuality","result":{"status":"Pass"}},{"type":"CompareMeaning","result":{"status":"Pass"}}]},
+    {"testCaseId":"df25d6e3-63c1-467c-b906-9b4ece97b10f","state":"Completed","metricsResults":[{"type":"GeneralQuality","result":{"status":"Pass"}},{"type":"CompareMeaning","result":{"status":"Pass"}}]},
+    {"testCaseId":"ffb7957d-ac35-4425-9d09-950655820a8f","state":"Completed","metricsResults":[{"type":"GeneralQuality","result":{"status":"Pass"}},{"type":"CompareMeaning","result":{"status":"Fail"}}]},
+    {"testCaseId":"3f2c0ab5-7f0e-4357-876b-12ab1a7ad0d3","state":"Completed","metricsResults":[{"type":"GeneralQuality","result":{"status":"Pass"}},{"type":"CompareMeaning","result":{"status":"Pass"}}]},
+    {"testCaseId":"5fa4e03e-a412-4fd1-9300-dc03c795d783","state":"Completed","metricsResults":[{"type":"GeneralQuality","result":{"status":"Pass"}},{"type":"CompareMeaning","result":{"status":"Pass"}}]},
+    {"testCaseId":"ac778955-b760-41f0-a272-12f5816e8539","state":"Completed","metricsResults":[{"type":"GeneralQuality","result":{"status":"Fail"}},{"type":"CompareMeaning","result":{"status":"Pass"}}]},
+    {"testCaseId":"6f0c59dc-cde0-4a54-bb71-adf7e970bf39","state":"Error","metricsResults":[{"type":"GeneralQuality","result":{"status":"Error"}},{"type":"CompareMeaning","result":{"status":"Error"}}]},
+    {"testCaseId":"bf651339-4cff-44dc-94b9-4ee7c2469105","state":"Completed","metricsResults":[{"type":"GeneralQuality","result":{"status":"Fail"}},{"type":"CompareMeaning","result":{"status":"Pass"}}]}
+  ],
+  "resolvedTestSet": {
+    "id": "edadb7d2-82df-422b-a563-6c99bbb43c4b",
+    "displayName": "Evaluate Ask HR Policy Agent",
+    "state": "Active",
+    "totalTestCases": 9
+  }
+}

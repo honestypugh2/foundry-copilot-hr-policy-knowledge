@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "artifact_type": "hybrid_routing_prompt_set",
+  "dataset_name": "hybrid-routing-prompts-v1",
+  "description": "Labeled intents for measuring Copilot Studio hybrid tool-selection accuracy. Each prompt is tagged with the tool(s) the copilot SHOULD invoke; run through the hybrid agent and read the Activity tab to record observed tools. Tools: lookupHRPolicyDocument (Pattern C locator), askHRPolicy (Pattern B/Hosted content synthesis), knowledge_base (Pattern A/A2 native Knowledge Source).",
+  "source": "docs/CopilotStudioTestingGuide.md (Scenario C, Scenario Hy) and docs/CopilotStudioHybridExample.md",
+  "prompts": [
+    { "prompt_id": "loc-1", "intent": "locator", "expected_tools": ["lookupHRPolicyDocument"], "prompt": "Where can I find Policy 50020?" },
+    { "prompt_id": "loc-2", "intent": "locator", "expected_tools": ["lookupHRPolicyDocument"], "prompt": "Give me the link to the part-time PTO policy." },
+    { "prompt_id": "loc-3", "intent": "locator", "expected_tools": ["lookupHRPolicyDocument"], "prompt": "Locate the Generative Artificial Intelligence and Large Language Models policy." },
+    { "prompt_id": "loc-4", "intent": "locator", "expected_tools": ["lookupHRPolicyDocument"], "prompt": "Send me the uniform dress code document." },
+    { "prompt_id": "loc-5", "intent": "locator", "expected_tools": ["lookupHRPolicyDocument"], "prompt": "What is the file path for the Code of Ethics policy?" },
+    { "prompt_id": "con-1", "intent": "content", "expected_tools": ["askHRPolicy"], "prompt": "What does the full-time Paid Time Off policy cover?" },
+    { "prompt_id": "con-2", "intent": "content", "expected_tools": ["askHRPolicy"], "prompt": "Compare the full-time and part-time PTO policies." },
+    { "prompt_id": "con-3", "intent": "content", "expected_tools": ["askHRPolicy"], "prompt": "What policy covers time away from work because I am temporarily unable to work?" },
+    { "prompt_id": "con-4", "intent": "content", "expected_tools": ["askHRPolicy"], "prompt": "Explain the Code of Ethics and related matters." },
+    { "prompt_id": "con-5", "intent": "content", "expected_tools": ["askHRPolicy"], "prompt": "What footwear is allowed under the uniform dress code?" },
+    { "prompt_id": "cmp-1", "intent": "compound", "expected_tools": ["askHRPolicy", "lookupHRPolicyDocument"], "prompt": "Explain the part-time PTO policy and give me the link to the source document." },
+    { "prompt_id": "cmp-2", "intent": "compound", "expected_tools": ["askHRPolicy", "lookupHRPolicyDocument"], "prompt": "What does the uniform dress code require, and where can I read the policy?" }
+  ]
+}

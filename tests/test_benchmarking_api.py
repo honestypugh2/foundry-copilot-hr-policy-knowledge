@@ -118,6 +118,7 @@ async def test_comparison_reports_incompatible_provenance():
 
     assert comparison["compatible_scope"] is False
     assert "corpus_fingerprint differs" in comparison["incompatibility_reasons"]
+    assert "measurement_boundary_class differs" in comparison["incompatibility_reasons"]
 
 
 def test_native_evaluation_errors_block_publication():

@@ -71,7 +71,9 @@ _COMPARISON_SCOPE_FIELDS = (
     "random_seed",
     "pricing_profile",
 )
-_COMPARISON_SCOPE_VERSION = "comparison-scope-v1"
+_COMPARISON_SCOPE_VERSION = "comparison-scope-v2"
+# Derived (non-manifest) scope fields appended by _scope_values.
+_DERIVED_SCOPE_FIELDS = ("measurement_boundary_class",)
 
 
 def _root() -> Path:
@@ -172,12 +174,39 @@ def _summary(payload: dict[str, Any]) -> ExperimentSummary:
     )
 
 
+def _boundary_class(invocation_path: str) -> str:
+    """Group invocation paths into latency-comparable measurement classes.
+
+    Runs in different classes (e.g. Copilot front door vs deployed Foundry
+    agent) include different hops, so their latency is never ranked together.
+    """
+    prefixes = {
+        "copilot_studio_direct_line:": "copilot_front_door",
+        "foundry_hosted_agent:": "deployed_foundry_agent",
+        "agent_framework_local:": "agent_framework_local",
+    }
+    for prefix, label in prefixes.items():
+        if invocation_path.startswith(prefix):
+            return label
+    exact = {
+        "direct_search_sdk": "direct_search",
+        "direct_search_fixture": "direct_search",
+        "direct_knowledge_base_retrieve": "direct_knowledge_base",
+        "foundry_responses_agent_mcp": "foundry_responses",
+        "deterministic_lookup": "deterministic_lookup",
+        "fixture": "fixture",
+    }
+    return exact.get(invocation_path, invocation_path)
+
+
 def _scope_values(payload: dict[str, Any]) -> dict[str, Any]:
     manifest = ExperimentManifest.model_validate(payload["manifest"])
-    return manifest.model_dump(
+    values = manifest.model_dump(
         mode="json",
         include=set(_COMPARISON_SCOPE_FIELDS),
     )
+    values["measurement_boundary_class"] = _boundary_class(manifest.invocation_path)
+    return values
 
 
 def _comparison_scope(payload: dict[str, Any]) -> str:
@@ -229,7 +258,7 @@ def comparison(
     incompatibility_reasons = []
     baseline_scope = _scope_values(baseline_payload)
     candidate_scope = _scope_values(candidate_payload)
-    for field in _COMPARISON_SCOPE_FIELDS:
+    for field in (*_COMPARISON_SCOPE_FIELDS, *_DERIVED_SCOPE_FIELDS):
         if baseline_scope[field] != candidate_scope[field]:
             incompatibility_reasons.append(f"{field} differs")
     metrics = ("latency_p95_ms", "quality", "success_rate", "estimated_variable_cost")

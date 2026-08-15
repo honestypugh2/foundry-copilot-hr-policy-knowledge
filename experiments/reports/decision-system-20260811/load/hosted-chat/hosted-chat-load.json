@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "workload_type": "load_test",
+  "source": "locust_csv",
+  "concurrency": 4,
+  "spawn_rate": 1.0,
+  "duration_seconds": 120,
+  "target": "http://127.0.0.1:8010",
+  "environment": "local-dev",
+  "tags": [
+    "chat",
+    "hosted",
+    "agent-framework",
+    "reliability-smoke"
+  ],
+  "endpoints": [
+    {
+      "method": "POST",
+      "name": "POST /api/chat",
+      "request_count": 6,
+      "failure_count": 0,
+      "requests_per_second": 0.058600493487786585,
+      "p50_ms": 57000.0,
+      "p95_ms": 70000.0,
+      "p99_ms": 70000.0
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "pattern": "A",
+  "front_door_agent": "Ask HR Policy Agent A",
+  "messages": 45,
+  "credits_per_message": 2.0,
+  "estimated_total_credits": 90.0,
+  "lines": [
+    {
+      "meter": "generative_answer",
+      "count": 1.0,
+      "credits_each": 2.0,
+      "credits_subtotal": 2.0,
+      "uncertain": false
+    }
+  ],
+  "byo_foundry_tokens": false,
+  "rate_profile": "copilot-studio-credits-standard-harness:2026-08-01",
+  "feature_mix_profile": "copilot-studio-credits-feature-mix:2026-08-01",
+  "has_uncertain_events": false,
+  "assumptions": [
+    "Rates are the published standard-harness Copilot Credit rate card captured 2026-08-13 from the source_url.",
+    "Employee-facing (B2E) usage by a Microsoft 365 Copilot-licensed user is 'No charge' against these meters; this profile prices the B2B / unlicensed path so the benchmark reports a non-zero cost lane.",
+    "Bring-your-own-model (Azure Foundry) token usage is billed separately and is NOT represented here; for Pattern B and the Hosted front door, add the Foundry per-token USD lane on top of the connected-agent action credits.",
+    "Credits are a per-message unit and never convert to tokens or USD; do not add Credits to the Foundry USD lane.",
+    "One benchmarked question maps to one user message; multi-turn or retry inflation is not modeled.",
+    "agent_action counts are marked uncertain because Copilot Studio does not expose a per-message billable-event breakdown over Direct Line; confirm against the admin-center consumption grid.",
+    "Patterns whose Copilot Studio agent is currently non-responsive (B, Hosted front doors) have no live message evidence; their estimate is configuration-only until the agents are fixed."
+  ]
+}

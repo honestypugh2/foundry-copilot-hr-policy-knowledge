@@ -1,0 +1,343 @@
+{
+  "manifest": {
+    "schema_version": "1.0",
+    "experiment_id": "foundry-hosted-runtime-35-20260811",
+    "created_at": "2026-08-11T21:30:00Z",
+    "git_commit": "853e2a083222ac927590f82b4bf3e3409fae73a1",
+    "dirty_worktree": true,
+    "runner_version": "0.1.0",
+    "dataset_name": "copilot-hr-policy-v1",
+    "dataset_version": "69d9e8e657698c4013b87e5fe9018c7bcc24b0fe7995b3abe4b5906ae5ce7539",
+    "corpus_fingerprint": "d8a305ac74ad445e2558f57f0e1bf066e0abc704fea09e6edbb0a7866d046303",
+    "index_fingerprint": "2b5ba982cdf77e2031dba7aedde09f17a110ba13288a95db72b4f5bd2e146592",
+    "pattern": "Hosted",
+    "retrieval_mode": "tool",
+    "invocation_path": "foundry_hosted_agent:hr-policy-agent",
+    "api_version": "2025-05-15-preview",
+    "output_mode": "answer_synthesis",
+    "model_deployment": "gpt-5-mini",
+    "model_version": "2025-08-07",
+    "retrieval_reasoning_effort": "medium",
+    "semantic_configuration": "hr-semantic-config",
+    "search_sku": "basic",
+    "search_replicas": null,
+    "search_partitions": null,
+    "vector_configuration": {},
+    "output_document_limit": null,
+    "output_token_limit": null,
+    "query_filter": null,
+    "knowledge_source_settings": {},
+    "prompt_version": null,
+    "agent_version": "deployed-hr-policy-agent",
+    "configuration_version": "foundry-hosted-runtime",
+    "region": "eastus2",
+    "client_location": null,
+    "top": 5,
+    "warmup_count": 1,
+    "measured_repetitions": 5,
+    "concurrency": 1,
+    "timeout_seconds": 120.0,
+    "random_seed": 0,
+    "pricing_profile": "azure-gpt-5-mini-global-standard-cache-aware:2025-08-01",
+    "answer_model": "gpt-5-mini"
+  },
+  "aggregate": {
+    "schema_version": "1.0",
+    "experiment_id": "foundry-hosted-runtime-35-20260811",
+    "count": 35,
+    "success_count": 35,
+    "partial_count": 0,
+    "error_count": 0,
+    "timeout_count": 0,
+    "throttle_count": 0,
+    "success_rate": 1.0,
+    "error_rate": 0.0,
+    "throttle_rate": 0.0,
+    "rate_confidence_intervals": {
+      "success_rate": {
+        "lower": 0.9010990076755959,
+        "upper": 0.9999999999999999,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      },
+      "error_rate": {
+        "lower": 6.938893903907228e-18,
+        "upper": 0.09890099232440402,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      },
+      "throttle_rate": {
+        "lower": 6.938893903907228e-18,
+        "upper": 0.09890099232440402,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      }
+    },
+    "client_wall_time": {
+      "count": 35,
+      "minimum_ms": 17464.061444989056,
+      "maximum_ms": 40682.968846012955,
+      "mean_ms": 25948.136051457757,
+      "standard_deviation_ms": 6102.743635067993,
+      "p50_ms": 23942.74614499591,
+      "p95_ms": 39528.23786360241,
+      "p99_ms": 40338.48514292884
+    },
+    "cold_client_wall_time": null,
+    "warm_client_wall_time": null,
+    "by_category": {
+      "adversarial_out_of_domain": {
+        "count": 5,
+        "minimum_ms": 17464.061444989056,
+        "maximum_ms": 25912.27953399357,
+        "mean_ms": 20813.430197996786,
+        "standard_deviation_ms": 3433.0765301926917,
+        "p50_ms": 18473.003215010976,
+        "p95_ms": 25518.372856194037,
+        "p99_ms": 25833.498198433663
+      },
+      "direct_fact": {
+        "count": 5,
+        "minimum_ms": 22918.80659700837,
+        "maximum_ms": 32096.230419003405,
+        "mean_ms": 26346.489599798224,
+        "standard_deviation_ms": 3169.3744256900814,
+        "p50_ms": 24966.393554990645,
+        "p95_ms": 31099.788718801574,
+        "p99_ms": 31896.94207896304
+      },
+      "disambiguation": {
+        "count": 5,
+        "minimum_ms": 23089.250814999104,
+        "maximum_ms": 40682.968846012955,
+        "mean_ms": 28190.436906405375,
+        "standard_deviation_ms": 6568.535639072258,
+        "p50_ms": 25143.422742010443,
+        "p95_ms": 38296.324891012046,
+        "p99_ms": 40205.64005501277
+      },
+      "document_location": {
+        "count": 5,
+        "minimum_ms": 21207.17230300943,
+        "maximum_ms": 25631.986320993747,
+        "mean_ms": 23154.700077002053,
+        "standard_deviation_ms": 1458.8814719778416,
+        "p50_ms": 23160.73990300356,
+        "p95_ms": 25189.559541794006,
+        "p99_ms": 25543.5009651538
+      },
+      "exact_lookup": {
+        "count": 5,
+        "minimum_ms": 18587.24273100961,
+        "maximum_ms": 29380.688444987754,
+        "mean_ms": 23782.389817401418,
+        "standard_deviation_ms": 3590.3461825573854,
+        "p50_ms": 23448.719102001633,
+        "p95_ms": 28600.74121559155,
+        "p99_ms": 29224.698999108514
+      },
+      "multi_policy_synthesis": {
+        "count": 5,
+        "minimum_ms": 27256.948495996767,
+        "maximum_ms": 39467.576312003075,
+        "mean_ms": 33886.38758960005,
+        "standard_deviation_ms": 4679.1198949285945,
+        "p50_ms": 33820.30056700751,
+        "p95_ms": 39284.31285120314,
+        "p99_ms": 39430.92361984309
+      },
+      "paraphrase_synonym": {
+        "count": 5,
+        "minimum_ms": 20360.770554005285,
+        "maximum_ms": 39669.78148400085,
+        "mean_ms": 25463.118172000395,
+        "standard_deviation_ms": 7177.606991702283,
+        "p50_ms": 22660.241386998678,
+        "p95_ms": 36399.14280200028,
+        "p99_ms": 39015.653747600736
+      }
+    },
+    "by_stage": {},
+    "by_activity_type": {},
+    "quality_by_category": {
+      "adversarial_out_of_domain": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "direct_fact": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "disambiguation": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "document_location": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "exact_lookup": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "multi_policy_synthesis": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "paraphrase_synonym": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      }
+    },
+    "security_by_category": {
+      "security": {
+        "passed": 2,
+        "count": 2,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.34238022750665303,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      }
+    },
+    "variable_cost": {
+      "invocation_count": 35,
+      "priced_invocation_count": 0,
+      "mean_per_invocation": {
+        "amount": null,
+        "currency": null,
+        "measurement_type": "unavailable",
+        "pricing_profile": null,
+        "formula": null,
+        "measured_quantities": {},
+        "assumptions": [
+          "Only 0 of 35 invocations had complete service-reported quantities."
+        ],
+        "excluded_costs": [],
+        "unavailable_reason": "not_exposed"
+      },
+      "run_total": {
+        "amount": null,
+        "currency": null,
+        "measurement_type": "unavailable",
+        "pricing_profile": null,
+        "formula": null,
+        "measured_quantities": {},
+        "assumptions": [
+          "Only 0 of 35 invocations had complete service-reported quantities."
+        ],
+        "excluded_costs": [],
+        "unavailable_reason": "not_exposed"
+      }
+    },
+    "sample_warning": null,
+    "provenance": {
+      "estimated_variable_cost": null,
+      "estimated_variable_cost_currency": null,
+      "estimated_variable_cost_statistic": "mean_per_invocation",
+      "estimated_variable_cost_measurement_type": "unavailable",
+      "estimated_variable_cost_pricing_profile": null,
+      "estimated_variable_cost_sample_count": 0,
+      "billed_cost_reconciliation": "separate_azure_cost_management",
+      "manifest_schema_version": "1.0",
+      "fixture_mode": false,
+      "measurement_boundary": "foundry_hosted_agent:hr-policy-agent",
+      "workload_type": "controlled_experiment",
+      "quality": 1.0,
+      "quality_measurement": "separate_deployed_hosted_agent_replay",
+      "security_pass_rate": 1.0,
+      "security_measurement": "separate_deployed_hosted_agent_replay",
+      "evaluation_id": "9d1b5c56-2302-4d00-ae58-18feafedf5dd",
+      "evaluation_artifact": "foundry-hosted-runtime-35-20260811.evaluation.json",
+      "judge_scores": {
+        "relevance": {
+          "count": 7,
+          "mean": 5.0,
+          "pass_rate": 1.0,
+          "threshold": 3.0,
+          "scale": "1-5"
+        },
+        "intent_resolution": {
+          "count": 7,
+          "mean": 4.857142857142857,
+          "pass_rate": 1.0,
+          "threshold": 3.0,
+          "scale": "1-5"
+        }
+      },
+      "judge_calibration": {
+        "relevance": {
+          "count": 7,
+          "agreement_rate": 1.0,
+          "false_positive_count": 0,
+          "false_negative_count": 0,
+          "reference": "deterministic case gate"
+        },
+        "intent_resolution": {
+          "count": 7,
+          "agreement_rate": 1.0,
+          "false_positive_count": 0,
+          "false_negative_count": 0,
+          "reference": "deterministic case gate"
+        }
+      },
+      "judge_model_deployment": "gpt-5-mini",
+      "judge_rubric_version": "responses-relevance-intent-v1",
+      "judge_role": "supplemental; deterministic gates remain authoritative",
+      "measurement_relationship": "separate_deployed_hosted_agent_replay",
+      "answer_model": "gpt-5-mini",
+      "model_deployment": "gpt-5-mini"
+    }
+  }
+}

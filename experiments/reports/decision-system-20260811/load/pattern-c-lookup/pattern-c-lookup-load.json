@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "workload_type": "load_test",
+  "source": "locust_csv",
+  "concurrency": 4,
+  "spawn_rate": 1.0,
+  "duration_seconds": 45,
+  "target": "http://127.0.0.1:8010",
+  "environment": "local-dev",
+  "tags": [
+    "lookup",
+    "pattern-c",
+    "reliability-smoke"
+  ],
+  "endpoints": [
+    {
+      "method": "POST",
+      "name": "POST /api/lookup",
+      "request_count": 10,
+      "failure_count": 0,
+      "requests_per_second": 0.26706011605792623,
+      "p50_ms": 15000.0,
+      "p95_ms": 21000.0,
+      "p99_ms": 21000.0
+    }
+  ]
+}

@@ -165,6 +165,9 @@ docs/BenchmarkMigrationLedger.md
 # Generated benchmark outputs are local by default. Explicit exceptions below
 # are reviewed fixtures or curated publication evidence.
 experiments/reports/*
+!experiments/reports/decision-system-20260811/
+experiments/reports/decision-system-20260811/**/evaluation/judge-input.jsonl
+experiments/reports/decision-system-20260811/**/evaluation/judge-raw.json
 !experiments/reports/synthetic-pattern-a.json
 !experiments/reports/synthetic-pattern-b.json
 !experiments/reports/synthetic-direct-search/

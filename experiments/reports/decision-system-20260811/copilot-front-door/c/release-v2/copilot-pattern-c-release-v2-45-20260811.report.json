@@ -1,0 +1,371 @@
+{
+  "manifest": {
+    "schema_version": "1.0",
+    "experiment_id": "copilot-pattern-c-release-v2-45-20260811",
+    "created_at": "2026-08-11T20:15:00Z",
+    "git_commit": "853e2a083222ac927590f82b4bf3e3409fae73a1",
+    "dirty_worktree": true,
+    "runner_version": "0.1.0",
+    "dataset_name": "copilot-hr-policy-release-v2",
+    "dataset_version": "sha256:b0ddc82ddec2e5eb7235182dd77ad75e39039d9e1cf9086bde258897982e09e2",
+    "corpus_fingerprint": "d8a305ac74ad445e2558f57f0e1bf066e0abc704fea09e6edbb0a7866d046303",
+    "index_fingerprint": "2b5ba982cdf77e2031dba7aedde09f17a110ba13288a95db72b4f5bd2e146592",
+    "pattern": "C",
+    "retrieval_mode": "hybrid-semantic-with-deterministic-locator",
+    "invocation_path": "copilot_studio_direct_line:crf9c_AskHRPolicyAgentC",
+    "api_version": null,
+    "output_mode": "generated_answer_with_citations",
+    "model_deployment": null,
+    "model_version": null,
+    "retrieval_reasoning_effort": null,
+    "semantic_configuration": "hr-semantic-config",
+    "search_sku": "basic",
+    "search_replicas": null,
+    "search_partitions": null,
+    "vector_configuration": {},
+    "output_document_limit": null,
+    "output_token_limit": null,
+    "query_filter": null,
+    "knowledge_source_settings": {},
+    "prompt_version": null,
+    "agent_version": null,
+    "configuration_version": null,
+    "region": "eastus2",
+    "client_location": null,
+    "top": 5,
+    "warmup_count": 1,
+    "measured_repetitions": 5,
+    "concurrency": 1,
+    "timeout_seconds": 120.0,
+    "random_seed": 0,
+    "pricing_profile": null,
+    "answer_model": "microsoft_managed_standard_harness"
+  },
+  "aggregate": {
+    "schema_version": "1.0",
+    "experiment_id": "copilot-pattern-c-release-v2-45-20260811",
+    "count": 45,
+    "success_count": 45,
+    "partial_count": 0,
+    "error_count": 0,
+    "timeout_count": 0,
+    "throttle_count": 0,
+    "success_rate": 1.0,
+    "error_rate": 0.0,
+    "throttle_rate": 0.0,
+    "rate_confidence_intervals": {
+      "success_rate": {
+        "lower": 0.9213484012671117,
+        "upper": 1.0,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      },
+      "error_rate": {
+        "lower": 0.0,
+        "upper": 0.07865159873288836,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      },
+      "throttle_rate": {
+        "lower": 0.0,
+        "upper": 0.07865159873288836,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      }
+    },
+    "client_wall_time": {
+      "count": 45,
+      "minimum_ms": 8298.589255005936,
+      "maximum_ms": 33023.773556997185,
+      "mean_ms": 18247.126812778555,
+      "standard_deviation_ms": 6343.710055825173,
+      "p50_ms": 19994.437517991173,
+      "p95_ms": 31789.18317679781,
+      "p99_ms": 32780.406953080674
+    },
+    "cold_client_wall_time": null,
+    "warm_client_wall_time": null,
+    "by_category": {
+      "adversarial_out_of_domain": {
+        "count": 5,
+        "minimum_ms": 11821.115518992883,
+        "maximum_ms": 14968.659300007857,
+        "mean_ms": 14211.20899420057,
+        "standard_deviation_ms": 1199.017850284809,
+        "p50_ms": 14725.30453199579,
+        "p95_ms": 14944.562738406239,
+        "p99_ms": 14963.839987687534
+      },
+      "direct_fact": {
+        "count": 5,
+        "minimum_ms": 20265.968982988852,
+        "maximum_ms": 23259.73806899856,
+        "mean_ms": 21697.71296539984,
+        "standard_deviation_ms": 1065.255820610592,
+        "p50_ms": 21243.462965008803,
+        "p95_ms": 23115.760490199318,
+        "p99_ms": 23230.94255323871
+      },
+      "disambiguation": {
+        "count": 5,
+        "minimum_ms": 18180.631433002418,
+        "maximum_ms": 22516.347883007256,
+        "mean_ms": 20529.70571820042,
+        "standard_deviation_ms": 1448.729663653282,
+        "p50_ms": 20287.874760993873,
+        "p95_ms": 22304.99590380641,
+        "p99_ms": 22474.077487167087
+      },
+      "document_location": {
+        "count": 5,
+        "minimum_ms": 11591.281052009435,
+        "maximum_ms": 12748.519531000056,
+        "mean_ms": 11906.841685800464,
+        "standard_deviation_ms": 431.41949335508974,
+        "p50_ms": 11779.640352993738,
+        "p95_ms": 12563.472826799261,
+        "p99_ms": 12711.510190159897
+      },
+      "exact_lookup": {
+        "count": 5,
+        "minimum_ms": 19086.633943996276,
+        "maximum_ms": 21430.374863994075,
+        "mean_ms": 20264.70734080358,
+        "standard_deviation_ms": 750.3367919177317,
+        "p50_ms": 20353.934640006628,
+        "p95_ms": 21223.463944197283,
+        "p99_ms": 21388.992680034717
+      },
+      "multi_policy_synthesis": {
+        "count": 5,
+        "minimum_ms": 29940.546318000997,
+        "maximum_ms": 33023.773556997185,
+        "mean_ms": 31697.087296799873,
+        "standard_deviation_ms": 1085.3673737460936,
+        "p50_ms": 31965.15563799767,
+        "p95_ms": 32913.15237339877,
+        "p99_ms": 33001.6493202775
+      },
+      "paraphrase_synonym": {
+        "count": 5,
+        "minimum_ms": 19994.437517991173,
+        "maximum_ms": 20683.920530005707,
+        "mean_ms": 20212.059779002448,
+        "standard_deviation_ms": 241.80406819582825,
+        "p50_ms": 20133.407280998654,
+        "p95_ms": 20575.817533006193,
+        "p99_ms": 20662.299930605805
+      },
+      "security_prompt_injection": {
+        "count": 5,
+        "minimum_ms": 8298.589255005936,
+        "maximum_ms": 10812.850923000951,
+        "mean_ms": 9649.033711402444,
+        "standard_deviation_ms": 981.0329794332309,
+        "p50_ms": 9612.709387001814,
+        "p95_ms": 10781.702722600312,
+        "p99_ms": 10806.621282920823
+      },
+      "security_secret_disclosure": {
+        "count": 5,
+        "minimum_ms": 12743.98310300603,
+        "maximum_ms": 14908.409548996133,
+        "mean_ms": 14055.78382339736,
+        "standard_deviation_ms": 795.2914703246555,
+        "p50_ms": 14088.123396999435,
+        "p95_ms": 14892.148479196476,
+        "p99_ms": 14905.157335036201
+      }
+    },
+    "by_stage": {},
+    "by_activity_type": {
+      "message": {
+        "record_count": 45,
+        "elapsed_ms": null,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_tokens": 0
+      }
+    },
+    "quality_by_category": {
+      "adversarial_out_of_domain": {
+        "passed": 0,
+        "count": 1,
+        "pass_rate": 0.0,
+        "confidence_interval": {
+          "lower": 0.0,
+          "upper": 0.7934506856227626,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "direct_fact": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "disambiguation": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "document_location": {
+        "passed": 0,
+        "count": 1,
+        "pass_rate": 0.0,
+        "confidence_interval": {
+          "lower": 0.0,
+          "upper": 0.7934506856227626,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "exact_lookup": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "multi_policy_synthesis": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "paraphrase_synonym": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      }
+    },
+    "security_by_category": {
+      "security_prompt_injection": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "security_secret_disclosure": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      }
+    },
+    "variable_cost": {
+      "invocation_count": 45,
+      "priced_invocation_count": 0,
+      "mean_per_invocation": {
+        "amount": null,
+        "currency": null,
+        "measurement_type": "unavailable",
+        "pricing_profile": null,
+        "formula": null,
+        "measured_quantities": {},
+        "assumptions": [
+          "Only 0 of 45 invocations had complete service-reported quantities."
+        ],
+        "excluded_costs": [],
+        "unavailable_reason": "not_configured"
+      },
+      "run_total": {
+        "amount": null,
+        "currency": null,
+        "measurement_type": "unavailable",
+        "pricing_profile": null,
+        "formula": null,
+        "measured_quantities": {},
+        "assumptions": [
+          "Only 0 of 45 invocations had complete service-reported quantities."
+        ],
+        "excluded_costs": [],
+        "unavailable_reason": "not_configured"
+      }
+    },
+    "sample_warning": null,
+    "provenance": {
+      "estimated_variable_cost": null,
+      "estimated_variable_cost_currency": null,
+      "estimated_variable_cost_statistic": "mean_per_invocation",
+      "estimated_variable_cost_measurement_type": "unavailable",
+      "estimated_variable_cost_pricing_profile": null,
+      "estimated_variable_cost_sample_count": 0,
+      "billed_cost_reconciliation": "separate_azure_cost_management",
+      "manifest_schema_version": "1.0",
+      "fixture_mode": false,
+      "measurement_boundary": "copilot_studio_direct_line",
+      "workload_type": "controlled_experiment",
+      "quality": 0.7142857142857143,
+      "quality_measurement": "copilot_studio_native_evaluation_export",
+      "security_pass_rate": 1.0,
+      "security_measurement": "deterministic_native_response_export",
+      "measurement_relationship": "separate_same_published_agent_testset_replay",
+      "evaluation_run_id": "d093e463-72cf-430c-8d6c-fc522005b21a",
+      "evaluation_test_set_id": "e7bbf8fb-fcd9-40ae-bbec-fa07086e99e5",
+      "evaluation_dataset_fingerprint": "7939f5a8105a678348775ae66069dace188bc5f342991c180a084ce3a3ccb3fc",
+      "evaluation_native_methods": {
+        "General quality": {
+          "passed": 6,
+          "failed": 2,
+          "errors": 1,
+          "invalid": 0,
+          "count": 9,
+          "pass_rate": 0.6666666666666666
+        },
+        "Compare meaning": {
+          "passed": 8,
+          "failed": 0,
+          "errors": 1,
+          "invalid": 0,
+          "count": 9,
+          "pass_rate": 0.8888888888888888
+        }
+      },
+      "evaluation_release_ready": false,
+      "evaluation_release_blockers": [
+        "General quality: 1 Error and 0 Invalid results",
+        "Compare meaning: 1 Error and 0 Invalid results"
+      ],
+      "evaluation_artifact": "copilot-native-evaluation.json",
+      "answer_model": "microsoft_managed_standard_harness"
+    }
+  }
+}

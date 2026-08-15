@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from src.benchmarking.copilot_evaluation import (
     attach_copilot_evaluation,
     import_copilot_evaluation,
+    import_github_copilot_conversation_evaluation,
     sanitize_native_run,
 )
 from src.config.azure_identity import verify_azure_cli_identity
@@ -109,6 +110,24 @@ def _import(args: argparse.Namespace) -> int:
     return 0
 
 
+def _import_conversation(args: argparse.Namespace) -> int:
+    artifact = import_github_copilot_conversation_evaluation(
+        export_csv_path=args.export_csv,
+        cases_path=args.cases,
+        specifications_path=args.evaluation_spec,
+        experiment_id=args.experiment_id,
+        dataset_version=args.dataset_version,
+        run_name=args.run_name,
+    )
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(artifact, indent=2) + "\n", encoding="utf-8")
+    if args.report:
+        attach_copilot_evaluation(args.report, args.output)
+        print(f"Attached native Evaluation evidence to {args.report}")
+    print(f"Saved normalized Evaluation evidence to {args.output}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     load_dotenv(override=True)
     parser = argparse.ArgumentParser(
@@ -150,6 +169,23 @@ def main(argv: list[str] | None = None) -> int:
         help="Archive Error/Invalid results as release-blocking evidence",
     )
     import_parser.set_defaults(handler=_import)
+
+    conversation_parser = subparsers.add_parser(
+        "import-conversation",
+        help=(
+            "Normalize a GitHub Copilot Harness 'Conversation' CSV export "
+            "(single GeneralQuality method, no API run artifact)"
+        ),
+    )
+    conversation_parser.add_argument("--export-csv", type=Path, required=True)
+    conversation_parser.add_argument("--cases", type=Path, required=True)
+    conversation_parser.add_argument("--evaluation-spec", type=Path, required=True)
+    conversation_parser.add_argument("--experiment-id", required=True)
+    conversation_parser.add_argument("--dataset-version", required=True)
+    conversation_parser.add_argument("--output", type=Path, required=True)
+    conversation_parser.add_argument("--report", type=Path)
+    conversation_parser.add_argument("--run-name")
+    conversation_parser.set_defaults(handler=_import_conversation)
 
     args = parser.parse_args(argv)
     return args.handler(args)
