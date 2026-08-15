@@ -129,7 +129,7 @@ still exits 0 so it's safe in CI.
 Replicates `src/backend/main.py:/api/lookup`:
 1. Glossary expansion (same as Pattern A).
 2. Hybrid search over the same index, but projected into the
-   blog-compatible top-level locator fields (`policy_id`, `title`, `blob_url`)
+   article-compatible top-level locator fields (`policy_id`, `title`, `blob_url`)
    plus the richer `documents` metadata (`policy_number`, `parent_title`,
    `metadata_storage_name`, `metadata_storage_path`, `blob_url`, `score`).
 3. Prints the routing levers used by the Copilot Studio side

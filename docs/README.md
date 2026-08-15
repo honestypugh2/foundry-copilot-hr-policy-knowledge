@@ -13,7 +13,7 @@ competing setup flows.
 | Document | Use it for |
 | --- | --- |
 | [patterns/README.md](patterns/README.md) | **Start here.** Ordered, one-pattern-at-a-time build and validation guides. |
-| [PatternSetupAndBenchmarkGuide.md](PatternSetupAndBenchmarkGuide.md) | File ownership, smoke-test boundaries, benchmark entry points, and blog crosswalk after setup. |
+| [PatternSetupAndBenchmarkGuide.md](PatternSetupAndBenchmarkGuide.md) | File ownership, smoke-test boundaries, and benchmark entry points after setup. |
 | [Walkthrough.md](Walkthrough.md) | Linear environment provisioning and first-run sequence. |
 | [RetrievalPatterns.md](RetrievalPatterns.md) | Conceptual decision tree and architecture comparison. |
 | [DataPipelineAndTesting.md](DataPipelineAndTesting.md) | Indexing options, resource creation, schemas, and ingestion validation. |

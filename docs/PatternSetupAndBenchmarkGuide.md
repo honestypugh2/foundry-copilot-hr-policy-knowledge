@@ -10,7 +10,7 @@ Use it to answer four questions:
 1. Which pattern should I build?
 2. Which Azure resources, scripts, and source files does it use?
 3. How do I smoke-test it without confusing that test with a benchmark?
-4. How does it relate to the published article and the benchmark follow-up?
+4. How does it relate to the published article and the current benchmark work?
 
 The architecture originates in the Microsoft Foundry blog post
 [Grounding Copilot Studio Agents with Azure AI Search and Foundry IQ](https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/grounding-copilot-studio-agents-with-azure-ai-search-and-foundry-iq/4539337).
@@ -368,7 +368,7 @@ automates the repository Search boundary for Pattern A and the Direct Line
 boundary for any configured pattern agent. Other direct adapters exist as
 normalization components but are not all exposed as standalone CLI switches.
 
-## Published article and benchmark follow-up
+## Published article and benchmark evidence
 
 ### Published article: architecture decision model
 
@@ -394,7 +394,7 @@ docs, manifests, and reports must retain that meaning.
 - separate controlled, load, production-telemetry, and cost evidence;
 - Pareto and SLO qualification without silently treating missing values as zero.
 
-### Benchmark publication gate
+### Benchmark evidence gate
 
 The [Copilot Studio benchmark workflow](CopilotStudioBenchmarking.md) requires
 committed, compatible result artifacts before making comparative latency,

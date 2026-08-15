@@ -157,7 +157,9 @@ node_modules/
 src/frontend/test-results/
 src/frontend/playwright-report/
 
+# Private blog planning docs — never commit to the remote
 docs/BenchmarkingBlogOutline.md
+docs/*[Bb]log*.md
 # docs/BenchmarkingDecisionSystem.md
 docs/ReactBenchmarkWorkbenchADR.md
 docs/BenchmarkMigrationLedger.md
@@ -168,6 +170,11 @@ experiments/reports/*
 !experiments/reports/decision-system-20260811/
 experiments/reports/decision-system-20260811/**/evaluation/judge-input.jsonl
 experiments/reports/decision-system-20260811/**/evaluation/judge-raw.json
+# Regenerable load inputs, redundant raw native exports, and regenerable figure
+# binaries stay local; committed evidence is the normalized json/jsonl/md.
+experiments/reports/decision-system-20260811/load/**/*.csv
+experiments/reports/decision-system-20260811/**/copilot-native-evaluation-export.csv
+experiments/reports/decision-system-20260811/figures/
 !experiments/reports/synthetic-pattern-a.json
 !experiments/reports/synthetic-pattern-b.json
 !experiments/reports/synthetic-direct-search/

@@ -1,8 +1,7 @@
 # Benchmarking and Decision System
 
 This document defines the evidence system. For pattern setup, source-file
-ownership, smoke tests, and the relationship to the published and planned blog
-posts, start with
+ownership, and smoke tests, start with
 [Pattern Setup, Code Ownership, and Benchmark Guide](PatternSetupAndBenchmarkGuide.md).
 
 This repository uses one normalized experiment contract to compare HR policy
@@ -116,12 +115,12 @@ their authoritative native trace system; they are not copied into aggregate
 charts when the provider did not expose an aggregate. An empty stage, activity,
 or cold/warm section means unavailable, not zero.
 
-### Alignment with the blog evidence gate
+### Evidence completeness status
 
 The app is a decision surface for available evidence, not proof that every
-planned blog figure is complete. Current alignment is:
+evidence requirement is complete. Current status is:
 
-| Blog evidence requirement | Current app/evidence status |
+| Evidence requirement | Current app/evidence status |
 | --- | --- |
 | Architecture boundaries | **Available:** A, A2, B, C, and Hosted show automation, telemetry, implementation, and evidence state. Microsoft-native Preview/GA status appears on Operations destinations; the verification date remains in documentation. |
 | Manifest compatibility and provenance | **Available across surfaces:** Compare fails closed on incompatible scope; Experiment detail shows user-relevant run configuration; complete commit/environment provenance remains in the committed manifest and report rather than a standalone frontend tab. |
@@ -129,11 +128,12 @@ planned blog figure is complete. Current alignment is:
 | p50/p95/p99 latency | **Available:** experiment detail shows client wall-time percentiles, sample count, boundary, and small-sample caveats. Confidence intervals are not yet part of the aggregate contract. |
 | Reliability and throttling | **Partial:** controlled success/error/throttle rates are available; bounded production or isolated load evidence remains pending. |
 | Cost | **Partial:** versioned variable model-cost estimates are available; dated billed-cost reconciliation remains pending in Azure Cost Management. |
-| Pareto/SLO | **Available:** qualification failures, publication blockers, and Pareto membership are visible. |
+| Pareto/SLO | **Available:** qualification failures, release blockers, and Pareto membership are visible. |
 
-The blog remains gated on category-level quality, confidence limits, explicit
-failure counts, connected production/load evidence, and billed-cost
-reconciliation. The frontend must not infer or fabricate those fields.
+The following evidence remains pending: category-level quality, confidence
+limits, explicit failure counts, connected production/load evidence, and
+billed-cost reconciliation. The frontend must not infer or fabricate those
+fields.
 
 The overview helps users choose an architecture for the HR policy assistant. It
 combines the five architecture paths, the three Hosted retrieval modes,
@@ -306,7 +306,7 @@ two benchmark examples referenced in the project review.
 | --- | --- | --- |
 | Agent/model/tool traces | **Aligned, connected proof pending** | Agent Framework native OpenTelemetry spans export through `src/observability/tracing.py`; benchmark baggage correlates experiment, configuration, run, and case. Verify one deployed trace tree before publication. |
 | Incompatible AI client wrapper | **Fixed** | All Agent Framework hosts disable `AIProjectInstrumentor` and OpenAI auto-instrumentation while retaining OpenTelemetry export. A focused test prevents regression. |
-| Request and response model | **Partial** | KQL reads `gen_ai.response.model`, matching the blog's Model Router guidance. Add a connected assertion that request deployment and actual response model are both present. |
+| Request and response model | **Partial** | KQL reads `gen_ai.response.model`, matching Model Router guidance. Add a connected assertion that request deployment and actual response model are both present. |
 | Session correlation | **Gap** | Benchmark runs have run/case correlation, but interactive chat does not yet pass a stable Agent Framework session. Add a per-conversation session ID and propagate it to API results and spans. |
 | Latency | **Aligned** | Reports separate client wall time, service time, TTFT, TTLT, stream duration, stage spans, and provider activity. Never reconstruct one boundary from another. |
 | Token and variable cost | **Aligned for new runs** | Input/output usage comes from the final service response; named dated rates and unit conversion produce estimated mean and total cost. Reasoning tokens remain visible and must not be double charged when included in output usage. |
@@ -413,7 +413,7 @@ Line execution, see
 | 4. Load and scalability | **Harness complete; execution deferred** | Locust input/output is isolated from controlled experiments and remote targets require explicit non-production confirmation. |
 | 5. Production correlation | **Offline complete; connected validation pending** | Benchmark baggage is copied onto existing SDK spans without duplicate spans; bounded KQL templates cover latency, failures, token correlation, evaluation, and Search capacity. |
 | 6. Cost, Pareto, and SLO | **Offline complete** | Versioned user pricing, fixed/variable separation, Pareto selection, and fail-closed SLO qualification have deterministic tests. |
-| 7. Documentation/blog evidence | **Partial; publication still gated** | Clean 35-case reports are committed. Category-level quality, confidence limits, explicit failure counts, connected production/load evidence, alerts, and billed-cost reconciliation remain pending. |
+| 7. Documentation and evidence | **Partial; evidence still gated** | Clean 35-case reports are committed. Category-level quality, confidence limits, explicit failure counts, connected production/load evidence, alerts, and billed-cost reconciliation remain pending. |
 | 8. React workbench | **Complete for available contracts and locally validated** | The artifact-backed BFF and React app expose list, aggregate detail with contextual provenance, compare, pattern evidence, Pareto/SLO, evidence ownership, and native-link guidance. The full capability registry remains available through the API rather than a frontend inventory. |
 
 Phase 8 validation covers desktop and mobile workflows, accessibility, overflow,
@@ -441,6 +441,4 @@ an approved non-production deployment plan.
   custom operational dashboards, not a trace explorer to reproduce in React.
 
 See [ReactBenchmarkWorkbenchADR.md](ReactBenchmarkWorkbenchADR.md) for the
-native-versus-custom product boundary and
-[BenchmarkingBlogOutline.md](BenchmarkingBlogOutline.md) for the publication
-evidence gate.
+native-versus-custom product boundary.

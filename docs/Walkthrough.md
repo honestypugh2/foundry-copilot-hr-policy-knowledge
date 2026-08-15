@@ -4,8 +4,8 @@ A single, linear walkthrough from a clean clone to answering an HR
 question through Copilot Studio. Replaces the older "Option A vs
 Option B" fork.
 
-> For pattern selection, exact file ownership, smoke tests, benchmark entry
-> points, and blog lineage, use the authoritative
+> For pattern selection, exact file ownership, smoke tests, and benchmark entry
+> points, use the authoritative
 > [Pattern Setup, Code Ownership, and Benchmark Guide](PatternSetupAndBenchmarkGuide.md).
 
 > **Pick a pattern first.** This walkthrough provisions the index
