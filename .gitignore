@@ -177,3 +177,6 @@ experiments/reports/publication-9c94215-20260810/**/evaluation/judge-raw.json
 experiments/cost-reconciliation/
 
 .foundry/
+
+# Ad-hoc Copilot Studio evaluation exports at repo root; kept local
+/*.csv
