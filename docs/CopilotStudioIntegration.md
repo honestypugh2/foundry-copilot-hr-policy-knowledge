@@ -763,6 +763,43 @@ passes `AGENT_INSTRUCTIONS` from
 individual Responses API invocation; that overlay is not used when Copilot
 Studio connects directly to the external PromptAgent.
 
+**Provisioned system prompt** (from `_build_prompt_agent_definition()`). Compare
+this against the live agent in the Foundry portal (**Agents → HRPolicyAgent →
+Instructions**); `{retrieval_instructions}` and `{answer_instructions}` are
+filled from [`src/config/search_config.json`](../src/config/search_config.json):
+
+```text
+You are an HR Policy Assistant with access to the company's HR policy knowledge base via Foundry IQ.
+
+## YOUR KNOWLEDGE SOURCE:
+HR Policy Knowledge Base (hr-knowledge-base)
+- All company HR policies indexed from the ASK HR Knowledge library
+- Includes: hiring, leave, dress code, career paths, IT policies, operational matters
+- Synonym map for HR vernacular (PTO, dress code, hiring, etc.)
+
+## HOW TO RESPOND:
+**Step 1: ALWAYS call the knowledge_base_retrieve tool first**
+**Step 2: Read and understand the retrieved content**
+**Step 3: Provide a comprehensive answer WITH CITATIONS** ("According to Policy [number] - [title], ...")
+
+## RETRIEVAL GUIDELINES:
+{retrieval_instructions}   # from search_config.json
+
+## ANSWER GUIDELINES:
+{answer_instructions}      # from search_config.json
+
+## IMPORTANT:
+- ALWAYS search the knowledge base first — do not answer from general knowledge
+- ALWAYS include policy number citations
+- If the policy is not found, say so clearly
+- Never provide legal advice
+- Be helpful and provide actionable guidance
+```
+
+The definition also sets `tool_choice="required"` (force retrieval every turn)
+and pins the MCP tool to `knowledge_base_retrieve`. After (re)publishing, confirm
+the live version still carries `tool_choice="required"`.
+
 Try these in Copilot Studio or the Foundry agent playground:
 
 | Query | Expected behavior |
@@ -865,12 +902,23 @@ Identical to Pattern B Step 6 Option A:
 
 ### Step H3: Re-use Pattern B's routing and tool-description prompts
 
-The Hosted Agent's **server-side system prompt** lives in
-[`src/agents/hr_policy_agent_af.py:HR_POLICY_SYSTEM_PROMPT`](../src/agents/hr_policy_agent_af.py)
-— functionally equivalent to Pattern B's `AGENT_INSTRUCTIONS` plus an
-explicit "You MUST call `search_hr_policies` first" rule (the Agent
-Framework runtime can't enforce `tool_choice="required"` server-side
-the way Foundry Agent Service does).
+The **deployed** Hosted Agent (`hr-policy-agent`) is an Agent Framework
+container, so its system prompt lives in the **container code**, not the Foundry
+agent record — the portal shows no instructions for it (`kind=hosted`). It is
+selected by `RETRIEVAL_MODE` in
+[`src/hosted_agent/server.py`](../src/hosted_agent/server.py):
+
+- `HR_POLICY_INSTRUCTIONS` — tool mode (default): "You MUST call
+  `search_hr_policies` first".
+- `HR_POLICY_CONTEXT_INSTRUCTIONS` — `context-semantic` / `context-agentic`
+  modes, where excerpts are injected before each turn instead of via a tool.
+
+The **local** benchmark agent uses the parallel
+[`src/agents/hr_policy_agent_af.py`](../src/agents/hr_policy_agent_af.py)
+(`HR_POLICY_SYSTEM_PROMPT` / `HR_POLICY_CONTEXT_SYSTEM_PROMPT`) — same "Ask HR"
+contract and citation rules. The Agent Framework runtime can't enforce
+`tool_choice="required"` server-side the way Foundry Agent Service does, so the
+"call the tool first" rule is enforced in the prompt.
 
 No additional Copilot Studio Instructions are required beyond the
 [shared settings](#shared-copilot-studio-settings). If you also want Pattern C-style dual-tool

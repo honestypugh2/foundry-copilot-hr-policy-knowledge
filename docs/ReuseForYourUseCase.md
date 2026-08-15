@@ -36,11 +36,18 @@ Estimated effort: **~80% is reusable unchanged.** A new RAG/agent use case is a
    - `src/hosted_agent/.foundry/datasets/*.jsonl` (Foundry eval)
    Keep the same columns; only the content changes.
 3. **Agent prompts.** Update the system prompts for your domain (they hardcode "HR policy"):
-   - `HR_POLICY_SYSTEM_PROMPT` / `HR_POLICY_CONTEXT_SYSTEM_PROMPT` in
-     `src/agents/hr_policy_agent_af.py`
-   - `AGENT_INSTRUCTIONS` in `src/agents/hr_policy_agent.py`
+   - `_build_prompt_agent_definition()` in `src/agents/create_foundry_agent.py`
+     — **the deployed Pattern B `HRPolicyAgent` prompt** (embeds
+     `retrieval_instructions` / `answer_instructions` from
+     `src/config/search_config.json`); verify in the Foundry portal under
+     **Agents → HRPolicyAgent → Instructions**.
    - `HR_POLICY_INSTRUCTIONS` / `HR_POLICY_CONTEXT_INSTRUCTIONS` in
-     `src/hosted_agent/server.py`
+     `src/hosted_agent/server.py` — **the deployed Hosted `hr-policy-agent`
+     container prompt**.
+   - `HR_POLICY_SYSTEM_PROMPT` / `HR_POLICY_CONTEXT_SYSTEM_PROMPT` in
+     `src/agents/hr_policy_agent_af.py` — the local benchmark Hosted agent.
+   - `AGENT_INSTRUCTIONS` in `src/agents/hr_policy_agent.py` — the optional
+     `/api/chat` Responses overlay only (not the deployed Pattern B agent).
 4. **Citation format.** The citation parsers expect `[Policy NNNNN - Title]`. Change the
    regex in `src/agents/hr_policy_agent_af.py`, `src/benchmarking/adapters/foundry_hosted.py`,
    and the deterministic graders to your citation shape (e.g. `[Doc 12 - Title]`).

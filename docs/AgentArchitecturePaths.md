@@ -179,11 +179,14 @@ from azure.ai.projects.models import PromptAgentDefinition, MCPTool
 from azure.identity import DefaultAzureCredential
 
 project = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=DefaultAzureCredential())
+# Provisioned by _build_prompt_agent_definition() in src/agents/create_foundry_agent.py;
+# `instructions` embeds retrieval/answer guidance from src/config/search_config.json.
+# Verify the live prompt in the Foundry portal: Agents -> HRPolicyAgent -> Instructions.
 project.agents.create_version(
     agent_name="HRPolicyAgent",
     definition=PromptAgentDefinition(
         model="gpt-5-mini",
-        instructions=AGENT_INSTRUCTIONS,
+        instructions=instructions,
         tools=[MCPTool(
             server_label="hr-knowledge",
             server_url=KB_MCP_ENDPOINT,
@@ -221,9 +224,13 @@ chat_client = FoundryChatClient(
     model="gpt-5-mini",
     credential=DefaultAzureCredential(),
 )
+# Hosted-agent prompt lives in the container (src/hosted_agent/server.py):
+# HR_POLICY_INSTRUCTIONS for tool mode; HR_POLICY_CONTEXT_INSTRUCTIONS for the
+# context-semantic / context-agentic modes. The Foundry agent record itself
+# carries no instructions (kind=hosted), so the portal shows none for it.
 agent = chat_client.as_agent(
     name="HRPolicyAgent",
-    instructions=HR_POLICY_SYSTEM_PROMPT,
+    instructions=HR_POLICY_INSTRUCTIONS,
     tools=[search_hr_policies],
 )
 result = await agent.run("How many PTO hours do I get?")

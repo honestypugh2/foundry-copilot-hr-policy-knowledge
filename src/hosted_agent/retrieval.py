@@ -108,7 +108,10 @@ def _tracing_provider_class() -> Any:
         async def _agentic_search(self, messages: Any) -> Any:
             self.last_activity = []
             await self._ensure_knowledge_base()
-            client = self._retrieval_client
+            # ``Any`` so the private ``_hr_activity_wrapped`` marker and the
+            # ``retrieve`` monkeypatch aren't type-checked against the concrete
+            # KnowledgeBaseRetrievalClient (which declares neither).
+            client: Any = self._retrieval_client
             if client is not None and not getattr(client, "_hr_activity_wrapped", False):
                 original_retrieve = client.retrieve
 
@@ -119,7 +122,7 @@ def _tracing_provider_class() -> Any:
                     )
                     return response
 
-                client.retrieve = _traced_retrieve  # type: ignore[method-assign]
+                client.retrieve = _traced_retrieve
                 client._hr_activity_wrapped = True
             return await super()._agentic_search(messages)
 

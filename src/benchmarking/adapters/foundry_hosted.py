@@ -14,7 +14,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from azure.identity import AzureCliCredential, get_bearer_token_provider
-from openai import AzureOpenAI
+from openai import AzureOpenAI, BadRequestError
 
 from src.benchmarking.adapters.agent import AgentAnswerAdapter
 
@@ -54,7 +54,30 @@ def build_foundry_hosted_answer(
     )
 
     def _call(query: str) -> dict[str, Any]:
-        response = client.responses.create(model=model, input=query)
+        try:
+            response = client.responses.create(model=model, input=query)
+        except BadRequestError as exc:
+            # Azure OpenAI content management (prompt shield / jailbreak) can block
+            # an adversarial prompt before the agent responds. A filtered prompt is
+            # the strongest form of attack resistance, so surface it as a structured
+            # refusal instead of aborting the run. Recorded transparently as
+            # content_filtered for provenance.
+            code = getattr(exc, "code", None)
+            body = str(getattr(exc, "message", "") or exc)
+            if code == "content_filter" or "content management policy" in body:
+                return {
+                    "answer": (
+                        "The request was blocked by the Azure OpenAI content "
+                        "management policy (prompt shield). I can't comply with "
+                        "that request."
+                    ),
+                    "citations": [],
+                    "usage": {},
+                    "response_id": None,
+                    "status": "success",
+                    "content_filtered": True,
+                }
+            raise
         text = str(getattr(response, "output_text", "") or "")
         citations = []
         seen: set[str] = set()
@@ -87,9 +110,11 @@ def build_foundry_hosted_answer(
     return answer
 
 
-def build_foundry_hosted_adapter(agent_name: str) -> AgentAnswerAdapter:
+def build_foundry_hosted_adapter(
+    agent_name: str, pattern: str = "Hosted"
+) -> AgentAnswerAdapter:
     return AgentAnswerAdapter(
         build_foundry_hosted_answer(agent_name),
-        pattern="Hosted",
+        pattern=pattern,
         invocation_path=f"foundry_hosted_agent:{agent_name}",
     )

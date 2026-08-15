@@ -99,16 +99,22 @@ retrieval.
 
 ## 4. Why Answers Are Reliably Grounded
 
-Three knobs in [`src/agents/hr_policy_agent.py`](../src/agents/hr_policy_agent.py)
-work together to enforce grounding.
+Three knobs in
+[`src/agents/create_foundry_agent.py`](../src/agents/create_foundry_agent.py)
+(`_build_prompt_agent_definition()`) work together to enforce grounding. This is
+the definition that actually provisions the **deployed** `HRPolicyAgent`
+(`python -m src.agents.create_foundry_agent`). Verify it in the Foundry portal
+under **Agents → HRPolicyAgent → Instructions** (or
+`GET {project}/agents/HRPolicyAgent/versions`).
 
 ### 4.1 `tool_choice="required"`
 
 ```python
+# src/agents/create_foundry_agent.py — _build_prompt_agent_definition()
 PromptAgentDefinition(
-    model="gpt-5-mini",
-    instructions=AGENT_INSTRUCTIONS,
-    tools=[MCPTool(server_label="hr-knowledge", server_url=mcp_endpoint, …)],
+    model=AGENT_MODEL,                 # e.g. gpt-5-mini
+    instructions=instructions,         # see 4.3 (embeds search_config.json guidance)
+    tools=[FoundryMCPTool(server_label="hr-knowledge", server_url=mcp_endpoint, …)],
     tool_choice="required",
 )
 ```
@@ -116,6 +122,11 @@ PromptAgentDefinition(
 `tool_choice="required"` forces the model to call the `MCPTool` on every
 turn. Without it, the model can decide to answer from training data —
 which is precisely what we want to prevent for HR policy.
+
+> **Verify after (re)publish.** A deployed version created before this knob was
+> added can report `tool_choice: null`. Recreate the agent with
+> `python -m src.agents.create_foundry_agent` and confirm the live version
+> carries `tool_choice="required"`.
 
 ### 4.2 `MCPTool(allowed_tools=["knowledge_base_retrieve"])`
 
@@ -125,11 +136,21 @@ endpoint exposes other tools (e.g. listing) — pinning to
 
 ### 4.3 Strict instructions
 
-`AGENT_INSTRUCTIONS` (in `hr_policy_agent.py`) tells the model:
+The provisioned prompt built by `_build_prompt_agent_definition()` in
+`create_foundry_agent.py` — which embeds `retrieval_instructions` and
+`answer_instructions` from
+[`src/config/search_config.json`](../src/config/search_config.json) — tells the
+model:
 
-1. Answer only from retrieved policy chunks.
+1. Always call `knowledge_base_retrieve` first; never answer from general
+   knowledge.
 2. If nothing is retrieved, say so and route the user to HR.
 3. Cite the policy number and full title inline.
+
+> `AGENT_INSTRUCTIONS` in `hr_policy_agent.py` is a **different** prompt used
+> only by the optional `/api/chat` Responses overlay. It is **not** the prompt
+> on the deployed `HRPolicyAgent`, and it is not used when Copilot Studio
+> connects to the external agent.
 
 These three together produce answers in the form
 `Closed-toe shoes are required. [Policy 60010 — Operational Matters: Uniform Dress Code]`.

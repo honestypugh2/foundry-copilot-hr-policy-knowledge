@@ -95,13 +95,17 @@ def _build_adapter(
     foundry_hosted_agent: str | None = None,
 ):
     if foundry_hosted_agent:
-        if manifest.pattern != "Hosted":
-            raise ValueError("--foundry-hosted-agent requires pattern 'Hosted'")
+        if manifest.pattern not in {"Hosted", "B"}:
+            raise ValueError(
+                "--foundry-hosted-agent requires pattern 'Hosted' or 'B'"
+            )
         from src.benchmarking.adapters.foundry_hosted import (
             build_foundry_hosted_adapter,
         )
 
-        return build_foundry_hosted_adapter(foundry_hosted_agent)
+        return build_foundry_hosted_adapter(
+            foundry_hosted_agent, pattern=manifest.pattern
+        )
     if agent_framework:
         if manifest.pattern != "Hosted":
             raise ValueError("--agent-framework requires pattern 'Hosted'")
