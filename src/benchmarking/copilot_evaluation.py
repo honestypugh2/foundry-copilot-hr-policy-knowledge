@@ -632,8 +632,8 @@ def attach_copilot_evaluation(report_path: Path, evaluation_path: Path) -> None:
             "security_pass_rate": evaluation["deterministic_security"]["pass_rate"],
             "security_measurement": "deterministic_native_response_export",
             "measurement_relationship": evaluation["measurement_relationship"],
-            "evaluation_run_id": evaluation["evaluation_run_id"],
-            "evaluation_test_set_id": evaluation["test_set_id"],
+            "evaluation_run_id": evaluation.get("evaluation_run_id"),
+            "evaluation_test_set_id": evaluation.get("test_set_id"),
             "evaluation_dataset_fingerprint": evaluation["dataset_fingerprint"],
             "evaluation_native_methods": evaluation["native_methods"],
             "evaluation_release_ready": evaluation["native_release_ready"],
@@ -674,7 +674,7 @@ def attach_copilot_evaluation(report_path: Path, evaluation_path: Path) -> None:
             + f"({evaluation['deterministic_security']['pass_rate']:.1%}) |\n"
             + f"| Native release ready | {release_ready} |\n"
             + f"| Native release blockers | {release_blockers} |\n"
-            + f"| Evaluation run ID | `{evaluation['evaluation_run_id']}` |\n"
-            + f"| Test set ID | `{evaluation['test_set_id']}` |\n",
+            + f"| Evaluation run ID | `{evaluation.get('evaluation_run_id') or '—'}` |\n"
+            + f"| Test set ID | `{evaluation.get('test_set_id') or '—'}` |\n",
             encoding="utf-8",
         )

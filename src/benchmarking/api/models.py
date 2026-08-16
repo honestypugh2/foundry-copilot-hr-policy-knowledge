@@ -62,7 +62,7 @@ class ExperimentSummary(ApiModel):
     answer_model: str | None = None
     created_at: str
     count: int = Field(ge=0)
-    success_rate: float
+    success_rate: float | None = None
     latency_p50_ms: float | None = None
     latency_p95_ms: float | None = None
     latency_p99_ms: float | None = None

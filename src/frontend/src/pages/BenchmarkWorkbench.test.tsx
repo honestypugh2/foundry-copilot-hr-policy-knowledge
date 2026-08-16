@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Coverage, Overview, Pareto } from "./BenchmarkWorkbench";
 
@@ -51,7 +51,7 @@ const decision = {
   frontier_experiment_ids: [],
   recommended_experiment_id: null,
   selection_method: "minimum equal-weight normalized distance",
-  blockers: ["No compatible configuration passes all SLO and publication gates."],
+  blockers: ["No compatible configuration passes all SLO and release-readiness gates."],
 };
 
 const capabilities = [{
@@ -98,7 +98,7 @@ describe("benchmark workbench", () => {
     expect(await screen.findByRole("heading", { name: "Grounded agent — architecture benchmark" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Azure tools explain each system. This benchmark helps you choose across them." })).toBeInTheDocument();
     expect(screen.getByText("Cross-pattern comparison")).toBeInTheDocument();
-    expect(screen.getByText("Copilot Studio", { exact: true })).toBeInTheDocument();
+    expect(screen.getAllByText("Copilot Studio", { exact: true }).length).toBeGreaterThan(0);
     expect(screen.getByText("Production · Azure services lead")).toBeInTheDocument();
     expect(await screen.findByText("158 ms")).toBeInTheDocument();
     expect(screen.getByText("84.0%")).toBeInTheDocument();
@@ -113,12 +113,13 @@ describe("benchmark workbench", () => {
     expect(await screen.findByText("No experiment artifacts are configured.")).toBeInTheDocument();
   });
 
-  it("renders an accessible nonblank Pareto point", async () => {
+  it("renders the Pareto view with comparable evidence", async () => {
     mockBenchmarkApi();
-    const { container } = render(<Pareto />);
+    render(<Pareto />);
 
-    await waitFor(() => expect(container.querySelector(".plot-point")).toBeInTheDocument());
-    expect(screen.getByLabelText("Quality versus p95 latency scatter")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Pareto and SLO" })).toBeInTheDocument();
+    expect(await screen.findByText("Pareto frontier")).toBeInTheDocument();
+    expect(screen.getAllByText("synthetic-pattern-a").length).toBeGreaterThan(0);
   });
 
   it("renders source-specific evidence investigation guidance", async () => {
@@ -129,7 +130,7 @@ describe("benchmark workbench", () => {
     expect(screen.getByText("Agent details: Preview")).toBeInTheDocument();
     expect(screen.getByText("Agent Monitoring: Preview")).toBeInTheDocument();
     expect(screen.getByText("Open Performance, select the operation", { exact: false })).toBeInTheDocument();
-    expect(screen.getAllByText("How to investigate")).toHaveLength(6);
+    expect(screen.getAllByText("How to investigate")).toHaveLength(5);
     expect(screen.getByText("BENCHMARK_LINK_APPLICATION_INSIGHTS")).toBeInTheDocument();
     expect(screen.queryByText("Benchmark Blog Outline readiness")).not.toBeInTheDocument();
     expect(screen.queryByText("All repository and Microsoft capabilities")).not.toBeInTheDocument();

@@ -93,6 +93,21 @@ def _artifact_paths() -> list[Path]:
     return sorted({*legacy, *canonical})
 
 
+def _prefer_path(candidate: Path, current: Path) -> bool:
+    """Prefer the canonical decision-system tree, then the most recently written file.
+
+    The same ``experiment_id`` can legitimately exist in more than one report tree
+    (for example an older publication draft and the canonical decision-system run).
+    The workbench must expose exactly one record per experiment, so collapse
+    duplicates to the decision-system artifact and fall back to newest on ties.
+    """
+    candidate_canonical = "decision-system-" in candidate.as_posix()
+    current_canonical = "decision-system-" in current.as_posix()
+    if candidate_canonical != current_canonical:
+        return candidate_canonical
+    return candidate.stat().st_mtime >= current.stat().st_mtime
+
+
 def _load(experiment_id: str) -> dict[str, Any]:
     if not _SAFE_ID.fullmatch(experiment_id):
         raise HTTPException(status_code=400, detail="Invalid experiment ID")
@@ -161,7 +176,7 @@ def _summary(payload: dict[str, Any]) -> ExperimentSummary:
         answer_model=manifest.get("answer_model"),
         created_at=manifest["created_at"],
         count=aggregate["count"],
-        success_rate=aggregate["success_rate"],
+        success_rate=aggregate.get("success_rate"),
         latency_p50_ms=latency.get("p50_ms"),
         latency_p95_ms=latency.get("p95_ms"),
         latency_p99_ms=latency.get("p99_ms"),
@@ -224,7 +239,7 @@ def _comparison_scope(payload: dict[str, Any]) -> str:
 
 @router.get("/capabilities", response_model=CapabilityResponse)
 def capabilities() -> CapabilityResponse:
-    artifact_count = len(_artifact_paths())
+    artifact_count = len(experiments().items)
     return CapabilityResponse(
         source_version="microsoft-asset-reuse-matrix-2026-08-03",
         capabilities=capability_inventory(artifact_count),
@@ -233,10 +248,14 @@ def capabilities() -> CapabilityResponse:
 
 @router.get("/experiments", response_model=ExperimentListResponse)
 def experiments() -> ExperimentListResponse:
-    items = [
-        _summary(_attach_copilot_credits(json.loads(path.read_text(encoding="utf-8"))))
-        for path in _artifact_paths()
-    ]
+    by_id: dict[str, tuple[Path, ExperimentSummary]] = {}
+    for path in _artifact_paths():
+        summary = _summary(_attach_copilot_credits(json.loads(path.read_text(encoding="utf-8"))))
+        key = summary.experiment_id or path.as_posix()
+        existing = by_id.get(key)
+        if existing is None or _prefer_path(path, existing[0]):
+            by_id[key] = (path, summary)
+    items = [summary for _, summary in by_id.values()]
     return ExperimentListResponse(
         items=sorted(items, key=lambda item: item.created_at, reverse=True)
     )
@@ -373,7 +392,7 @@ def decisions(
     leading_id: str | None = None
     leading_reason: str | None = None
     if not recommended:
-        blockers.append("No compatible configuration passes all SLO and publication gates.")
+        blockers.append("No compatible configuration passes all SLO and release-readiness gates.")
         complete_ids = {
             summary.experiment_id
             for summary in summaries
@@ -394,7 +413,7 @@ def decisions(
         if leading_id:
             lead = next(item for item in evidence if item.experiment_id == leading_id)
             if lead.qualified and lead.publication_blockers:
-                leading_reason = "Clears every SLO; pending publication — " + "; ".join(
+                leading_reason = "Clears every SLO; pending release sign-off — " + "; ".join(
                     lead.publication_blockers
                 )
             elif lead.qualified:

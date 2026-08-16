@@ -55,8 +55,8 @@ export interface ExperimentReport {
     error_count?: number;
     timeout_count?: number;
     throttle_count?: number;
-    success_rate: number;
-    error_rate: number;
+    success_rate: number | null;
+    error_rate: number | null;
     throttle_rate: number;
     rate_confidence_intervals?: Record<string, ConfidenceInterval>;
     client_wall_time: LatencySummary | null;
@@ -99,7 +99,7 @@ export interface ExperimentSummary {
   model_deployment: string | null;
   created_at: string;
   count: number;
-  success_rate: number;
+  success_rate: number | null;
   latency_p50_ms: number | null;
   latency_p95_ms: number | null;
   latency_p99_ms: number | null;

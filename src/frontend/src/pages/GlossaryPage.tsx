@@ -28,7 +28,14 @@ const TERMS: Term[] = [
     group: "Decision",
     short: "The app refuses to rank runs that aren't truly comparable.",
     detail:
-      "Two runs are only comparable when their dataset, corpus, index, model, retrieval mode, and execution boundary match. When they differ, Compare fails closed rather than presenting a misleading ranking.",
+      "Two runs are only comparable when their dataset, corpus, index, model, retrieval mode, execution boundary, and git commit all match. Two runs from different commits — even on the same dataset — fail closed with an amber banner and are shown as directional context only, never a ranking. Compare's suggested candidates only list runs that share the exact scope, so they always produce a green banner.",
+  },
+  {
+    term: "Release-ready",
+    group: "Decision",
+    short: "Passed every SLO plus the evidence-quality gates needed to publish a result.",
+    detail:
+      "A run is release-ready when it clears all SLO gates AND its evidence is trustworthy enough to publish: a clean git commit (no dirty worktree), real (non-synthetic) Copilot Studio front-door measurement, category-level deterministic quality, rate confidence intervals, and explicit outcome counts. Shown as the ‘Release-ready’ column on Pareto / SLO. (The underlying JSON field is named publication_ready.)",
   },
   {
     term: "Measurement boundary",
@@ -99,6 +106,13 @@ const TERMS: Term[] = [
     short: "The run's identity: commit, dataset, fingerprints, boundary, model.",
     detail:
       "Every report records git commit, dataset version, corpus/index fingerprint, measurement boundary, answer_model, and evaluation relationship so a result can be reproduced and trusted.",
+  },
+  {
+    term: "Dirty worktree",
+    group: "Evidence",
+    short: "The run executed with uncommitted code changes — not reproducible.",
+    detail:
+      "When a benchmark runs while the git working tree has uncommitted edits, the exact code that produced the result cannot be recovered from a commit hash. That makes the run non-reproducible, so it is blocked from being release-ready even if every SLO passes. Re-run from a clean, committed state to clear it.",
   },
   {
     term: "Variable model cost",

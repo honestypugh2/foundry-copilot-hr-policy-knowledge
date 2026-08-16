@@ -1,0 +1,346 @@
+{
+  "manifest": {
+    "schema_version": "1.0",
+    "experiment_id": "copilot-pattern-a2-release-v2-45-20260811",
+    "created_at": "2026-08-15T00:00:00Z",
+    "git_commit": "b0a2f04",
+    "dirty_worktree": true,
+    "runner_version": "0.1.0",
+    "dataset_name": "copilot-hr-policy-release-v2",
+    "dataset_version": "sha256:b0ddc82ddec2e5eb7235182dd77ad75e39039d9e1cf9086bde258897982e09e2",
+    "corpus_fingerprint": "d8a305ac74ad445e2558f57f0e1bf066e0abc704fea09e6edbb0a7866d046303",
+    "index_fingerprint": "2b5ba982cdf77e2031dba7aedde09f17a110ba13288a95db72b4f5bd2e146592",
+    "pattern": "A2",
+    "retrieval_mode": "copilot-studio-front-door",
+    "invocation_path": "copilot_studio_direct_line:crf9c_askhrpolicyagentnew_jnP-W0",
+    "api_version": null,
+    "output_mode": "generated_answer_with_citations",
+    "model_deployment": null,
+    "model_version": null,
+    "answer_model": "github_copilot_harness",
+    "retrieval_reasoning_effort": null,
+    "semantic_configuration": "hr-semantic-config",
+    "search_sku": "basic",
+    "search_replicas": null,
+    "search_partitions": null,
+    "vector_configuration": {},
+    "output_document_limit": null,
+    "output_token_limit": null,
+    "query_filter": null,
+    "knowledge_source_settings": {},
+    "prompt_version": null,
+    "agent_version": null,
+    "configuration_version": null,
+    "region": "eastus2",
+    "client_location": null,
+    "top": 5,
+    "warmup_count": 1,
+    "measured_repetitions": 5,
+    "concurrency": 1,
+    "timeout_seconds": 120.0,
+    "random_seed": 0,
+    "pricing_profile": null
+  },
+  "aggregate": {
+    "schema_version": "1.0",
+    "experiment_id": "copilot-pattern-a2-release-v2-45-20260811",
+    "count": 45,
+    "success_count": 36,
+    "partial_count": 0,
+    "error_count": 9,
+    "timeout_count": 0,
+    "throttle_count": 0,
+    "success_rate": null,
+    "error_rate": null,
+    "throttle_rate": 0.0,
+    "rate_confidence_intervals": {
+      "success_rate": null,
+      "error_rate": null,
+      "throttle_rate": {
+        "lower": 0.0,
+        "upper": 0.07865159873288836,
+        "confidence_level": 0.95,
+        "method": "wilson_score"
+      }
+    },
+    "client_wall_time": null,
+    "cold_client_wall_time": null,
+    "warm_client_wall_time": null,
+    "by_category": {
+      "adversarial_out_of_domain": {
+        "count": 3,
+        "minimum_ms": 1805.0919090019306,
+        "maximum_ms": 3672.638701995311,
+        "mean_ms": 2433.411480332628,
+        "standard_deviation_ms": 876.2948034881776,
+        "p50_ms": 1822.5038300006418,
+        "p95_ms": 3487.625214795844,
+        "p99_ms": 3635.6360045554175
+      },
+      "direct_fact": {
+        "count": 4,
+        "minimum_ms": 1674.4778540014522,
+        "maximum_ms": 1813.6824559987872,
+        "mean_ms": 1740.079783498004,
+        "standard_deviation_ms": 57.36913675922292,
+        "p50_ms": 1736.0794119958882,
+        "p95_ms": 1808.2374705481925,
+        "p99_ms": 1812.5934589086683
+      },
+      "disambiguation": {
+        "count": 4,
+        "minimum_ms": 1677.6325309983804,
+        "maximum_ms": 1852.1562090027146,
+        "mean_ms": 1748.5822907492548,
+        "standard_deviation_ms": 66.05772766456069,
+        "p50_ms": 1732.270211497962,
+        "p95_ms": 1837.7871900025639,
+        "p99_ms": 1849.2824052026845
+      },
+      "document_location": {
+        "count": 5,
+        "minimum_ms": 1682.5991359946784,
+        "maximum_ms": 2774.4099560004543,
+        "mean_ms": 1947.7960247982992,
+        "standard_deviation_ms": 416.53575994598896,
+        "p50_ms": 1733.1565290005528,
+        "p95_ms": 2586.8132603995036,
+        "p99_ms": 2736.890616880264
+      },
+      "exact_lookup": {
+        "count": 4,
+        "minimum_ms": 1635.6710210020537,
+        "maximum_ms": 1802.901377006492,
+        "mean_ms": 1706.0073977518186,
+        "standard_deviation_ms": 63.0124814914222,
+        "p50_ms": 1692.7285964993644,
+        "p95_ms": 1790.0404806558072,
+        "p99_ms": 1800.3291977363551
+      },
+      "multi_policy_synthesis": {
+        "count": 5,
+        "minimum_ms": 1651.82254499814,
+        "maximum_ms": 1867.6707109989366,
+        "mean_ms": 1746.6896947982605,
+        "standard_deviation_ms": 79.36326178375826,
+        "p50_ms": 1734.3909299961524,
+        "p95_ms": 1854.4297443993855,
+        "p99_ms": 1865.0225176790264
+      },
+      "paraphrase_synonym": {
+        "count": 5,
+        "minimum_ms": 1658.4649779979372,
+        "maximum_ms": 1749.8673040026915,
+        "mean_ms": 1714.8133911992772,
+        "standard_deviation_ms": 30.327178673135403,
+        "p50_ms": 1723.9077289996203,
+        "p95_ms": 1744.944171201496,
+        "p99_ms": 1748.8826774424524
+      },
+      "security_prompt_injection": {
+        "count": 3,
+        "minimum_ms": 1648.7128200024017,
+        "maximum_ms": 1839.1934820028837,
+        "mean_ms": 1746.0052690027321,
+        "standard_deviation_ms": 77.8175396419699,
+        "p50_ms": 1750.1095050029107,
+        "p95_ms": 1830.2850843028864,
+        "p99_ms": 1837.4118024628842
+      },
+      "security_secret_disclosure": {
+        "count": 3,
+        "minimum_ms": 1730.1729959945078,
+        "maximum_ms": 3055.9699369987356,
+        "mean_ms": 2176.9675239993376,
+        "standard_deviation_ms": 621.5770931443395,
+        "p50_ms": 1744.7596390047693,
+        "p95_ms": 2924.848907199339,
+        "p99_ms": 3029.7457310388563
+      }
+    },
+    "by_stage": {},
+    "by_activity_type": {
+      "message": {
+        "record_count": 36,
+        "elapsed_ms": null,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_tokens": 0
+      }
+    },
+    "quality_by_category": {
+      "adversarial_out_of_domain": {
+        "passed": 0,
+        "count": 1,
+        "pass_rate": 0.0,
+        "confidence_interval": {
+          "lower": 0.0,
+          "upper": 0.7934506856227626,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "direct_fact": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "disambiguation": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "document_location": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "exact_lookup": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "multi_policy_synthesis": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "paraphrase_synonym": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      }
+    },
+    "security_by_category": {
+      "security_prompt_injection": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      },
+      "security_secret_disclosure": {
+        "passed": 1,
+        "count": 1,
+        "pass_rate": 1.0,
+        "confidence_interval": {
+          "lower": 0.20654931437723745,
+          "upper": 1.0,
+          "confidence_level": 0.95,
+          "method": "wilson_score"
+        }
+      }
+    },
+    "variable_cost": {
+      "invocation_count": 45,
+      "priced_invocation_count": 0,
+      "mean_per_invocation": {
+        "amount": null,
+        "currency": null,
+        "measurement_type": "unavailable",
+        "pricing_profile": null,
+        "formula": null,
+        "measured_quantities": {},
+        "assumptions": [
+          "Only 0 of 45 invocations had complete service-reported quantities."
+        ],
+        "excluded_costs": [],
+        "unavailable_reason": "not_configured"
+      },
+      "run_total": {
+        "amount": null,
+        "currency": null,
+        "measurement_type": "unavailable",
+        "pricing_profile": null,
+        "formula": null,
+        "measured_quantities": {},
+        "assumptions": [
+          "Only 0 of 45 invocations had complete service-reported quantities."
+        ],
+        "excluded_costs": [],
+        "unavailable_reason": "not_configured"
+      }
+    },
+    "sample_warning": null,
+    "provenance": {
+      "estimated_variable_cost": null,
+      "estimated_variable_cost_currency": null,
+      "estimated_variable_cost_statistic": "mean_per_invocation",
+      "estimated_variable_cost_measurement_type": "unavailable",
+      "estimated_variable_cost_pricing_profile": null,
+      "estimated_variable_cost_sample_count": 0,
+      "billed_cost_reconciliation": "separate_azure_cost_management",
+      "manifest_schema_version": "1.0",
+      "fixture_mode": false,
+      "measurement_boundary": "copilot_studio_direct_line",
+      "workload_type": "controlled_experiment",
+      "model_deployment": null,
+      "answer_model": "github_copilot_harness",
+      "quality": 0.8571428571428571,
+      "quality_measurement": "copilot_studio_native_evaluation_export",
+      "security_pass_rate": 1.0,
+      "security_measurement": "deterministic_native_response_export",
+      "measurement_relationship": "separate_same_published_agent_testset_replay",
+      "evaluation_run_id": null,
+      "evaluation_test_set_id": null,
+      "evaluation_dataset_fingerprint": "7939f5a8105a678348775ae66069dace188bc5f342991c180a084ce3a3ccb3fc",
+      "evaluation_native_methods": {
+        "General quality": {
+          "passed": 6,
+          "failed": 2,
+          "errors": 1,
+          "invalid": 0,
+          "count": 9,
+          "pass_rate": 0.6666666666666666
+        }
+      },
+      "evaluation_release_ready": false,
+      "evaluation_release_blockers": [
+        "General quality: 1 nondecisive native results"
+      ],
+      "evaluation_artifact": "copilot-pattern-a2-release-v2-45-20260811.evaluation.json",
+      "runtime_measurement": "invalid_empty_directline_responses",
+      "runtime_note": "A2 Direct Line (GitHub Copilot Harness secret) returned empty answers; front-door latency and reliability are not validly measured. Quality/security come from the Copilot Studio native Evaluation export."
+    }
+  }
+}

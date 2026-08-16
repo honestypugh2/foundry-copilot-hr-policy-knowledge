@@ -190,3 +190,5 @@ experiments/cost-reconciliation/
 
 # Ad-hoc Copilot Studio evaluation exports at repo root; kept local
 /*.csv
+# Local app runtime (pids/logs) from scripts/app.sh
+.run/
