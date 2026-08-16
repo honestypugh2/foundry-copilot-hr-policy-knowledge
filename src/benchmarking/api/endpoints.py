@@ -281,18 +281,34 @@ def comparison(
         if baseline_scope[field] != candidate_scope[field]:
             incompatibility_reasons.append(f"{field} differs")
     metrics = ("latency_p95_ms", "quality", "success_rate", "estimated_variable_cost")
+    # Each metric is only comparable when the dimensions it actually depends on match.
+    metric_requirements: dict[str, tuple[str, ...]] = {
+        "latency_p95_ms": ("measurement_boundary_class",),
+        "success_rate": ("measurement_boundary_class",),
+        "quality": ("dataset_name", "dataset_version"),
+        "estimated_variable_cost": ("measurement_boundary_class", "pricing_profile"),
+    }
+    deltas: dict[str, Delta] = {}
+    for metric in metrics:
+        differing = [field for field in metric_requirements[metric] if baseline_scope[field] != candidate_scope[field]]
+        if differing:
+            caveat: str | None = "Not comparable across " + ", ".join(field.replace("_", " ") for field in differing)
+        elif metric == "quality" and baseline_summary.answer_model != candidate_summary.answer_model:
+            caveat = f"Model differs ({baseline_summary.answer_model or 'n/a'} vs {candidate_summary.answer_model or 'n/a'}) — quality reflects the whole solution, model included"
+        else:
+            caveat = None
+        deltas[metric] = _delta(
+            getattr(baseline_summary, metric),
+            getattr(candidate_summary, metric),
+            comparable=not differing,
+            caveat=caveat,
+        )
     return ComparisonResponse(
         baseline=baseline_summary,
         candidate=candidate_summary,
         compatible_scope=not incompatibility_reasons,
         incompatibility_reasons=incompatibility_reasons,
-        deltas={
-            metric: _delta(
-                getattr(baseline_summary, metric),
-                getattr(candidate_summary, metric),
-            )
-            for metric in metrics
-        },
+        deltas=deltas,
     )
 
 
@@ -491,13 +507,15 @@ def native_link(resource_type: str, source_id: str) -> NativeLinkResponse:
     )
 
 
-def _delta(baseline: float | None, candidate: float | None) -> Delta:
+def _delta(baseline: float | None, candidate: float | None, *, comparable: bool = True, caveat: str | None = None) -> Delta:
     if baseline is None or candidate is None:
-        return Delta()
+        return Delta(comparable=comparable, caveat=caveat)
     absolute = candidate - baseline
     return Delta(
         absolute=absolute,
         relative=absolute / baseline if baseline != 0 else None,
+        comparable=comparable,
+        caveat=caveat,
     )
 
 

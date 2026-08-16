@@ -82,6 +82,8 @@ class ExperimentListResponse(ApiModel):
 class Delta(ApiModel):
     absolute: float | None = None
     relative: float | None = None
+    comparable: bool = True
+    caveat: str | None = None
 
 
 class ComparisonResponse(ApiModel):

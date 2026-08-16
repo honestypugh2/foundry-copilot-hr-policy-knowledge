@@ -132,7 +132,7 @@ export interface ComparisonResponse {
   candidate: ExperimentSummary;
   compatible_scope: boolean;
   incompatibility_reasons: string[];
-  deltas: Record<string, { absolute: number | null; relative: number | null }>;
+  deltas: Record<string, { absolute: number | null; relative: number | null; comparable: boolean; caveat: string | null }>;
 }
 export interface PatternSummaryResponse {
   schema_version: "1.0";
@@ -232,7 +232,7 @@ export const benchmarkApi: ExperimentProvider = {
       deltas: Object.fromEntries(
         Object.entries(response.deltas).map(([name, delta]) => [
           name,
-          { absolute: delta.absolute ?? null, relative: delta.relative ?? null },
+          { absolute: delta.absolute ?? null, relative: delta.relative ?? null, comparable: (delta as { comparable?: boolean }).comparable ?? true, caveat: (delta as { caveat?: string | null }).caveat ?? null },
         ])
       ),
     };
