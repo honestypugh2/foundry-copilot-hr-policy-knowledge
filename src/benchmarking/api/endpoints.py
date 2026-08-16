@@ -53,10 +53,11 @@ _LINK_ENV = {
     "load_testing": ("BENCHMARK_LINK_LOAD_TESTING", "GA"),
     "cost_management": ("BENCHMARK_LINK_COST_MANAGEMENT", "GA"),
 }
+# Scope captures what makes two measurements comparable (data + boundary + harness
+# knobs). git_commit/dirty_worktree are reproducibility/release concerns, not
+# comparability — dirty_worktree still gates release-readiness in _publication_blockers.
 _COMPARISON_SCOPE_FIELDS = (
     "schema_version",
-    "git_commit",
-    "dirty_worktree",
     "runner_version",
     "dataset_name",
     "dataset_version",
@@ -71,7 +72,7 @@ _COMPARISON_SCOPE_FIELDS = (
     "random_seed",
     "pricing_profile",
 )
-_COMPARISON_SCOPE_VERSION = "comparison-scope-v2"
+_COMPARISON_SCOPE_VERSION = "comparison-scope-v3"
 # Derived (non-manifest) scope fields appended by _scope_values.
 _DERIVED_SCOPE_FIELDS = ("measurement_boundary_class",)
 

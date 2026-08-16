@@ -201,7 +201,13 @@ export function Coverage() {
 
 export function Compare() {
   const { items, error } = useExperiments(); const [, navigate] = useLocation(); const search = useSearch(); const params = new URLSearchParams(search);
-  const latestPerPattern = patternNames.map((pattern) => items.filter((item) => item.pattern === pattern).sort((a, b) => b.created_at.localeCompare(a.created_at))[0]).filter((item): item is ExperimentSummary => Boolean(item));
+  const gradedCoverage = new Map<string, Set<string>>();
+  items.forEach((item) => { if (item.quality !== null) { (gradedCoverage.get(item.dataset_name) ?? gradedCoverage.set(item.dataset_name, new Set()).get(item.dataset_name)!).add(item.pattern); } });
+  const canonicalDataset = [...gradedCoverage.entries()].sort((a, b) => b[1].size - a[1].size)[0]?.[0];
+  const latestPerPattern = patternNames.map((pattern) => {
+    const runs = items.filter((item) => item.pattern === pattern).sort((a, b) => b.created_at.localeCompare(a.created_at));
+    return runs.find((item) => item.dataset_name === canonicalDataset) ?? runs[0];
+  }).filter((item): item is ExperimentSummary => Boolean(item));
   const baseline = params.get("baseline") ?? latestPerPattern[0]?.experiment_id ?? "";
   const bItem = items.find((item) => item.experiment_id === baseline);
   const candidateOptions = latestPerPattern.filter((item) => item.experiment_id !== baseline);

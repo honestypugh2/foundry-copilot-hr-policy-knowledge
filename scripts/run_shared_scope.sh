@@ -69,13 +69,14 @@ for row in "${PATTERNS[@]}"; do
     agent_schema="$("$PY" -c "import json,sys;print(json.load(open(sys.argv[1]))['invocation_path'].split(':',1)[1])" "$src")"
     schema_var="COPILOT_STUDIO_AGENT_SCHEMA_${lane}"
     env_has "$schema_var" && schema_state="present in .env" || schema_state="from manifest ($agent_schema)"
-    secret_state="MISSING"
+    auth_state="MISSING (need TOKEN_ENDPOINT or a *_SECRET)"
+    if env_has "COPILOT_STUDIO_TOKEN_ENDPOINT_${lane}"; then auth_state="Standard harness (TOKEN_ENDPOINT_${lane})"; fi
     for v in "COPILOT_STUDIO_TOKEN_SECRET_${lane}" "COPILOT_STUDIO_DIRECTLINE_SECRET_${lane}" "COPILOT_STUDIO_SECRET_${lane}"; do
-      if env_has "$v"; then secret_state="present ($v)"; break; fi
+      if env_has "$v"; then auth_state="Direct Line secret ($v)"; break; fi
     done
     echo "=== $pattern  (lane $lane) ==="
     echo "  agent schema : $schema_var -> $schema_state"
-    echo "  lane secret  : $secret_state"
+    echo "  lane auth    : $auth_state"
     echo "  output dir   : $out"
     echo "  command      : $PY -m src.benchmarking.cli --manifest $staged --cases $DATASET --output-dir $out --copilot-studio --copilot-lane $lane"
     continue
