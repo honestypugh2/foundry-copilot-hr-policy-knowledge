@@ -19,6 +19,16 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 PY="$ROOT/.venv/bin/python"
 
+DRY_RUN=0
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY_RUN=1 ;;
+    -h|--help) echo "Usage: scripts/run_shared_scope.sh [--dry-run]"; exit 0 ;;
+    *) echo "Unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
+env_has() { [[ -f "$ROOT/.env" ]] && grep -q "^$1=" "$ROOT/.env"; }
+
 DATASET="experiments/datasets/copilot-hr-policy-release-v2.json"
 DATE="$(date -u +%Y%m%d)"
 OUT_ROOT="experiments/reports/decision-system-$DATE/copilot-front-door/shared"
@@ -36,18 +46,41 @@ PATTERNS=(
 [[ -x "$PY" ]] || { echo "ERROR: venv missing at $ROOT/.venv"; exit 1; }
 [[ -f "$DATASET" ]] || { echo "ERROR: shared dataset $DATASET not found"; exit 1; }
 if [[ -n "$(git status --porcelain)" ]]; then
-  echo "ERROR: worktree is dirty. Commit first so every run records dirty_worktree=false"
-  echo "       (a clean worktree is a release-readiness gate)."; exit 1
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "WARN: worktree is dirty; a live run would refuse (dirty_worktree is a release gate)."
+  else
+    echo "ERROR: worktree is dirty. Commit first so every run records dirty_worktree=false"
+    echo "       (a clean worktree is a release-readiness gate)."; exit 1
+  fi
 fi
 
 COMMIT="$(git rev-parse HEAD)"
 mkdir -p "$STAGE"
 echo "Shared scope -> commit=$COMMIT  dataset=$DATASET  reps=5  boundary=copilot_studio_direct_line"
+[[ "$DRY_RUN" -eq 1 ]] && echo "(dry run — no manifests written, no Direct Line calls)"
 
 for row in "${PATTERNS[@]}"; do
   IFS='|' read -r pattern src lane <<<"$row"
   [[ -f "$src" ]] || { echo "SKIP $pattern: source manifest $src not found"; continue; }
   staged="$STAGE/${pattern,,}.json"
+  out="$OUT_ROOT/${pattern,,}"
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    agent_schema="$("$PY" -c "import json,sys;print(json.load(open(sys.argv[1]))['invocation_path'].split(':',1)[1])" "$src")"
+    schema_var="COPILOT_STUDIO_AGENT_SCHEMA_${lane}"
+    env_has "$schema_var" && schema_state="present in .env" || schema_state="from manifest ($agent_schema)"
+    secret_state="MISSING"
+    for v in "COPILOT_STUDIO_TOKEN_SECRET_${lane}" "COPILOT_STUDIO_DIRECTLINE_SECRET_${lane}" "COPILOT_STUDIO_SECRET_${lane}"; do
+      if env_has "$v"; then secret_state="present ($v)"; break; fi
+    done
+    echo "=== $pattern  (lane $lane) ==="
+    echo "  agent schema : $schema_var -> $schema_state"
+    echo "  lane secret  : $secret_state"
+    echo "  output dir   : $out"
+    echo "  command      : $PY -m src.benchmarking.cli --manifest $staged --cases $DATASET --output-dir $out --copilot-studio --copilot-lane $lane"
+    continue
+  fi
+
   "$PY" - "$src" "$staged" "$COMMIT" "$pattern" "$DATE" <<'PYEOF'
 import datetime, json, sys
 src, dst, commit, pattern, date = sys.argv[1:6]
@@ -58,7 +91,6 @@ manifest["experiment_id"] = f"shared-{pattern.lower()}-front-door-45-{date}"
 manifest["created_at"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 json.dump(manifest, open(dst, "w", encoding="utf-8"), indent=2)
 PYEOF
-  out="$OUT_ROOT/${pattern,,}"
   echo "=== $pattern (lane $lane) -> $out ==="
   "$PY" -m src.benchmarking.cli \
     --manifest "$staged" \
@@ -67,7 +99,12 @@ PYEOF
     --copilot-studio --copilot-lane "$lane"
 done
 
-echo ""
-echo "All five front-door runs complete on one shared scope."
-echo "Next: attach native quality/security evaluation to each run, then verify all"
-echo "five share one comparison_scope at /api/benchmarking/experiments (Compare = 4/4)."
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  echo ""
+  echo "Dry run complete — no files written, no Direct Line calls. Re-run without --dry-run to execute."
+else
+  echo ""
+  echo "All five front-door runs complete on one shared scope."
+  echo "Next: attach native quality/security evaluation to each run, then verify all"
+  echo "five share one comparison_scope at /api/benchmarking/experiments (Compare = 4/4)."
+fi
