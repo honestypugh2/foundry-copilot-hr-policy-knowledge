@@ -148,7 +148,7 @@ export interface PatternSummaryResponse {
 }
 
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`);
+  const response = await fetch(`${BASE_URL}${path}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Benchmark API returned ${response.status}`);
   return response.json() as Promise<T>;
 }

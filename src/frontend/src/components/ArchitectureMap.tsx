@@ -40,7 +40,7 @@ export default function ArchitectureMap({ runByPattern }: { runByPattern?: Recor
       </div>
 
       <div className="arch-canvas">
-        <svg viewBox="0 0 1000 520" role="img" aria-label="Copilot Studio front door routing to five patterns" className="arch-svg">
+        <svg viewBox="0 0 1000 520" role="group" aria-label="Copilot Studio front door routing to five patterns" className="arch-svg">
           <defs>
             <linearGradient id="hubGrad" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stopColor="#3b82f6" />
@@ -94,6 +94,7 @@ export default function ArchitectureMap({ runByPattern }: { runByPattern?: Recor
                 role="button"
                 tabIndex={0}
                 aria-pressed={isActive}
+                aria-label={`Pattern ${pattern.id}: ${pattern.title} — ${pattern.backend}`}
                 onMouseEnter={() => setActive(pattern.id)}
                 onFocus={() => setActive(pattern.id)}
                 onClick={() => setActive(pattern.id)}

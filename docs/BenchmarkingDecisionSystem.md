@@ -94,6 +94,15 @@ npm run dev -- --host 127.0.0.1
 Open `http://127.0.0.1:5174`. The Vite development server proxies `/api` to
 the backend on port `8000`.
 
+> **Workbench screenshots** (current build) with alt text live in
+> [docs/images/app/](images/app/README.md). Representative views: the
+> [architecture map](images/app/overview/02-architecture-map.png), the
+> [benchmark-at-a-glance charts](images/app/overview/03-benchmark-at-a-glance.png),
+> the [Pareto / SLO view](images/app/05-pareto-slo.png), and the
+> [evidence-coverage matrix](images/app/06-evidence-coverage.png). For
+> *published* numbers cite the pinned figures under
+> `experiments/reports/decision-system-20260811/figures/`, not a live capture.
+
 | Question | View | Evidence boundary |
 | --- | --- | --- |
 | Which controlled runs exist? | Workbench **Experiments** or `GET /api/benchmarking/experiments` | Normalized local report artifacts |
@@ -138,11 +147,14 @@ fields.
 The overview helps users choose an architecture for the HR policy assistant. It
 combines the five architecture paths, the three Hosted retrieval modes,
 controlled benchmark evidence, evidence gaps, and links to the Microsoft
-systems that own operational detail. The 2026-08-10 publication shows
-deterministic quality of 100% for tool retrieval and 85.7% for both semantic
-and agentic context. Pattern A is visible as fixture-only evidence; Pattern C
-is visible as an implemented adapter that still requires a comparable
-controlled run. A fixture value is never presented as Azure performance
+systems that own operational detail. The `decision-system-20260811` publication
+(commit `9c94215`) shows deterministic quality of 100% for tool retrieval,
+71.4% for semantic context, and 100% for agentic context, with 100%
+deterministic security across all three Hosted modes. The same bundle adds
+Copilot Studio front-door runs (release-v2, Direct Line) for Patterns A, A2, and
+C, a Foundry prompt-agent run for Pattern B, and a deployed hosted-runtime run —
+each measured at its own boundary, so they are never dropped into one latency
+ranking. A fixture value is never presented as Azure performance
 evidence.
 
 Compact tables render an em dash for an unavailable value instead of repeating

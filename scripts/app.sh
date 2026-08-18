@@ -18,12 +18,15 @@ FRONTEND_LOG="$RUN_DIR/frontend.log"
 
 mkdir -p "$RUN_DIR"
 
-port_pids() { # $1=port -> space-separated listening pids
+port_pids() { # $1=port -> space-separated listening pids; always exits 0
+  local pids=""
   if command -v lsof >/dev/null 2>&1; then
-    lsof -ti "tcp:$1" -sTCP:LISTEN 2>/dev/null | tr '\n' ' '
+    pids="$(lsof -ti "tcp:$1" -sTCP:LISTEN 2>/dev/null || true)"
   elif command -v fuser >/dev/null 2>&1; then
-    fuser "$1/tcp" 2>/dev/null | tr -s ' '
+    pids="$(fuser "$1/tcp" 2>/dev/null || true)"
   fi
+  printf '%s' "$pids" | tr '\n' ' '
+  return 0
 }
 
 wait_http() { # $1=url $2=timeout_s
@@ -81,6 +84,7 @@ stop_one() { # $1=name $2=pidfile $3=port
   pp="$(port_pids "$port")"
   if [[ -n "$pp" ]]; then kill -KILL $pp 2>/dev/null || true; fi
   [[ "$acted" -eq 1 ]] && echo "stopped $name" || echo "$name not running"
+  return 0
 }
 
 status() {

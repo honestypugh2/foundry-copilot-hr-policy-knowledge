@@ -15,7 +15,12 @@
 > **Ask HR** — An AI-powered assistant that answers employee questions
 > using internal HR policy documents. Built on Microsoft Foundry, Azure
 > AI Search, Microsoft Agent Framework (GA), and Copilot Studio.
+![Architecture map — one Copilot Studio front door routing to five grounded-agent patterns A, A2, B, C, and Hosted](docs/images/app/overview/architecture-map.gif)
 
+> **Benchmark Workbench.** A read-only decision surface compares these five
+> patterns with committed evidence. App screenshots and alt text:
+> [docs/images/app/](docs/images/app/README.md). Design:
+> [docs/BenchmarkingDecisionSystem.md](docs/BenchmarkingDecisionSystem.md).
 ---
 
 ## Where to Start

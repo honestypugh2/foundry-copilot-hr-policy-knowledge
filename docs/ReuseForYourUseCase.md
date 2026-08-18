@@ -57,7 +57,7 @@ Estimated effort: **~80% is reusable unchanged.** A new RAG/agent use case is a
 6. **Copilot Studio agents (only if you use Patterns A/A2/B/C).** Rebuild your own
    published agents and set their schemas/token endpoints in `.env` (`COPILOT_STUDIO_*`).
    Not needed for Foundry-only patterns (B, Hosted).
-7. **Branding + copy.** App name (`Policy Lab`, `src/frontend/index.html`, the brand block
+7. **Branding + copy.** App name (`Pattern Lab`, `src/frontend/index.html`, the brand block
    in `App.tsx`), the Overview hero/lede, and any HR-specific glossary entries in
    `src/frontend/src/pages/GlossaryPage.tsx` (most glossary terms are benchmark-generic and
    stay).

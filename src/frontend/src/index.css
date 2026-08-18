@@ -177,7 +177,7 @@ code { font-size: 10px; color: #4a5851; }
 .command-stats span, .command-stats small { display: block; }
 .command-stats span { color: var(--ink-soft); font-size: 10px; }
 .command-stats strong { display: block; margin: 5px 0; font-size: 27px; font-weight: 700; }
-.command-stats small { color: #596273; font-size: 9px; line-height: 1.4; }
+.command-stats small { color: var(--ink-soft); font-size: 9px; line-height: 1.4; }
 .benchmark-positioning { margin: 0 0 18px; border: 1px solid #ccd8eb; border-radius: 8px; background: var(--surface); overflow: hidden; }
 .benchmark-positioning > header { padding: 26px 28px 24px; background: #192231; color: white; }
 .benchmark-positioning > header h2 { max-width: 900px; color: white; font-size: 25px; line-height: 1.22; }
@@ -231,7 +231,7 @@ code { font-size: 10px; color: #4a5851; }
 .architecture-card h3 { margin: 22px 0 8px; }
 .architecture-card p { min-height: 56px; margin: 0 0 16px; }
 .architecture-card dl { display: grid; grid-template-columns: 74px 1fr; gap: 7px; margin: 0 0 18px; font-size: 9px; line-height: 1.4; }
-.architecture-card dt { color: #596273; }
+.architecture-card dt { color: var(--ink-soft); }
 .architecture-card dd { margin: 0; overflow-wrap: anywhere; }
 .architecture-card a { margin-top: auto; }
 .connection-state { display: inline-flex; padding: 4px 7px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: capitalize; white-space: nowrap; }
@@ -414,10 +414,10 @@ code { font-size: 10px; color: #4a5851; }
 	--line: #2a313c;
 	--green: #4b8bff;
 	--lime: #1f2a44;
-	--blue: #4b8bff;
+	--blue: #2f6ad0;
 	--blue-strong: #7aa8ff;
 	--blue-soft: #17233b;
-	--coral: #ff7a63;
+	--coral: #bf5033;
 	--amber: #e0a54a;
 	color: var(--ink);
 	background: var(--paper);
@@ -438,6 +438,7 @@ code { font-size: 10px; color: #4a5851; }
 [data-theme="dark"] .selectors select { background: var(--surface); border-color: var(--line); color: var(--ink); }
 [data-theme="dark"] .status { color: #a9c9ff; background: #17233b; }
 [data-theme="dark"] .status.muted { color: var(--ink-soft); background: #20262f; }
+[data-theme="dark"] .evidence-tag { color: #5fd39a; }
 [data-theme="dark"] .state, [data-theme="dark"] .scope { background: #2a2413; border-left-color: var(--amber); color: #e6c88c; }
 [data-theme="dark"] .scope.good { background: #16281d; border-left-color: #3fae72; color: #a7dcbc; }
 [data-theme="dark"] .scope.bad { background: #2c1a16; border-left-color: var(--coral); color: #f2b3a4; }
@@ -575,6 +576,8 @@ table { font-size: 14px; }
 .cmp-tag.ok { background: rgba(22,163,74,.14); color: #16a34a; border: 1px solid rgba(22,163,74,.35); }
 .cmp-tag.no { background: rgba(234,179,8,.16); color: #b45309; border: 1px solid rgba(234,179,8,.42); }
 [data-theme="dark"] .cmp-tag.no { color: #fbbf24; }
+[data-theme="dark"] .cmp-tag.ok { color: #4ade80; }
+[data-theme="dark"] .source-title small, [data-theme="dark"] .evidence-source h4 { color: var(--ink-soft); }
 
 /* ---- Architecture map ---- */
 .arch-map { margin: 8px 0 34px; }
