@@ -84,7 +84,7 @@ const TERMS: Term[] = [
     group: "Quality",
     short: "The effective answer model — pinnable vs. platform-managed.",
     detail:
-      "gpt-5-mini where we control it (Foundry patterns), or an opaque marker where Copilot Studio owns it: microsoft_managed_standard_harness (~GPT-4.1) and github_copilot_harness. Cross-platform quality differences are confounded by model, so compare within a platform first.",
+      "gpt-5-mini where we control it (Foundry patterns), or a harness:model marker for Copilot Studio: microsoft_managed_standard_harness:claude-sonnet-4.6 (A, B, C, Hosted) and github_copilot_harness:claude-sonnet-4.6 (A2). The Copilot Studio model is selectable and recorded but bills in per-message Credits, not tokens, so it never joins the Foundry per-token axis. Cross-platform quality is confounded by model, so compare within a platform first.",
   },
   {
     term: "Evidence states",

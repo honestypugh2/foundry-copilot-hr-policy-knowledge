@@ -2,6 +2,8 @@
 
 *Part 2 of a series. Part 1, [Grounding Copilot Studio Agents with Azure AI Search and Foundry IQ](https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/grounding-copilot-studio-agents-with-azure-ai-search-and-foundry-iq/4539337), showed five ways to ground an agent. This part is about how to choose between them with evidence you can defend.*
 
+![Benchmarking retrieval patterns for Copilot Studio and Foundry IQ — an evidence system, not a leaderboard. Part 2 of the series, summarizing three rules (measure the boundary, separate the cost lanes, gate on deterministic checks) across five patterns; front doors run Claude Sonnet 4.6 and backends synthesize on gpt-5-mini.](../images/banner-part2.png)
+
 > **Reference implementation, not a production template.** The sample and numbers below are for learning and experimentation. Before you ship, review the [Azure Well-Architected Framework](https://learn.microsoft.com/azure/well-architected/) for reliability, security, cost, and operations guidance.
 
 ---
@@ -28,14 +30,16 @@ The first discipline is to stop treating three different kinds of measurement as
 | **Load / capacity test** | Concurrent traffic with a named profile and saturation signals | "How does it behave under N users?" | Be merged into sequential latency percentiles |
 | **Production telemetry** | Observed user traffic in Application Insights, Foundry, Azure AI Search, and Azure Monitor | "What is actually happening in production?" | Be reconstructed into controlled percentiles |
 
+![Three classes of evidence that do not mix: controlled experiments (which config is better, all else equal), load or capacity tests (behavior under N concurrent users), and production telemetry (what is actually happening in production) — each answers a different question and is never blended with the others.](diagrams/three-evidence-classes.png)
+
 A latency value is only "measured" when a committed result records its manifest, sample count, environment, and measurement boundary. Anything else — including the friendly `~1–2 s` and `~10–14 s` labels from Part 1 — is an illustration, not a finding. Keeping these classes separate is not bureaucratic; it is what stops a load-test spike from masquerading as a typical response time.
 
 ## Rule 1: Measure the boundary you actually ship
 
 Every pattern is timed at an explicit **measurement boundary**, and the boundaries are not interchangeable.
 
-- **A, A2, and C** are measured through the **Copilot Studio front door** over Direct Line. The timer wraps one opaque span: send the question, await the final activity, stop. Everything Copilot Studio does inside — generative answer, knowledge call, REST tool, connected agent — is Microsoft-managed and not individually timed.
-- **B and Hosted** are also measured at their **deployed-agent boundary**, because native evaluation cannot grade the external-agent hop from the outside.
+- **A, A2, and C** are measured through the **Copilot Studio front door** over Direct Line. The timer wraps one opaque span: send the question, await the final activity, stop. Everything Copilot Studio does inside — generative answer, knowledge call, REST tool, connected agent — is Microsoft-managed and not individually timed. All five front doors pin the same answer model, **Claude Sonnet 4.6**, so the front-door lanes differ only by harness and retrieval path, not model.
+- **B and Hosted** are also measured at their **deployed-agent boundary** — where the answer is synthesized on `gpt-5-mini` — because native evaluation cannot grade the external-agent hop from the outside.
 
 That leads to the single most important rule in the whole system:
 
@@ -43,13 +47,7 @@ That leads to the single most important rule in the whole system:
 
 In production, B and Hosted still sit behind the front door too, so the user-facing latency is roughly the deployed p50 plus the same front-door overhead the A/C paths pay. We say that in words; we do not fabricate it with subtraction.
 
-```
-client → Direct Line send → [ Copilot Studio orchestration (opaque) ] → final activity → client
-                                   ├─ generative answer (model)
-                                   ├─ knowledge call (Azure AI Search / Foundry IQ)
-                                   ├─ tool call (REST /api/lookup)
-                                   └─ connected-agent call (Foundry external agent)
-```
+![Measurement boundaries: patterns A, A2, and C are timed at the Copilot Studio front-door boundary over Direct Line — the timer wraps the opaque orchestration (generative answer on Claude Sonnet 4.6, knowledge call, REST tool, connected-agent call); patterns B and Hosted are timed at the deployed-agent boundary where the answer is synthesized on gpt-5-mini. Never subtract one boundary from another.](diagrams/measurement-boundaries.png)
 
 The adapter records `client_wall_time_ms` as `measured` and `service_elapsed_time_ms` as `unavailable` with reason `NOT_EXPOSED`. Missing is recorded as missing — never as zero.
 
@@ -60,9 +58,11 @@ Cost is where leaderboards quietly lie, because the patterns are not billed in t
 | Lane | Patterns | Unit | Source |
 | --- | --- | --- | --- |
 | **Azure per-token USD** | B, Hosted (local, token-instrumented) | USD per invocation from service-reported input/cached/output tokens × a dated retail pricing profile | SDK final usage × pricing profile |
-| **Copilot Studio Credits** | A, A2, C, and the B/Hosted front doors | Per-message Copilot Studio Credits | Copilot Studio → Operate → Cost / Power Platform admin center |
+| **Copilot Studio (Credits / messages)** | A, A2, C, and the B/Hosted front doors | Per-message Copilot Studio billing — standard-harness messages (A, C, B/Hosted) and GitHub Copilot-harness Credits (A2) | Copilot Studio → Operate → Cost / Power Platform admin center |
 
 A `null` per-token cost on a Copilot Studio front-door run is **correct, not missing** — that lane is not token-metered, so it can never join the per-token axis. We estimate each lane on its own meter and reconcile against the authoritative source (Azure Cost Management for tokens; the Power Platform admin center for Credits), and we never sum a Credit and a token. For Pattern B and the Hosted front door, the connected Foundry model's tokens are billed on the Azure lane *in addition* to Copilot Studio Credits — two lanes, stated separately.
+
+One more reason the Credits lane can't be token-priced: in Copilot Studio the **harness** is the runtime and the **model** is a separate selectable engine. Patterns A, C, and the B/Hosted front doors run on the **standard harness**; Pattern A2 runs on the **GitHub Copilot harness**. The model is now selectable and disclosed — this project pins **Claude Sonnet 4.6** on all five front doors for parity — so we record `answer_model` as `<harness>:<model>` (`microsoft_managed_standard_harness:claude-sonnet-4.6` or `github_copilot_harness:claude-sonnet-4.6`). It still can't join the per-token axis: the standard harness bills as per-message Copilot Studio messages and the GitHub Copilot harness bills in Copilot Credits — two Copilot Studio meters, neither token-metered. We compare quality *within* a platform first, because the harness (and any model change) is a confound across them.
 
 ## Rule 3: Deterministic gates first, model judges second
 
@@ -129,7 +129,7 @@ Two honest caveats travel with that table. First, quality is graded on a seven-c
 
 > **Provenance.** These figures come from the committed publication bundle (`decision-system-20260811`, clean commit `9c94215`) — 35 timed invocations per mode with declared warmups, priced against the `azure-gpt-5-mini-global-standard-cache-aware:2025-08-01` profile. The report artifacts live under `experiments/reports/decision-system-20260811/hosted/`; if you cannot point a number back to a committed manifest and report, it does not belong in the post.
 
-The same bundle measures the other four patterns too — but at different boundaries, which is exactly why Rule 1 keeps them off the chart above. Patterns A, A2, and C were run through the Copilot Studio front door over Direct Line (native-evaluation quality of 85.7%, 85.7%, and 71.4% on the seven-case set); Pattern B and the deployed Hosted runtime were measured at the deployed-agent boundary (71.4% each). Where a lane is genuinely incomplete — front-door A2 latency, isolated load, billed-cost reconciliation — the workbench shows it as unavailable, not zero.
+The same bundle measures the other four patterns too — but at different boundaries, which is exactly why Rule 1 keeps them off the chart above. Patterns A, A2, and C were run through the Copilot Studio front door over Direct Line (native-evaluation quality of 85.7%, 85.7%, and 71.4% on the seven-case set — all three front doors pinned to the same model, **Claude Sonnet 4.6**, so the remaining difference is the harness: A and C on the standard harness, A2 on the GitHub Copilot harness); Pattern B and the deployed Hosted runtime were measured at the deployed-agent boundary on `gpt-5-mini` (71.4% each), because native front-door evaluation returns an error across the external-agent hop. Where a lane is genuinely incomplete — front-door A2 latency, isolated load, billed-cost reconciliation — the workbench shows it as unavailable, not zero.
 
 ## Release gates, not vibes
 

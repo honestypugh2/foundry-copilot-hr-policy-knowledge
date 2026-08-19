@@ -1,0 +1,65 @@
+<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Measurement boundaries: patterns A, A2, and C are timed at the Copilot Studio front-door boundary over Direct Line, wrapping the opaque orchestration; patterns B and Hosted are timed at the deployed-agent boundary. Front-door answers use Claude Sonnet 4.6; deployed agents synthesize on gpt-5-mini. Never subtract one boundary from another.">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1200" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B1437"/><stop offset="1" stop-color="#2A1B57"/>
+    </linearGradient>
+    <linearGradient id="card3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.03"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#9FB3E8"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="560" rx="18" fill="url(#bg3)"/>
+
+  <rect x="60" y="42" width="42" height="5" rx="2.5" fill="#4FC3F7"/>
+  <text x="60" y="36" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15" letter-spacing="3" font-weight="600" fill="#9FB3E8">RULE 1 · MEASUREMENT BOUNDARY</text>
+  <text x="60" y="82" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="30" font-weight="800" fill="#FFFFFF">Measure the boundary you actually ship</text>
+
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+    <!-- Front-door boundary (dashed) -->
+    <rect x="48" y="120" width="744" height="340" rx="16" fill="#4FC3F7" fill-opacity="0.05" stroke="#4FC3F7" stroke-opacity="0.7" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="66" y="146" font-size="13" letter-spacing="2" font-weight="700" fill="#7EC8F2">FRONT-DOOR BOUNDARY — A / A2 / C  ·  timed: client wall time (Direct Line hop included)</text>
+
+    <!-- Client node -->
+    <rect x="70" y="252" width="150" height="76" rx="12" fill="url(#card3)" stroke="#9FB3E8" stroke-opacity="0.5"/>
+    <text x="145" y="286" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">Employee</text>
+    <text x="145" y="308" text-anchor="middle" font-size="13" fill="#9FB3E8">client · Teams / M365</text>
+
+    <!-- Direct Line arrow -->
+    <line x1="222" y1="290" x2="296" y2="290" stroke="#9FB3E8" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="259" y="280" text-anchor="middle" font-size="12" fill="#9FB3E8">Direct Line</text>
+
+    <!-- Orchestration box -->
+    <rect x="306" y="176" width="470" height="256" rx="14" fill="url(#card3)" stroke="#4FC3F7" stroke-opacity="0.4"/>
+    <text x="330" y="206" font-size="17" font-weight="700" fill="#FFFFFF">Copilot Studio orchestration</text>
+    <text x="330" y="226" font-size="13" fill="#9FB3E8">Microsoft-managed · not individually timed</text>
+    <!-- inner pills -->
+    <g>
+      <rect x="330" y="240" width="422" height="38" rx="8" fill="#4FC3F7" fill-opacity="0.10" stroke="#4FC3F7" stroke-opacity="0.3"/>
+      <text x="346" y="264" font-size="14" fill="#C9D6F5">Generative answer — Claude Sonnet 4.6 (front-door model)</text>
+      <rect x="330" y="286" width="422" height="38" rx="8" fill="#7C4DFF" fill-opacity="0.10" stroke="#7C4DFF" stroke-opacity="0.3"/>
+      <text x="346" y="310" font-size="14" fill="#C9D6F5">Knowledge call — Azure AI Search / Foundry IQ</text>
+      <rect x="330" y="332" width="422" height="38" rx="8" fill="#4FC3F7" fill-opacity="0.10" stroke="#4FC3F7" stroke-opacity="0.3"/>
+      <text x="346" y="356" font-size="14" fill="#C9D6F5">Tool call — REST /api/lookup</text>
+      <rect x="330" y="378" width="422" height="38" rx="8" fill="#7C4DFF" fill-opacity="0.10" stroke="#7C4DFF" stroke-opacity="0.3"/>
+      <text x="346" y="402" font-size="14" fill="#C9D6F5">Connected-agent call — external agent</text>
+    </g>
+
+    <!-- Connector to deployed boundary -->
+    <line x1="752" y1="397" x2="904" y2="320" stroke="#B39DFF" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+
+    <!-- Deployed-agent boundary (dashed) -->
+    <rect x="908" y="196" width="244" height="230" rx="16" fill="#7C4DFF" fill-opacity="0.06" stroke="#B39DFF" stroke-opacity="0.7" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="926" y="222" font-size="13" letter-spacing="1.5" font-weight="700" fill="#B39DFF">DEPLOYED-AGENT</text>
+    <text x="926" y="240" font-size="13" letter-spacing="1.5" font-weight="700" fill="#B39DFF">BOUNDARY — B / Hosted</text>
+    <rect x="928" y="262" width="204" height="94" rx="12" fill="url(#card3)" stroke="#B39DFF" stroke-opacity="0.5"/>
+    <text x="1030" y="296" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">Foundry agent /</text>
+    <text x="1030" y="316" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">Hosted container</text>
+    <text x="1030" y="340" text-anchor="middle" font-size="13" fill="#C9D6F5">gpt-5-mini</text>
+    <text x="1030" y="378" text-anchor="middle" font-size="13" fill="#9FB3E8">timed: deployed p50 / p95</text>
+  </g>
+
+  <text x="60" y="502" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#F2A9A0">Never subtract one boundary from another — different boundaries are different experiments.</text>
+  <text x="60" y="528" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#A9BAE6">In production, B and Hosted also sit behind the front door, so user-facing latency ≈ deployed p50 + front-door overhead.</text>
+</svg>

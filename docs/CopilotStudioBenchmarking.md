@@ -130,12 +130,29 @@ down the wrong path.
 | **C** | Add only the deterministic lookup REST tool from `copilot/openapi-lookup-v2.json`. |
 | **Hosted** | Add only the deployed `hr-policy-agent` Microsoft Foundry external agent. |
 
-Give all five agents the same top-level HR instructions and keep the Copilot
-Studio generative model identical across them. The Copilot Studio answer model is
-harness-managed — the standard harness for A / B / C / Hosted and the GitHub
-Copilot harness for A2 — so record it in the manifest `answer_model` field
-(`microsoft_managed_standard_harness` or `github_copilot_harness`) rather than a
-pinned Foundry deployment. See
+> **Front-door display-name → AgentId → pattern crosswalk.** The Copilot Studio
+> display names are intentionally arbitrary (renaming forces a re-publish), so map
+> each front door by its connected external `AgentId`, **not** its name:
+>
+> | Front door (display name) | Harness | Model | Connected AgentId | Pattern |
+> | --- | --- | --- | --- | --- |
+> | Ask HR Policy Agent | Standard | Claude Sonnet 4.6 | — (Search knowledge) | A |
+> | Ask HR Policy Agent A2G | GitHub Copilot | Claude Sonnet 4.6 | — (Foundry IQ tool) | A2 |
+> | Ask HR Policy Agent B foundry | Standard | Claude Sonnet 4.6 | `HRPolicyAgent` | B |
+> | Ask HR Policy Agent C | Standard | Claude Sonnet 4.6 | — (REST lookup) | C |
+> | Ask HR Policy Agent B | Standard | Claude Sonnet 4.6 | `hr-policy-agent` | Hosted |
+> | Ask HR Policy Agent Hosted | GitHub Copilot | Claude Sonnet 4.6 | `hr-policy-agent` | Hosted (harness-comparison lane) |
+
+Give all five agents the same top-level HR instructions and set the Copilot
+Studio model identically across them. **Model parity:** this project pins
+**Claude Sonnet 4.6** (GA) on every front door — it is one of the models
+available in **both** harnesses (standard and GitHub Copilot), so A2 can match
+A/B/C/Hosted. The harness differs by pattern — the standard harness for A / B /
+C / Hosted and the GitHub Copilot harness for A2 — so record both in the manifest
+`answer_model` field as `<harness>:<model>`
+(`microsoft_managed_standard_harness:claude-sonnet-4.6` or
+`github_copilot_harness:claude-sonnet-4.6`) rather than a pinned Foundry
+deployment. See
 [AgentArchitecturePaths.md](AgentArchitecturePaths.md) "Model parity and
 confounds" for why Copilot Studio cost/quality is not directly comparable to the
 Foundry patterns' per-token, pinned `gpt-5-mini`. Send the original dataset
@@ -198,19 +215,18 @@ python -m scripts.generate_copilot_benchmark_manifests \
   --output-dir experiments/manifests/copilot-studio \
   --corpus-fingerprint '<current-corpus-fingerprint>' \
   --index-fingerprint '<current-index-fingerprint>' \
-  --model-deployment 'microsoft_managed_standard_harness' \
+  --model-deployment 'microsoft_managed_standard_harness:claude-sonnet-4.6' \
   --repetitions 3
 ```
 
 `--model-deployment` records the `answer_model` provenance marker, not a pinned
-Foundry deployment. Use the harness marker for the lane —
-`microsoft_managed_standard_harness` for A, C, and the B/Hosted front doors, or
-`github_copilot_harness` for A2. If you selected a specific model in the maker
-portal you may annotate it (for example
-`microsoft_managed_standard_harness:gpt-4.1`), but the served model/version is
-not disclosed and Copilot Studio is billed in per-message Credits, so it never
-joins Foundry's per-token cost axis. Do not pin a concrete third-party model
-name here as if it were authoritative.
+Foundry deployment. Use the `<harness>:<model>` marker for the lane —
+`microsoft_managed_standard_harness:claude-sonnet-4.6` for A, C, and the B/Hosted
+front doors, or `github_copilot_harness:claude-sonnet-4.6` for A2. The Copilot
+Studio model is selectable and recorded (this project uses **Claude Sonnet 4.6**,
+GA), but Copilot Studio is billed in per-message Credits, so it never joins
+Foundry's per-token cost axis. Keep the marker in sync with the model actually
+selected and published in the maker portal.
 
 Repeat for A2, B, C, and Hosted using each exported agent directory. Use
 fingerprints from the same corpus and index configuration. Regenerate a manifest
@@ -253,6 +269,53 @@ python -m src.benchmarking.cli \
 Each case starts a fresh Direct Line conversation to avoid cross-case memory.
 Warmups and measured repetitions come from each manifest. Keep concurrency at one
 for controlled comparison; use the separate load harness for capacity testing.
+
+## Re-run checklist: front-door model change
+
+Changing a Copilot Studio front-door model is a **draft edit** — the published
+channel (Direct Line token endpoint) keeps serving the old model until you
+publish. To make a model change measurable and valid:
+
+1. **Change the model** in the maker portal (Overview → *Select your agent's
+   model* → Claude Sonnet 4.6) and **Publish** the agent. Applying a draft change
+   alone does not affect the measured channel.
+2. **Confirm the published version and timestamp** before measuring — each
+   revision must be published before its first measured run.
+3. **Regenerate that agent's manifest.** The model change alters
+   `configuration_version` and `answer_model`
+   (`microsoft_managed_standard_harness:claude-sonnet-4.6`), so the old manifest
+   no longer matches.
+4. **Re-run only the changed lane** over Direct Line; leave the `gpt-5-mini`
+   component/Hosted bundles untouched.
+
+For the current parity pass, only the **Hosted** front door (`Ask HR Policy Agent
+B` → AgentId `hr-policy-agent`) changed from GPT-4.1 to Claude Sonnet 4.6, so only
+the Hosted front-door Direct Line lane needs a re-run and a new dated manifest.
+The other four (A, A2, B foundry, C) are already published on Claude Sonnet 4.6 —
+confirm each one's *published* model is Claude Sonnet 4.6 and re-run any whose
+published revision predates the model selection.
+
+> **The Hosted front door also works on the GitHub Copilot harness.** A second
+> agent (`Ask HR Policy Agent Hosted`, GitHub Copilot harness, Claude Sonnet 4.6)
+> reaches the same deployed `hr-policy-agent`. This is a legitimate,
+> architecturally-justified **extra** lane, not a replacement: keep the
+> **standard** harness as the canonical Hosted front door (thin pass-through,
+> parity with Pattern B, message billing), and record the GitHub Copilot lane as
+> an explicit **harness comparison** — same backend agent and `gpt-5-mini` model,
+> only the harness differs. Remarks:
+>
+> - The GitHub Copilot harness is **agentic** (it plans and calls your deployed
+>   agent as a connected sub-agent), so expect materially higher latency (tens of
+>   seconds of planning) and **Process-Agent Credit** billing, versus the standard
+>   harness's lightweight forward and message billing.
+> - Its native evaluation supports **Compare meaning** (pass score `70`), the same
+>   method as the standard-harness agents — so the Compare-meaning scores are
+>   method-comparable. The remaining difference is the **harness** itself, so label
+>   any delta a harness effect, not a pattern or eval-method effect.
+> - Because everything except the harness is held constant, this lane cleanly
+>   isolates **harness overhead** — a strong illustration of Rule 1 (measure the
+>   boundary) and Rule 2 (the harness isn't free). Label it a harness A/B, not a
+>   sixth pattern.
 
 ## Cost lane — Copilot Studio Credits
 
@@ -334,6 +397,17 @@ Direct Line benchmark traffic does not automatically create test sets or results
 on the **Evaluation** page. Native evaluation is a separate replay owned by
 Copilot Studio. Use it for response quality, while retaining the Direct Line
 bundle as the controlled latency/reliability evidence.
+
+> **Native evaluation works only for self-contained standard-harness agents.**
+> Patterns **A** and **C** evaluate natively (Compare meaning, pass score `70`).
+> The standard-harness **B** and **Hosted** front doors connect to an *external*
+> Foundry agent, and native Copilot Studio Evaluation **returns an Error across
+> that external-agent hop** — grade B and Hosted at the **Foundry deployed-agent
+> boundary** instead (their answers are synthesized there on `gpt-5-mini`). The
+> **GitHub Copilot**-harness Hosted front door does evaluate (it treats the
+> deployed agent as a connected sub-agent), including **Compare meaning** — so its
+> quality is method-comparable to A/C; label any gap a harness effect, since the
+> model (Claude Sonnet 4.6) and backend (`gpt-5-mini`) are held constant.
 
 ### One-time authenticated setup
 
@@ -466,10 +540,11 @@ Monitor traces for production bottlenecks. Copilot Studio retains native results
 for 89 days, so retain both the exported CSV and normalized artifact according
 to project privacy and evidence-retention policy.
 
-The GitHub Copilot agent experience is a separate production-ready preview
-harness. It currently supports only **General quality**, which does not compare
-responses with expected answers. Keep those results in their own evidence row;
-do not treat them as equivalent to standard-harness **Compare meaning** results.
+The GitHub Copilot agent experience is a separate production-ready harness. Its
+Evaluation now supports **Compare meaning** as well as General quality, so its
+Compare-meaning scores are method-comparable to the standard-harness agents. Any
+remaining quality difference reflects the **harness**, not the evaluation method;
+label it accordingly and hold the model and backend constant when comparing.
 
 Themes are production-analytics evidence, not a substitute for the controlled
 nine-case release set. Suggested themes require at least 50 questions with generative

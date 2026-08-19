@@ -47,7 +47,7 @@ export interface CostEstimate {
 }
 
 export interface ExperimentReport {
-  manifest: Record<string, unknown> & { experiment_id: string; retrieval_mode: string; dirty_worktree: boolean };
+  manifest: Record<string, unknown> & { experiment_id: string; retrieval_mode: string; dirty_worktree: boolean; answer_model?: string | null };
   aggregate: {
     count: number;
     success_count?: number;
@@ -97,6 +97,7 @@ export interface ExperimentSummary {
   corpus_fingerprint: string | null;
   index_fingerprint: string | null;
   model_deployment: string | null;
+  answer_model: string | null;
   created_at: string;
   count: number;
   success_rate: number | null;
@@ -165,6 +166,7 @@ function normalizeExperiment(item: ExperimentTransport): ExperimentSummary {
     corpus_fingerprint: item.corpus_fingerprint ?? null,
     index_fingerprint: item.index_fingerprint ?? null,
     model_deployment: item.model_deployment ?? null,
+    answer_model: item.answer_model ?? null,
     created_at: item.created_at,
     count: item.count,
     success_rate: item.success_rate,

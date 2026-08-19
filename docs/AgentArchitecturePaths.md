@@ -142,7 +142,7 @@ cannot make it uniform:
 | Where | Answer model | Control |
 | --- | --- | --- |
 | Foundry patterns — B, Hosted (tool / context-semantic / context-agentic) | `gpt-5-mini` (also the context-agentic sub-query planning model) | You pin it (`AZURE_AI_MODEL_DEPLOYMENT_NAME`) |
-| Copilot Studio A, C, and the B/Hosted front doors | Microsoft-managed standard-harness model (~GPT-4.1 since GPT-4o retired Oct 2025) | Selectable in the maker portal, but not token-instrumentable — bills per-message Credits, not tokens |
+| Copilot Studio A, C, and the B/Hosted front doors | Standard-harness model — **selectable and recorded**; this project pins **Claude Sonnet 4.6** (GA) across all standard-harness front doors | Selectable in the maker portal, but not token-instrumentable — bills per-message Credits, not tokens |
 | Copilot Studio A2 | GitHub Copilot harness model set | Selectable in the maker portal, but not token-instrumentable — bills per-message Credits, not tokens |
 
 Consequences for interpreting results:
@@ -152,20 +152,21 @@ Consequences for interpreting results:
   not model capability. Vary the model only as a deliberate separate axis.
 - **Cross-platform quality deltas are confounded by model.** A Foundry-vs-Copilot-
   Studio quality difference mixes retrieval *and* model. Compare within a platform
-  first; state the model caveat before any cross-platform quality claim. Do not
-  switch Foundry to GPT-4.1 to fake parity — Copilot Studio's exact model/version
-  isn't disclosed, so it would be approximate, not true parity.
+  first; state the model caveat before any cross-platform quality claim. Copilot
+  Studio's model is now selectable and recorded (this project uses Claude Sonnet
+  4.6), but it is a different catalog than the Azure `gpt-5-mini` deployment and
+  bills in per-message Credits — so it still never joins the Foundry per-token
+  lane, and cross-platform quality stays confounded by model.
 - **The evaluation judge model is held constant across all patterns**, so quality
   scores remain comparable even when the answer models differ.
 - **Provenance records it.** Every experiment manifest carries `answer_model`:
-  `gpt-5-mini` for Foundry, `microsoft_managed_standard_harness` /
-  `github_copilot_harness` for the opaque Copilot Studio lanes, and `none_*`
-  for retrieval-only or deterministic options that generate no answer. When you
-  select a specific model in the maker portal you may annotate the marker with
-  the selection (for example `microsoft_managed_standard_harness:gpt-4.1`), but
-  the marker stays the source of truth: the exact served model/version is not
-  disclosed and Copilot Studio never joins Foundry's per-token cost axis because
-  it is billed in per-message Credits.
+  `gpt-5-mini` for Foundry, `microsoft_managed_standard_harness:claude-sonnet-4.6`
+  (standard harness: A, B, C, Hosted) / `github_copilot_harness:claude-sonnet-4.6`
+  (A2) for the Copilot Studio lanes, and `none_*` for retrieval-only or
+  deterministic options that generate no answer. The Copilot Studio model is
+  selectable, so the marker records the harness **and** the selected model; it
+  still never joins Foundry's per-token cost axis because it is billed in
+  per-message Credits.
 
 ---
 

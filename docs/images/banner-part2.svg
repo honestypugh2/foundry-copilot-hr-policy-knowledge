@@ -1,0 +1,113 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Benchmarking Retrieval Patterns for Copilot Studio and Foundry IQ — an evidence system, not a leaderboard. Part 2.">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B1437"/>
+      <stop offset="0.45" stop-color="#122A6B"/>
+      <stop offset="1" stop-color="#3B1E7A"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4FC3F7"/>
+      <stop offset="1" stop-color="#7C4DFF"/>
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.03"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#4FC3F7" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#4FC3F7" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#7C4DFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#7C4DFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bgGrad)"/>
+  <circle cx="180" cy="120" r="320" fill="url(#glowA)"/>
+  <circle cx="1120" cy="560" r="360" fill="url(#glowB)"/>
+
+  <g fill="#FFFFFF" fill-opacity="0.06">
+    <g>
+      <circle cx="60" cy="60" r="2"/><circle cx="120" cy="60" r="2"/><circle cx="180" cy="60" r="2"/>
+      <circle cx="60" cy="120" r="2"/><circle cx="120" cy="120" r="2"/><circle cx="180" cy="120" r="2"/>
+      <circle cx="60" cy="180" r="2"/><circle cx="120" cy="180" r="2"/><circle cx="180" cy="180" r="2"/>
+    </g>
+  </g>
+
+  <rect x="80" y="120" width="72" height="6" rx="3" fill="url(#accentGrad)"/>
+  <text x="80" y="112" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="20" letter-spacing="4" font-weight="600" fill="#9FB3E8">MICROSOFT FOUNDRY · BENCHMARKING · PART 2</text>
+
+  <text x="78" y="212" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="82" font-weight="800" fill="#FFFFFF">Benchmarking</text>
+  <text x="80" y="262" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="600" fill="#C9D6F5">Retrieval patterns for Copilot Studio &amp; Foundry IQ</text>
+
+  <text x="80" y="312" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#A9BAE6">An evidence system, not a leaderboard —</text>
+  <text x="80" y="342" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#A9BAE6">measure the boundary · separate the cost lanes · gate on deterministic checks</text>
+  <text x="80" y="374" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="500" fill="#7F9BD8">Front door: Claude Sonnet 4.6 (both harnesses) · Backend synthesis: gpt-5-mini</text>
+
+  <!-- Rule / result cards -->
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+    <!-- Card 1 -->
+    <g filter="url(#softShadow)">
+      <rect x="80" y="410" width="270" height="150" rx="16" fill="url(#cardGrad)" stroke="#4FC3F7" stroke-opacity="0.35"/>
+      <circle cx="118" cy="448" r="20" fill="#4FC3F7" fill-opacity="0.18"/>
+      <text x="118" y="456" text-anchor="middle" font-size="22" font-weight="800" fill="#4FC3F7">1</text>
+      <text x="152" y="446" font-size="20" font-weight="700" fill="#FFFFFF">Boundary first</text>
+      <text x="152" y="470" font-size="15" fill="#9FB3E8">Front door vs deployed</text>
+      <text x="100" y="520" font-size="15" fill="#C9D6F5">Time what you ship</text>
+      <text x="100" y="542" font-size="14" fill="#8FA3D8">Never subtract boundaries</text>
+    </g>
+    <!-- Card 2 -->
+    <g filter="url(#softShadow)">
+      <rect x="370" y="410" width="270" height="150" rx="16" fill="url(#cardGrad)" stroke="#7C4DFF" stroke-opacity="0.4"/>
+      <circle cx="408" cy="448" r="20" fill="#7C4DFF" fill-opacity="0.22"/>
+      <text x="408" y="456" text-anchor="middle" font-size="22" font-weight="800" fill="#B39DFF">2</text>
+      <text x="442" y="446" font-size="20" font-weight="700" fill="#FFFFFF">Two cost lanes</text>
+      <text x="442" y="470" font-size="15" fill="#9FB3E8">Credits vs per-token</text>
+      <text x="390" y="520" font-size="15" fill="#C9D6F5">Priced on their own meter</text>
+      <text x="390" y="542" font-size="14" fill="#8FA3D8">Never summed</text>
+    </g>
+    <!-- Card 3 -->
+    <g filter="url(#softShadow)">
+      <rect x="660" y="410" width="270" height="150" rx="16" fill="url(#cardGrad)" stroke="#4FC3F7" stroke-opacity="0.35"/>
+      <circle cx="698" cy="448" r="20" fill="#4FC3F7" fill-opacity="0.18"/>
+      <text x="698" y="456" text-anchor="middle" font-size="22" font-weight="800" fill="#4FC3F7">3</text>
+      <text x="732" y="446" font-size="20" font-weight="700" fill="#FFFFFF">Gates first</text>
+      <text x="732" y="470" font-size="15" fill="#9FB3E8">Deterministic, then judges</text>
+      <text x="690" y="520" font-size="15" fill="#C9D6F5">Reproducible &amp; auditable</text>
+      <text x="690" y="542" font-size="14" fill="#8FA3D8">Judges are supplemental</text>
+    </g>
+    <!-- Card result -->
+    <g filter="url(#softShadow)">
+      <rect x="950" y="410" width="250" height="150" rx="16" fill="url(#cardGrad)" stroke="#39D98A" stroke-opacity="0.45"/>
+      <circle cx="988" cy="448" r="20" fill="#39D98A" fill-opacity="0.2"/>
+      <path d="M979 448 l6 7 l12 -14" fill="none" stroke="#5FD39A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="1022" y="446" font-size="20" font-weight="700" fill="#FFFFFF">One workload</text>
+      <text x="1022" y="470" font-size="15" fill="#9FB3E8">A · A2 · B · C · Hosted</text>
+      <text x="970" y="520" font-size="15" fill="#C9D6F5">Compared with evidence</text>
+      <text x="970" y="542" font-size="14" fill="#8FA3D8">Not a single number</text>
+    </g>
+  </g>
+
+  <!-- Pareto / quality-vs-latency glyph (evidence motif) -->
+  <g transform="translate(996,150)" opacity="0.96">
+    <rect x="0" y="0" width="210" height="182" rx="16" fill="url(#cardGrad)" stroke="#4FC3F7" stroke-opacity="0.25"/>
+    <!-- axes -->
+    <line x1="34" y1="150" x2="188" y2="150" stroke="#8FA3D8" stroke-opacity="0.55" stroke-width="1.5"/>
+    <line x1="34" y1="150" x2="34" y2="26" stroke="#8FA3D8" stroke-opacity="0.55" stroke-width="1.5"/>
+    <!-- SLO pass region: top-left = high quality, low latency -->
+    <rect x="34" y="26" width="72" height="66" fill="#39D98A" fill-opacity="0.16" stroke="#39D98A" stroke-opacity="0.45" stroke-dasharray="4 4"/>
+    <!-- points -->
+    <circle cx="58" cy="50" r="7" fill="url(#accentGrad)"/>
+    <circle cx="58" cy="50" r="12" fill="none" stroke="#4FC3F7" stroke-opacity="0.65"/>
+    <circle cx="90" cy="74" r="7" fill="url(#accentGrad)"/>
+    <circle cx="126" cy="64" r="6" fill="#B39DFF"/>
+    <circle cx="152" cy="108" r="6" fill="#B39DFF"/>
+    <circle cx="112" cy="122" r="6" fill="#B39DFF"/>
+    <text x="150" y="170" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11" fill="#8FA3D8">p95 →</text>
+    <text x="40" y="20" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11" fill="#8FA3D8">↑ quality</text>
+  </g>
+</svg>
