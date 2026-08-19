@@ -136,6 +136,10 @@ export default function BenchmarkCharts({ items }: { items: ExperimentSummary[] 
     return run ? { pattern: String(pattern), cost: run.estimated_variable_cost as number } : null;
   }).filter((row): row is { pattern: string; cost: number } => row !== null);
 
+  // Hints name only the patterns that actually rendered, so they cannot drift from the bars.
+  const namePatterns = (rows: { pattern: string }[]) =>
+    `${rows.length === 1 ? "Pattern" : "Patterns"} ${rows.map((row) => row.pattern).join(", ")}`;
+
   return (
     <section className="charts-panel" aria-label="Benchmark at a glance">
       <div className="section-title charts-title">
@@ -267,7 +271,7 @@ export default function BenchmarkCharts({ items }: { items: ExperimentSummary[] 
           <ChartCard
             eyebrow="Cost · Copilot Studio lane"
             title="Credits per interaction"
-            hint="Patterns A, A2, C bill in Copilot Credits, rated per agent activity — Microsoft-managed, not convertible to USD."
+            hint={`${namePatterns(creditRows)} bill in Copilot Credits, rated per agent activity — Microsoft-managed, not convertible to USD.`}
           >
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={creditRows} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
@@ -294,7 +298,7 @@ export default function BenchmarkCharts({ items }: { items: ExperimentSummary[] 
           <ChartCard
             eyebrow="Cost · Foundry token lane"
             title="Model cost per answer"
-            hint="Patterns B, Hosted priced from token usage × pricing profile (USD/answer). Excludes Search, hosting, evaluators."
+            hint={`${namePatterns(costRows)} priced from token usage × pricing profile (USD/answer). Excludes Search, hosting, evaluators.`}
           >
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={costRows} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
