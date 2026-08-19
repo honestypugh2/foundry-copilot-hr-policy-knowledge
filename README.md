@@ -18,7 +18,9 @@
 ![Architecture map — one Copilot Studio front door routing to five grounded-agent patterns A, A2, B, C, and Hosted](docs/images/app/overview/architecture-map.gif)
 
 > **Benchmark Workbench.** A read-only decision surface compares these five
-> patterns with committed evidence. App screenshots and alt text:
+> patterns with committed evidence. What it is and when to use it:
+> [docs/BenchmarkWorkbench.md](docs/BenchmarkWorkbench.md). Run it with
+> `scripts/app.sh start` (no Azure spend). App screenshots and alt text:
 > [docs/images/app/](docs/images/app/README.md). Design:
 > [docs/BenchmarkingDecisionSystem.md](docs/BenchmarkingDecisionSystem.md).
 ---
@@ -317,9 +319,15 @@ Endpoints:
 ### 7. (Optional) Run the React frontend
 
 ```bash
-# Benchmark Workbench (read-only decision UI); needs the backend running
+# Benchmark Workbench (read-only decision UI); starts backend + frontend together
+scripts/app.sh start                                   # http://127.0.0.1:5174
+
+# Or run the frontend alone against an already-running backend
 cd src/frontend && npm install && npm run dev          # http://localhost:5174
 ```
+
+See [docs/BenchmarkWorkbench.md](docs/BenchmarkWorkbench.md) for what each view
+answers and when to use the workbench instead of a Microsoft-native tool.
 
 ### 8. Wire up Copilot Studio
 

@@ -37,6 +37,7 @@ competing setup flows.
 | Document | Scope |
 | --- | --- |
 | [PatternSetupAndBenchmarkGuide.md](PatternSetupAndBenchmarkGuide.md) | Benchmark boundaries, code ownership, and comparison entry points. |
+| [BenchmarkWorkbench.md](BenchmarkWorkbench.md) | The decision app: what it is, when to use it, how to run it, and what each view answers. |
 | [CopilotStudioBenchmarking.md](CopilotStudioBenchmarking.md) | Configure five isolated pattern agents and run Direct Line comparisons. |
 | [BenchmarkingDecisionSystem.md](BenchmarkingDecisionSystem.md) | The evidence system: rules, workbench, gates, cost lanes, and roadmap. |
 | [ReuseForYourUseCase.md](ReuseForYourUseCase.md) | Fork the benchmark for another RAG/agent use case (~80% reusable). |
