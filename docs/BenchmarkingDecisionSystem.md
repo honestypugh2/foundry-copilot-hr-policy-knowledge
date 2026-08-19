@@ -258,7 +258,7 @@ keeps them separate rather than forcing a single number:
 | Lane | Patterns | Unit | Source | Where it shows |
 | --- | --- | --- | --- | --- |
 | **Foundry per-token USD** | B, Hosted (tool / context-semantic / context-agentic), run locally with the Agent Framework adapter | USD per invocation, estimated from service-reported input/cached/output tokens × a dated retail pricing profile | SDK final aggregated usage × pricing profile | `estimated_variable_cost` populated; plotted and gated |
-| **Copilot Studio per-message Credits** | A, A2, C, and the B/Hosted front doors | Copilot Studio message **Credits** (not tokens, not USD-per-token) | Copilot Studio **Operate → Cost** / Power Platform Admin | `estimated_variable_cost` stays `null` by design; Credits reported out-of-band |
+| **Copilot Credits** | A, A2, C, and the B/Hosted front doors | Copilot **Credits**, rated per agent activity (not tokens, not USD-per-token) | Power Platform admin center → Licensing → Copilot Studio | `estimated_variable_cost` stays `null` by design; Credits reported out-of-band |
 
 A `null` variable cost on a Copilot Studio front-door run is **correct, not
 missing evidence** — that lane is not token-metered, so it can never join the

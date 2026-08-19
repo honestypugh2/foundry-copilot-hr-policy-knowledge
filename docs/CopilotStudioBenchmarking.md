@@ -224,7 +224,7 @@ Foundry deployment. Use the `<harness>:<model>` marker for the lane —
 `microsoft_managed_standard_harness:claude-sonnet-4.6` for A, C, and the B/Hosted
 front doors, or `github_copilot_harness:claude-sonnet-4.6` for A2. The Copilot
 Studio model is selectable and recorded (this project uses **Claude Sonnet 4.6**,
-GA), but Copilot Studio is billed in per-message Credits, so it never joins
+GA), but Copilot Studio is billed in Copilot Credits, so it never joins
 Foundry's per-token cost axis. Keep the marker in sync with the model actually
 selected and published in the maker portal.
 
@@ -317,9 +317,10 @@ published revision predates the model selection.
 >   boundary) and Rule 2 (the harness isn't free). Label it a harness A/B, not a
 >   sixth pattern.
 
-## Cost lane — Copilot Studio Credits
+## Cost lane — Copilot Credits
 
-Copilot Studio bills in **per-message Copilot Credits**, not tokens, and exposes
+Copilot Studio bills in **Copilot Credits**, the common currency across Copilot
+Studio capabilities, rated per agent activity rather than per chat message, and exposes
 no stable public per-agent consumption REST API. The cost lane therefore has two
 automated halves, mirroring the Foundry lane's estimate-then-reconcile pattern
 (estimated per-token USD reconciled against Azure Cost Management):
@@ -329,7 +330,7 @@ Credit rate card × each agent's known feature mix — the same basis as the
 [Microsoft Copilot Studio agent usage estimator](https://microsoft.github.io/copilot-studio-estimator/):
 
 ```bash
-python -m src.benchmarking.copilot_credits_cli estimate --pattern C --messages 35 \
+python -m src.benchmarking.copilot_credits_cli estimate --pattern C --interactions 35 \
   --output experiments/reports/decision-system-20260811/copilot-front-door/c/release-v2/credits-estimate.json
 ```
 
@@ -338,15 +339,15 @@ Rate card: [`experiments/pricing/copilot-studio-credits-standard-harness-2026-08
 Feature mix: [`experiments/pricing/copilot-studio-credits-feature-mix.json`](../experiments/pricing/copilot-studio-credits-feature-mix.json)
 (e.g. Pattern C ≈ generative answer + one agent action for the REST tool = 7
 Credits/message; agent-action counts are marked `uncertain` because Direct Line
-does not expose a per-message billable-event breakdown).
+does not expose a per-interaction billable-event breakdown).
 
 **2. Billed reconciliation (authoritative).** Read actual Credits in the Power
 Platform admin center → **Licensing → Copilot Studio → Environments** (Copilot
-credit consumption grid), or Copilot Studio → **Operate → Cost**. Export the grid
+credit consumption grid). Export the grid
 to a CSV with `agent,credits[,period,meter]` columns and reconcile:
 
 ```bash
-python -m src.benchmarking.copilot_credits_cli reconcile --pattern C --messages 35 \
+python -m src.benchmarking.copilot_credits_cli reconcile --pattern C --interactions 35 \
   --consumption ~/Downloads/copilot-studio-consumption.csv \
   --output experiments/reports/decision-system-20260811/copilot-front-door/c/release-v2/credits-reconciliation.json
 ```

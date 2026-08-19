@@ -170,12 +170,12 @@ how it is billed, so the benchmark is reproducible end to end.
 
 ### Cost / consumption (Credits, not Azure USD)
 
-Copilot Studio bills in **per-message Copilot Credits**, tracked separately from
+Copilot Studio bills in **Copilot Credits**, rated per agent activity and tracked separately from
 Azure per-token USD:
 
 - **Estimate:** `python -m src.benchmarking.copilot_credits_cli estimate --pattern <A|A2|B|C|Hosted>` using the rate card at [`../experiments/pricing/copilot-studio-credits-standard-harness-2026-08-01.json`](../experiments/pricing/copilot-studio-credits-standard-harness-2026-08-01.json).
-- **Billed (authoritative):** Power Platform admin center → **Licensing → Copilot Studio → Environments** (Copilot credit consumption grid), or Copilot Studio → **Operate → Cost**. Export the grid and reconcile with `copilot_credits_cli reconcile`.
-- **Bring-your-own-model note:** for Pattern B and the Hosted front door, the connected **Foundry** model's tokens are billed on the Azure per-token USD lane **in addition** to the Copilot Studio Credits — never merge the two.
+- **Billed (authoritative):** Power Platform admin center → **Licensing → Copilot Studio → Environments** (Copilot credit consumption grid). Export the grid and reconcile with `copilot_credits_cli reconcile`.
+- **Bring-your-own-model note:** for Pattern B and the Hosted front door, the connected **Foundry** model's tokens are billed on the Azure per-token USD lane **in addition** to the Copilot Credits — never merge the two.
 
 ## Prerequisites
 

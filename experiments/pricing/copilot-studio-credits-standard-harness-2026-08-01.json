@@ -3,9 +3,9 @@
   "name": "copilot-studio-credits-standard-harness",
   "version": "2026-08-01",
   "currency": "CREDITS",
-  "unit": "Copilot Credits per message",
+  "unit": "Copilot Credits per agent activity",
   "effective_date": "2026-08-01",
-  "pricing_scope": "Microsoft Copilot Studio standard harness, per-message Copilot Credit rate card (B2B / non-Microsoft-365-Copilot-licensed usage). Excludes bring-your-own-model (Azure Foundry) token charges, which are billed separately on the Foundry per-token lane.",
+  "pricing_scope": "Microsoft Copilot Studio standard harness, Copilot Credit rate card rated per agent activity (B2B / non-Microsoft-365-Copilot-licensed usage). Excludes bring-your-own-model (Azure Foundry) token charges, which are billed separately on the Foundry per-token lane.",
   "source_url": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/requirements-messages-management",
   "rates": [
     { "meter": "classic_answer", "unit": "message", "credits": 1, "note": "Predefined authored response." },
@@ -22,7 +22,7 @@
     "Rates are the published standard-harness Copilot Credit rate card captured 2026-08-13 from the source_url.",
     "Employee-facing (B2E) usage by a Microsoft 365 Copilot-licensed user is 'No charge' against these meters; this profile prices the B2B / unlicensed path so the benchmark reports a non-zero cost lane.",
     "Bring-your-own-model (Azure Foundry) token usage is billed separately and is NOT represented here; for Pattern B and the Hosted front door, add the Foundry per-token USD lane on top of the connected-agent action credits.",
-    "Credits are a per-message unit and never convert to tokens or USD; do not add Credits to the Foundry USD lane."
+    "Credits are rated per agent activity and never convert to tokens or USD; do not add Credits to the Foundry USD lane."
   ],
   "excluded_costs": [
     "Bring-your-own-model (Azure Foundry) token charges — priced separately on the Foundry per-token lane.",

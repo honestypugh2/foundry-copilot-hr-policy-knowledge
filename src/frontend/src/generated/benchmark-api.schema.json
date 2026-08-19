@@ -394,6 +394,23 @@
           "default": null,
           "title": "Absolute"
         },
+        "caveat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caveat"
+        },
+        "comparable": {
+          "default": true,
+          "title": "Comparable",
+          "type": "boolean"
+        },
         "relative": {
           "anyOf": [
             {
@@ -617,8 +634,16 @@
           "title": "Security Pass Rate"
         },
         "success_rate": {
-          "title": "Success Rate",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Success Rate"
         }
       },
       "required": [
@@ -630,7 +655,6 @@
         "git_commit",
         "created_at",
         "count",
-        "success_rate",
         "comparison_scope"
       ],
       "title": "ExperimentSummary",

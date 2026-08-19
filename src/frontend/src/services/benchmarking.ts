@@ -169,7 +169,7 @@ function normalizeExperiment(item: ExperimentTransport): ExperimentSummary {
     answer_model: item.answer_model ?? null,
     created_at: item.created_at,
     count: item.count,
-    success_rate: item.success_rate,
+    success_rate: item.success_rate ?? null,
     latency_p50_ms: item.latency_p50_ms ?? null,
     latency_p95_ms: item.latency_p95_ms ?? null,
     latency_p99_ms: item.latency_p99_ms ?? null,

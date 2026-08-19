@@ -84,7 +84,7 @@ const TERMS: Term[] = [
     group: "Quality",
     short: "The effective answer model — pinnable vs. platform-managed.",
     detail:
-      "gpt-5-mini where we control it (Foundry patterns), or a harness:model marker for Copilot Studio: microsoft_managed_standard_harness:claude-sonnet-4.6 (A, B, C, Hosted) and github_copilot_harness:claude-sonnet-4.6 (A2). The Copilot Studio model is selectable and recorded but bills in per-message Credits, not tokens, so it never joins the Foundry per-token axis. Cross-platform quality is confounded by model, so compare within a platform first.",
+      "gpt-5-mini where we control it (Foundry patterns), or a harness:model marker for Copilot Studio: microsoft_managed_standard_harness:claude-sonnet-4.6 (A, B, C, Hosted) and github_copilot_harness:claude-sonnet-4.6 (A2). The Copilot Studio model is selectable and recorded but bills in Copilot Credits, not tokens, so it never joins the Foundry per-token axis. Cross-platform quality is confounded by model, so compare within a platform first.",
   },
   {
     term: "Evidence states",
@@ -124,9 +124,9 @@ const TERMS: Term[] = [
   {
     term: "Copilot Studio credits",
     group: "Cost",
-    short: "Per-message billing for Copilot Studio patterns — a different unit.",
+    short: "Copilot Credits billing for Copilot Studio patterns — a different unit.",
     detail:
-      "Copilot Studio bills in Copilot Credits per message (Classic answer, Generative answer, Process Agent), shown in its Operate → Cost tab and Power Platform Admin. It is Microsoft-managed and cannot be converted to per-token USD, so it is tracked as a separate cost lane.",
+      "Copilot Studio bills in Copilot Credits, the common currency across Copilot Studio capabilities, rated per agent activity (Classic answer, Generative answer, Agent action). Billed consumption is reported in the Power Platform admin center under Licensing → Copilot Studio. It is Microsoft-managed and cannot be converted to per-token USD, so it is tracked as a separate cost lane.",
   },
   {
     term: "Retrieval modes",

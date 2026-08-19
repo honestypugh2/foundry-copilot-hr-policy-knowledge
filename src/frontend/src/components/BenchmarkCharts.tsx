@@ -46,11 +46,13 @@ const pct = (value: number | null | undefined) =>
   value === null || value === undefined ? null : Number((value * 100).toFixed(1));
 const secs = (ms: number | null | undefined) =>
   ms === null || ms === undefined ? null : Number((ms / 1000).toFixed(1));
-const creditsPerMessage = (item: ExperimentSummary): number | null => {
+const creditsPerInteraction = (item: ExperimentSummary): number | null => {
   const credits = (item.provenance as Record<string, unknown> | undefined)?.copilot_credits as
     | Record<string, unknown>
     | undefined;
-  return typeof credits?.credits_per_message === "number" ? credits.credits_per_message : null;
+  return typeof credits?.credits_per_interaction === "number"
+    ? credits.credits_per_interaction
+    : null;
 };
 
 /** Pick the most-evidenced graded run per pattern for the at-a-glance charts. */
@@ -116,9 +118,11 @@ export default function BenchmarkCharts({ items }: { items: ExperimentSummary[] 
   const scatterRows = rows.filter((row) => row.p95s !== null && row.quality !== null);
   const creditRows = PATTERN_ORDER.map((pattern) => {
     const run = items
-      .filter((item) => item.pattern === pattern && creditsPerMessage(item) !== null)
+      .filter((item) => item.pattern === pattern && creditsPerInteraction(item) !== null)
       .sort((a, b) => b.count - a.count || b.created_at.localeCompare(a.created_at))[0];
-    return run ? { pattern: String(pattern), credits: creditsPerMessage(run) as number } : null;
+    return run
+      ? { pattern: String(pattern), credits: creditsPerInteraction(run) as number }
+      : null;
   }).filter((row): row is { pattern: string; credits: number } => row !== null);
   const costRows = PATTERN_ORDER.map((pattern) => {
     const run = items
@@ -141,7 +145,8 @@ export default function BenchmarkCharts({ items }: { items: ExperimentSummary[] 
           <p>
             Latency, answer quality, security, the quality-vs-speed trade-off, and
             cost across Patterns A, A2, B, C, and Hosted. Cost has two lanes that
-            cannot be combined: Copilot Studio bills credits per message; Foundry
+            cannot be combined: Copilot Studio bills Copilot Credits per agent
+            activity; Foundry
             prices tokens per answer. Lower latency, higher quality, lower cost are better.
           </p>
         </div>
@@ -261,8 +266,8 @@ export default function BenchmarkCharts({ items }: { items: ExperimentSummary[] 
         {creditRows.length > 0 && (
           <ChartCard
             eyebrow="Cost · Copilot Studio lane"
-            title="Credits per message"
-            hint="Patterns A, A2, C bill in Copilot Credits per message — Microsoft-managed, not convertible to USD."
+            title="Credits per interaction"
+            hint="Patterns A, A2, C bill in Copilot Credits, rated per agent activity — Microsoft-managed, not convertible to USD."
           >
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={creditRows} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
@@ -272,7 +277,7 @@ export default function BenchmarkCharts({ items }: { items: ExperimentSummary[] 
                 <Tooltip
                   contentStyle={tooltipStyle}
                   cursor={{ fill: "rgba(37,99,235,.06)" }}
-                  formatter={(value) => [`${value} credits/msg`, "Credits"]}
+                  formatter={(value) => [`${value} credits/interaction`, "Credits"]}
                 />
                 <Bar dataKey="credits" radius={[6, 6, 0, 0]} maxBarSize={44}>
                   {creditRows.map((row) => (

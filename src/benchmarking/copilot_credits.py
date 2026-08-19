@@ -1,11 +1,14 @@
-"""Copilot Studio per-message Credit cost lane.
+"""Copilot Studio Copilot Credits cost lane.
 
-Copilot Studio bills in per-message Copilot Credits, not tokens, and exposes no
-stable public per-agent consumption REST API. This module provides the two
-honest, automatable halves of that cost lane:
+Copilot Studio bills in Copilot Credits, the common currency across Copilot
+Studio capabilities, and exposes no stable public per-agent consumption REST
+API. Credits are rated per agent activity (classic answer, generative answer,
+agent action, and so on), not per chat message, so this module estimates per
+benchmark interaction and multiplies by the interaction count. This module
+provides the two honest, automatable halves of that cost lane:
 
-1. A deterministic forward ESTIMATE of Credits-per-message from each agent's
-   known configuration (rate card x per-pattern feature mix) — mirroring the
+1. A deterministic forward ESTIMATE of Credits-per-interaction from each agent's
+   known configuration (rate card x per-pattern feature mix) - mirroring the
    Microsoft Copilot Studio agent usage estimator.
 2. A RECONCILIATION ingester for the authoritative billed Credits exported from
    the Power Platform admin center consumption grid (analogous to Azure Cost
@@ -38,8 +41,8 @@ class CreditEstimate(BaseModel):
 
     pattern: str | None
     front_door_agent: str | None
-    messages: int
-    credits_per_message: float
+    interactions: int
+    credits_per_interaction: float
     estimated_total_credits: float
     lines: list[CreditEventLine]
     byo_foundry_tokens: bool
@@ -86,7 +89,7 @@ def load_feature_mix(path: Path) -> dict:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
-def estimate_message_credits(
+def estimate_interaction_credits(
     events: list[dict], rate_card: dict[str, float], uncertain_meters: set[str]
 ) -> tuple[float, list[CreditEventLine]]:
     lines: list[CreditEventLine] = []
@@ -116,7 +119,7 @@ def estimate_pattern(
     *,
     rate_card_path: Path,
     feature_mix_path: Path,
-    messages: int = 1,
+    interactions: int = 1,
 ) -> CreditEstimate:
     rate_card, rate_profile = load_rate_card(rate_card_path)
     mix = load_feature_mix(feature_mix_path)
@@ -127,16 +130,16 @@ def estimate_pattern(
         )
     spec = patterns[pattern]
     uncertain = set(spec.get("uncertain_events", []))
-    per_message, lines = estimate_message_credits(
+    per_interaction, lines = estimate_interaction_credits(
         spec.get("events", []), rate_card, uncertain
     )
     rate_id = f"{rate_profile['name']}:{rate_profile['version']}"
     return CreditEstimate(
         pattern=pattern,
         front_door_agent=spec.get("front_door_agent"),
-        messages=messages,
-        credits_per_message=per_message,
-        estimated_total_credits=per_message * messages,
+        interactions=interactions,
+        credits_per_interaction=per_interaction,
+        estimated_total_credits=per_interaction * interactions,
         lines=lines,
         byo_foundry_tokens=bool(spec.get("byo_foundry_tokens", False)),
         rate_profile=rate_id,

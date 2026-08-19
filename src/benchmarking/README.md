@@ -32,7 +32,7 @@ load tests, and production telemetry as interchangeable evidence. Full design:
 | [`evaluation.py`](evaluation.py) | Deterministic quality/security graders, recall@k / MRR, category slices. |
 | [`evaluation_attachment.py`](evaluation_attachment.py) | Attaches native Copilot Studio evaluation results to a run. |
 | [`costing.py`](costing.py) | Versioned per-token cost from service-reported usage × a dated pricing profile. |
-| [`copilot_credits.py`](copilot_credits.py) / [`copilot_credits_cli.py`](copilot_credits_cli.py) | Copilot Studio Credits estimate + reconciliation (the second cost lane). |
+| [`copilot_credits.py`](copilot_credits.py) / [`copilot_credits_cli.py`](copilot_credits_cli.py) | Copilot Credits estimate + reconciliation (the second cost lane). |
 | [`copilot_evaluation.py`](copilot_evaluation.py) / [`copilot_evaluation_cli.py`](copilot_evaluation_cli.py) | Drives/imports native Copilot Studio Evaluation runs. |
 | [`decision.py`](decision.py) | Pareto membership and SLO qualification; fails closed on missing evidence. |
 | [`fingerprinting.py`](fingerprinting.py) | Corpus/index/config fingerprints that gate comparability. |

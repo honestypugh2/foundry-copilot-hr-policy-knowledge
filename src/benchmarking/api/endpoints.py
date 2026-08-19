@@ -136,20 +136,20 @@ def _attach_copilot_credits(payload: dict[str, Any]) -> dict[str, Any]:
     if provenance.get("measurement_boundary") != "copilot_studio_direct_line":
         return payload
     pattern = str(payload.get("manifest", {}).get("pattern") or "")
-    messages = int(aggregate.get("count") or 0) or 1
+    interactions = int(aggregate.get("count") or 0) or 1
     try:
         estimate = estimate_pattern(
             pattern,
             rate_card_path=_CREDIT_RATE_CARD,
             feature_mix_path=_CREDIT_FEATURE_MIX,
-            messages=messages,
+            interactions=interactions,
         )
     except (ValueError, FileNotFoundError):
         return payload
     provenance["copilot_credits"] = {
-        "credits_per_message": estimate.credits_per_message,
+        "credits_per_interaction": estimate.credits_per_interaction,
         "estimated_total_credits": estimate.estimated_total_credits,
-        "messages": estimate.messages,
+        "interactions": estimate.interactions,
         "byo_foundry_tokens": estimate.byo_foundry_tokens,
         "has_uncertain_events": estimate.has_uncertain_events,
         "rate_profile": estimate.rate_profile,

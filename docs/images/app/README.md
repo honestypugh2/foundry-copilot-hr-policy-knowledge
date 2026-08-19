@@ -11,9 +11,12 @@ image (the Foundry TechCommunity blog process requires alt text on every image).
 - **Build:** current `main` UI — "Pattern Lab / Architecture intelligence", dark
   theme, nav = Overview · Experiments · Compare · Pareto/SLO · Evidence coverage
   · Glossary.
-- **Captured:** 2026-08-17, headless Chromium at 1600×1000 (section crops
+- **Captured:** 2026-08-19, headless Chromium at 1600×1000 (section crops
   1312 px wide), backend in offline mode (`USE_AZURE_SERVICES=false`) reading
-  committed artifacts under `experiments/reports/`.
+  committed artifacts under `experiments/reports/`. This capture reflects the
+  Copilot Credits terminology sweep (the Copilot Studio cost lane now reads
+  "Credits per interaction", rated per agent activity) and includes the
+  `copilot-front-door-hosted-45-20260818` run in the Experiments ledger.
 - **Authoritative numbers vs. these screenshots.** For *published* metrics, cite
   the committed publication bundle
   [`experiments/reports/decision-system-20260811`](../../../experiments/reports/decision-system-20260811)
@@ -45,7 +48,7 @@ image (the Foundry TechCommunity blog process requires alt text on every image).
 | [`overview/architecture-map.gif`](overview/architecture-map.gif) ⭐ | Animated architecture map (**dark theme**), captured from the app's real click interaction — the active pattern lights up, the dashed connector line animates from the Copilot Studio front door, and the detail card below updates for each pattern (A → A2 → B → C → H). | Animated diagram: employees enter through Copilot Studio, which routes to five grounded-agent patterns — A (Azure AI Search), A2 (Foundry IQ agentic knowledge base), B (Foundry Agent Service), C (deterministic locator), and a self-hosted Agent Framework runtime; the selected pattern and its detail card update in turn. |
 | [`overview/architecture-map-light.gif`](overview/architecture-map-light.gif) | Same animation in **light theme** (app theme toggle). | Animated diagram (light theme): Copilot Studio routing to five grounded-agent patterns A, A2, B, C, and Hosted, with the selected pattern and its detail card updating in turn. |
 | [`overview/02-architecture-map.png`](overview/02-architecture-map.png) ⭐ | Static architecture map (same as the GIF, one frame). | Diagram of one Copilot Studio front door routing to five grounded-agent retrieval patterns A, A2, B, C, and Hosted. |
-| [`overview/03-benchmark-at-a-glance.png`](overview/03-benchmark-at-a-glance.png) ⭐ | Latency, quality/security gates, and the two cost lanes (Copilot Studio Credits vs Foundry per-token USD). | Benchmark summary charts: response time by pattern, quality and security gates, and the two separate cost lanes for Copilot Studio Credits and Foundry per-token cost. |
+| [`overview/03-benchmark-at-a-glance.png`](overview/03-benchmark-at-a-glance.png) ⭐ | Latency, quality/security gates, and the two cost lanes (Copilot Credits vs Foundry per-token USD). | Benchmark summary charts: response time by pattern, quality and security gates, and the two separate cost lanes for Copilot Credits and Foundry per-token cost. |
 | [`overview/09-hosted-retrieval.png`](overview/09-hosted-retrieval.png) | Hosted retrieval modes — tool 100% / semantic 71.4% / agentic 100% (35 cases each), pinned to `decision-system-20260811/hosted/`. | Panel comparing the three Hosted retrieval modes — tool retrieval 100%, semantic context 71.4%, and agentic context 100% deterministic quality, 35 cases each. |
 | [`overview/10-architecture-paths.png`](overview/10-architecture-paths.png) | Pattern cards showing implementation state and evidence state as distinct signals. | Cards for patterns A, A2, B, C, and Hosted showing implementation status and benchmark-evidence status separately. |
 | [`overview/11-evidence-ledger.png`](overview/11-evidence-ledger.png) | Recent-runs table (pattern × mode × dataset × boundary). | Table of recent benchmark runs listing pattern, retrieval mode, dataset version, and measurement boundary. |

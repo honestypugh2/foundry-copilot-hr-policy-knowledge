@@ -142,8 +142,8 @@ cannot make it uniform:
 | Where | Answer model | Control |
 | --- | --- | --- |
 | Foundry patterns — B, Hosted (tool / context-semantic / context-agentic) | `gpt-5-mini` (also the context-agentic sub-query planning model) | You pin it (`AZURE_AI_MODEL_DEPLOYMENT_NAME`) |
-| Copilot Studio A, C, and the B/Hosted front doors | Standard-harness model — **selectable and recorded**; this project pins **Claude Sonnet 4.6** (GA) across all standard-harness front doors | Selectable in the maker portal, but not token-instrumentable — bills per-message Credits, not tokens |
-| Copilot Studio A2 | GitHub Copilot harness model set | Selectable in the maker portal, but not token-instrumentable — bills per-message Credits, not tokens |
+| Copilot Studio A, C, and the B/Hosted front doors | Standard-harness model — **selectable and recorded**; this project pins **Claude Sonnet 4.6** (GA) across all standard-harness front doors | Selectable in the maker portal, but not token-instrumentable — bills Copilot Credits, not tokens |
+| Copilot Studio A2 | GitHub Copilot harness model set | Selectable in the maker portal, but not token-instrumentable — bills Copilot Credits, not tokens |
 
 Consequences for interpreting results:
 
@@ -155,7 +155,7 @@ Consequences for interpreting results:
   first; state the model caveat before any cross-platform quality claim. Copilot
   Studio's model is now selectable and recorded (this project uses Claude Sonnet
   4.6), but it is a different catalog than the Azure `gpt-5-mini` deployment and
-  bills in per-message Credits — so it still never joins the Foundry per-token
+  bills in Copilot Credits — so it still never joins the Foundry per-token
   lane, and cross-platform quality stays confounded by model.
 - **The evaluation judge model is held constant across all patterns**, so quality
   scores remain comparable even when the answer models differ.
@@ -166,7 +166,7 @@ Consequences for interpreting results:
   deterministic options that generate no answer. The Copilot Studio model is
   selectable, so the marker records the harness **and** the selected model; it
   still never joins Foundry's per-token cost axis because it is billed in
-  per-message Credits.
+  Copilot Credits.
 
 ---
 

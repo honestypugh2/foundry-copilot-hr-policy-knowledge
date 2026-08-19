@@ -1,15 +1,15 @@
-"""CLI for the Copilot Studio Credits cost lane (estimate + reconcile).
+"""CLI for the Copilot Credits cost lane (estimate + reconcile).
 
 Examples:
-  # Forward estimate of Credits/message for a pattern (35 measured messages):
+  # Forward estimate of Credits/interaction for a pattern (35 measured interactions):
   python -m src.benchmarking.copilot_credits_cli estimate \
-    --pattern C --messages 35 \
+    --pattern C --interactions 35 \
     --output experiments/reports/decision-system-20260811/copilot-front-door/c/release-v2/credits-estimate.json
 
   # Reconcile the estimate against billed Credits exported from the
   # Power Platform admin center consumption grid:
   python -m src.benchmarking.copilot_credits_cli reconcile \
-    --pattern C --messages 35 \
+    --pattern C --interactions 35 \
     --consumption ~/Downloads/copilot-studio-consumption.csv \
     --output .../credits-reconciliation.json
 """
@@ -34,7 +34,7 @@ DEFAULT_FEATURE_MIX = Path("experiments/pricing/copilot-studio-credits-feature-m
 
 def _add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--pattern", required=True, help="A, A2, B, C, or Hosted")
-    parser.add_argument("--messages", type=int, default=1)
+    parser.add_argument("--interactions", type=int, default=1)
     parser.add_argument("--rate-card", type=Path, default=DEFAULT_RATE_CARD)
     parser.add_argument("--feature-mix", type=Path, default=DEFAULT_FEATURE_MIX)
     parser.add_argument("--output", type=Path, default=None)
@@ -55,12 +55,12 @@ def _estimate(args: argparse.Namespace) -> int:
         args.pattern,
         rate_card_path=args.rate_card,
         feature_mix_path=args.feature_mix,
-        messages=args.messages,
+        interactions=args.interactions,
     )
     _write(args.output, estimate.model_dump())
     print(
-        f"{args.pattern}: {estimate.credits_per_message:g} Credits/message x "
-        f"{estimate.messages} = {estimate.estimated_total_credits:g} Credits "
+        f"{args.pattern}: {estimate.credits_per_interaction:g} Credits/interaction x "
+        f"{estimate.interactions} = {estimate.estimated_total_credits:g} Credits "
         f"(estimate){' + Foundry tokens (separate lane)' if estimate.byo_foundry_tokens else ''}"
     )
     return 0
@@ -71,7 +71,7 @@ def _reconcile(args: argparse.Namespace) -> int:
         args.pattern,
         rate_card_path=args.rate_card,
         feature_mix_path=args.feature_mix,
-        messages=args.messages,
+        interactions=args.interactions,
     )
     consumption = parse_consumption_csv(args.consumption)
     result = reconcile(estimate, consumption)
@@ -87,7 +87,7 @@ def _reconcile(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Copilot Studio Credits cost lane")
+    parser = argparse.ArgumentParser(description="Copilot Credits cost lane")
     sub = parser.add_subparsers(dest="command", required=True)
 
     estimate = sub.add_parser("estimate", help="Forward Credits estimate from config")

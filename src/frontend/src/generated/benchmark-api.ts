@@ -38,9 +38,11 @@ export type RetrievalMode = string;
 export type SampleWarning = string | null;
 export type SchemaVersion1 = "1.0";
 export type SecurityPassRate = number | null;
-export type SuccessRate = number;
+export type SuccessRate = number | null;
 export type CompatibleScope = boolean;
 export type Absolute = number | null;
+export type Caveat = string | null;
+export type Comparable = boolean;
 export type Relative = number | null;
 export type IncompatibilityReasons = string[];
 export type SchemaVersion2 = "1.0";
@@ -148,7 +150,7 @@ export interface ExperimentSummary {
   sample_warning?: SampleWarning;
   schema_version?: SchemaVersion1;
   security_pass_rate?: SecurityPassRate;
-  success_rate: SuccessRate;
+  success_rate?: SuccessRate;
 }
 export interface Provenance {
   [k: string]: unknown;
@@ -158,6 +160,8 @@ export interface Deltas {
 }
 export interface Delta {
   absolute?: Absolute;
+  caveat?: Caveat;
+  comparable?: Comparable;
   relative?: Relative;
 }
 export interface DecisionResponse {

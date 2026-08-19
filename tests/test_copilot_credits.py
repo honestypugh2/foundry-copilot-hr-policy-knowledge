@@ -1,4 +1,4 @@
-"""Tests for the Copilot Studio Credits cost lane."""
+"""Tests for the Copilot Credits cost lane."""
 
 from __future__ import annotations
 
@@ -30,16 +30,16 @@ def test_rate_card_has_core_meters() -> None:
 
 def test_pattern_a_is_one_generative_answer() -> None:
     estimate = estimate_pattern("A", rate_card_path=RATE_CARD, feature_mix_path=FEATURE_MIX)
-    assert estimate.credits_per_message == 2
+    assert estimate.credits_per_interaction == 2
     assert estimate.byo_foundry_tokens is False
     assert estimate.has_uncertain_events is False
 
 
-def test_pattern_c_generative_plus_action_scales_with_messages() -> None:
+def test_pattern_c_generative_plus_action_scales_with_interactions() -> None:
     estimate = estimate_pattern(
-        "C", rate_card_path=RATE_CARD, feature_mix_path=FEATURE_MIX, messages=35
+        "C", rate_card_path=RATE_CARD, feature_mix_path=FEATURE_MIX, interactions=35
     )
-    assert estimate.credits_per_message == 7  # 2 generative + 5 agent action
+    assert estimate.credits_per_interaction == 7  # 2 generative + 5 agent action
     assert estimate.estimated_total_credits == 7 * 35
     assert estimate.has_uncertain_events is True
 
@@ -63,7 +63,7 @@ def test_reconcile_matches_billed_agent(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     estimate = estimate_pattern(
-        "C", rate_card_path=RATE_CARD, feature_mix_path=FEATURE_MIX, messages=35
+        "C", rate_card_path=RATE_CARD, feature_mix_path=FEATURE_MIX, interactions=35
     )
     result = reconcile(estimate, parse_consumption_csv(csv_path))
     assert result.billed_total_credits == 300

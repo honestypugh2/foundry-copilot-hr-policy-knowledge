@@ -72,7 +72,7 @@ Estimated effort: **~80% is reusable unchanged.** A new RAG/agent use case is a
 - The **evidence rules** (controlled vs load vs production; measured vs fixture vs
   unavailable), **comparison scope** (fails closed on mismatched dataset/index/model/mode/
   boundary), **SLO gates**, **Pareto**, and the **two cost lanes** (Foundry per-token USD vs
-  Copilot Studio per-message credits) are domain-agnostic.
+  Copilot Credits) are domain-agnostic.
 
 ## Suggested adaptation order
 

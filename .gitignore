@@ -182,6 +182,10 @@ experiments/reports/decision-system-20260811/figures/
 !experiments/reports/publication-9c94215-20260810/
 !experiments/reports/publication-9c94215-20260810/**
 experiments/reports/publication-9c94215-20260810/inputs/
+# Cited in the Part 2 benchmarking post; every published number needs a
+# committed manifest and report.
+!experiments/reports/copilot-front-door-hosted-45-20260818/
+!experiments/reports/copilot-front-door-hosted-45-20260818/**
 experiments/reports/publication-9c94215-20260810/**/evaluation/judge-input.jsonl
 experiments/reports/publication-9c94215-20260810/**/evaluation/judge-raw.json
 experiments/cost-reconciliation/

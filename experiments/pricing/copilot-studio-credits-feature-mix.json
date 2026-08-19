@@ -3,7 +3,7 @@
   "name": "copilot-studio-credits-feature-mix",
   "version": "2026-08-01",
   "rate_profile": "copilot-studio-credits-standard-harness:2026-08-01",
-  "description": "Per-pattern assumed billable feature events for one benchmarked question, used to produce a deterministic estimated Credits-per-message figure. This is a forward estimate from each agent's known configuration (like the Microsoft Copilot Studio agent usage estimator), NOT live telemetry. The Power Platform admin-center consumption export remains authoritative for billed Credits.",
+  "description": "Per-pattern assumed billable feature events for one benchmarked question, used to produce a deterministic estimated Credits-per-interaction figure. This is a forward estimate from each agent's known configuration (like the Microsoft Copilot Studio agent usage estimator), NOT live telemetry. The Power Platform admin-center consumption export remains authoritative for billed Credits.",
   "patterns": {
     "A": {
       "front_door_agent": "Ask HR Policy Agent A",
@@ -54,7 +54,7 @@
   },
   "assumptions": [
     "One benchmarked question maps to one user message; multi-turn or retry inflation is not modeled.",
-    "agent_action counts are marked uncertain because Copilot Studio does not expose a per-message billable-event breakdown over Direct Line; confirm against the admin-center consumption grid.",
-    "Patterns whose Copilot Studio agent is currently non-responsive (B, Hosted front doors) have no live message evidence; their estimate is configuration-only until the agents are fixed."
+    "agent_action counts are marked uncertain because Copilot Studio does not expose a per-interaction billable-event breakdown over Direct Line; confirm against the admin-center consumption grid.",
+    "Patterns whose Copilot Studio front door has no graded live run carry a configuration-only estimate; the Hosted front door was re-measured on 2026-08-18 at 86.7% success."
   ]
 }
