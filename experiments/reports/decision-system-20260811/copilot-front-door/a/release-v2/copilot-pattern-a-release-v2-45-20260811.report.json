@@ -39,7 +39,7 @@
     "timeout_seconds": 120.0,
     "random_seed": 0,
     "pricing_profile": null,
-    "answer_model": "microsoft_managed_standard_harness"
+    "answer_model": "microsoft_managed_standard_harness:claude-sonnet-4.6"
   },
   "aggregate": {
     "schema_version": "1.0",
@@ -365,7 +365,7 @@
         "Compare meaning: 1 Error and 0 Invalid results"
       ],
       "evaluation_artifact": "copilot-native-evaluation.json",
-      "answer_model": "microsoft_managed_standard_harness"
+      "answer_model": "microsoft_managed_standard_harness:claude-sonnet-4.6"
     }
   }
 }

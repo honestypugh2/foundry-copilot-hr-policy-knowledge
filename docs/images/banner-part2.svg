@@ -46,7 +46,6 @@
 
   <text x="80" y="312" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#A9BAE6">An evidence system, not a leaderboard —</text>
   <text x="80" y="342" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#A9BAE6">measure the boundary · separate the cost lanes · gate on deterministic checks</text>
-  <text x="80" y="374" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="500" fill="#7F9BD8">Front door: Claude Sonnet 4.6 (both harnesses) · Backend synthesis: gpt-5-mini</text>
 
   <!-- Rule / result cards -->
   <g font-family="Segoe UI, Helvetica, Arial, sans-serif">

@@ -38,5 +38,5 @@
   "timeout_seconds": 120.0,
   "random_seed": 0,
   "pricing_profile": null,
-  "answer_model": "microsoft_managed_standard_harness"
+  "answer_model": "microsoft_managed_standard_harness:claude-sonnet-4.6"
 }

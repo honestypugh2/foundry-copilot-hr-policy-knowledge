@@ -12,7 +12,7 @@
   "pattern": "B",
   "retrieval_mode": "copilot-studio-front-door",
   "invocation_path": "copilot_studio_direct_line:crf9c_AskHRPolicyAgentBfoundry",
-  "answer_model": "microsoft_managed_standard_harness",
+  "answer_model": "microsoft_managed_standard_harness:claude-sonnet-4.6",
   "output_mode": "generated_answer_with_citations",
   "semantic_configuration": "hr-semantic-config",
   "search_sku": "basic",

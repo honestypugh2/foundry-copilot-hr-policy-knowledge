@@ -39,7 +39,7 @@
     "timeout_seconds": 120.0,
     "random_seed": 0,
     "pricing_profile": null,
-    "answer_model": "microsoft_managed_standard_harness"
+    "answer_model": "microsoft_managed_standard_harness:claude-sonnet-4.6"
   },
   "aggregate": {
     "schema_version": "1.0",
@@ -212,7 +212,7 @@
       "fixture_mode": false,
       "measurement_boundary": "copilot_studio_direct_line",
       "workload_type": "controlled_experiment",
-      "answer_model": "microsoft_managed_standard_harness"
+      "answer_model": "microsoft_managed_standard_harness:claude-sonnet-4.6"
     }
   }
 }
