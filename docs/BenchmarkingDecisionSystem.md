@@ -157,6 +157,15 @@ each measured at its own boundary, so they are never dropped into one latency
 ranking. A fixture value is never presented as Azure performance
 evidence.
 
+A later front-door re-run (`copilot-front-door-hosted-45-20260818`, clean commit
+`80403ac`) measures the **Hosted front door** on the parity model **Claude Sonnet
+4.6**: 45 Direct Line samples, p50 approximately 34.7 s, p95 approximately 55.5 s,
+success 86.7% (two errors, four timeouts), variable cost `null` (Copilot Studio
+Credits lane). It fails the p95 (at most 30 s) and success (at least 99%) gates,
+so it is **exploratory, not release-ready**, and is reported at the Copilot Studio
+front-door boundary only — never merged with the deployed-agent `gpt-5-mini`
+numbers. The release story remains the token-priced `gpt-5-mini` worked example.
+
 Compact tables render an em dash for an unavailable value instead of repeating
 "Not measured" across every row. Experiment detail and evidence guidance retain
 the measurement boundary, configuration state, and authoritative destination

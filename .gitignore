@@ -192,3 +192,7 @@ experiments/cost-reconciliation/
 /*.csv
 # Local app runtime (pids/logs) from scripts/app.sh
 .run/
+
+# Kept local only (removed from tracking); not published to remote
+docs/CopilotStudioFoundryConnectionRepair.md
+docs/blog/
