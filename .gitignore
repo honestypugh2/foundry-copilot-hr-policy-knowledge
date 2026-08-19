@@ -161,7 +161,6 @@ src/frontend/playwright-report/
 docs/BenchmarkingBlogOutline.md
 docs/*[Bb]log*.md
 # docs/BenchmarkingDecisionSystem.md
-docs/ReactBenchmarkWorkbenchADR.md
 docs/BenchmarkMigrationLedger.md
 
 # Generated benchmark outputs are local by default. Explicit exceptions below

@@ -135,6 +135,7 @@ not decoration.
 | Document | Scope |
 | --- | --- |
 | [BenchmarkingDecisionSystem.md](BenchmarkingDecisionSystem.md) | The rules the app enforces: boundaries, evidence classes, gates, cost lanes. |
+| [ReactBenchmarkWorkbenchADR.md](ReactBenchmarkWorkbenchADR.md) | Why the app is read-only, and which responsibilities stay with Microsoft-native tools. |
 | [PatternSetupAndBenchmarkGuide.md](PatternSetupAndBenchmarkGuide.md) | How to produce the runs the app reads. |
 | [CopilotStudioBenchmarking.md](CopilotStudioBenchmarking.md) | Front-door measurement over Direct Line and the Copilot Credits lane. |
 | [ReuseForYourUseCase.md](ReuseForYourUseCase.md) | Point the same workbench at a different corpus and use case. |
