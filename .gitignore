@@ -200,3 +200,6 @@ experiments/cost-reconciliation/
 docs/CopilotStudioFoundryConnectionRepair.md
 docs/blog/
 docs/images/native/
+
+extract_urls.py
+raw_urls.txt

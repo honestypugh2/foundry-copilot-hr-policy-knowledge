@@ -25,7 +25,7 @@ Notes:
       require ``allow_preview=True``.
 
 Reference:
-    https://learn.microsoft.com/azure/foundry/agents/concepts/memory
+    https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/what-is-memory?tabs=conversational-agent
 """
 
 from __future__ import annotations

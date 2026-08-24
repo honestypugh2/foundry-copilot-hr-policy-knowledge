@@ -8,7 +8,7 @@ Provides two integration modes:
    REST API, useful for server-side orchestration or testing.
 
 References:
-- https://learn.microsoft.com/en-us/microsoft-copilot-studio/configure-bot-authentication
+- https://learn.microsoft.com/en-us/microsoft-copilot-studio/configuration-end-user-authentication
 - https://learn.microsoft.com/en-us/microsoft-copilot-studio/publication-connect-bot-to-custom-application
 - https://github.com/Azure-Samples/Copilot-Studio-with-Azure-AI-Search
 """

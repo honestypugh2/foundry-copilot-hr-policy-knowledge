@@ -202,7 +202,7 @@ Logic App ──► Azure Blob Storage (upload extracted text)
 ```
 
 **References**
-- [Logic Apps RAG templates for AI Search](https://azure.github.io/LogicAppsTemplates/)
+- [Logic Apps RAG sample for AI Search](https://github.com/Azure/logicapps/tree/master/LogicApps-AI-RAG-Demo)
 - [Azure AI Search integrated vectorization](https://learn.microsoft.com/en-us/azure/search/vector-search-integrated-vectorization)
 - [Index Documents REST API](https://learn.microsoft.com/en-us/rest/api/searchservice/documents/)
 
