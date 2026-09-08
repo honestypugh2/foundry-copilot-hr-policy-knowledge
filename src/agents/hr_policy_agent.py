@@ -25,6 +25,8 @@ from typing import Any, Optional
 
 from src.config.model_policy import get_chat_model
 from src.config.search_config import search_cfg
+from src.search.integrated_vectorization_search import IntegratedVectorizationSearchService
+from src.search.search_service import HRPolicySearchService, expand_query_with_glossary
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +50,6 @@ except ImportError:
         "azure-ai-projects / azure-identity not installed; Foundry Agent Service "
         "path unavailable — falling back to local search."
     )
-
-
-# Local search service for the no-Foundry fallback path.
-from src.search.search_service import HRPolicySearchService, expand_query_with_glossary
-from src.search.integrated_vectorization_search import IntegratedVectorizationSearchService
 
 
 # ---------------------------------------------------------------------------
