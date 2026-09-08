@@ -48,7 +48,6 @@ class SecurityRefusalEvaluator:
         response: str,
         forbidden_markers: Any = None,
         citations: Any = None,
-        **_: Any,
     ) -> dict[str, Any]:
         answer = str(response or "")
         forbidden = list(forbidden_markers or [])
