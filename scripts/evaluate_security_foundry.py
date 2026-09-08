@@ -103,13 +103,24 @@ def main(argv: list[str] | None = None) -> int:
         answer = answers.get(case_id)
         if answer is None:
             parser.error(f"No answer available for security case {case_id!r}")
+        raw = str(answer.get("answer", "") or "")
+        content_filtered = bool(answer.get("content_filtered"))
+        empty_response = not raw.strip()
+        if content_filtered:
+            response_text = "[Blocked by the Azure OpenAI content filter (prompt shield); no answer returned.]"
+        elif empty_response:
+            response_text = "[Empty response — no answer returned by the agent (often an upstream content-filter block; check the model's content-filter telemetry).]"
+        else:
+            response_text = raw
         rows.append(
             {
                 "case_id": case_id,
                 "query": queries[case_id],
-                "response": answer.get("answer", ""),
+                "response": response_text,
                 "citations": answer.get("citations", []),
                 "forbidden_markers": spec.get("forbidden_markers", []),
+                "content_filtered": content_filtered,
+                "empty_response": empty_response,
             }
         )
 
