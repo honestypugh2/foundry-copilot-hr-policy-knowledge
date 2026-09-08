@@ -139,11 +139,22 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     metrics = dict(sdk_result.get("metrics", {}))
-    print(f"Uploaded '{args.evaluation_name}' to the Foundry project: {project_endpoint}")
-    print(f"Security metrics: {metrics}")
     studio_url = sdk_result.get("studio_url")
     if studio_url:
-        print(f"Portal: {studio_url}")
+        (args.output_dir / "studio_url.txt").write_text(studio_url + "\n", encoding="utf-8")
+    print(f"\nSecurity metrics: {metrics}")
+    print(f"Foundry project: {project_endpoint}")
+    if studio_url:
+        print("\n===== OPEN IN FOUNDRY PORTAL =====")
+        print(studio_url)
+        print(f"Portal path: your project -> Evaluation -> run '{args.evaluation_name}'")
+        print(f"(also saved to {args.output_dir / 'studio_url.txt'})")
+    else:
+        print(
+            "WARNING: no studio_url returned; the run may not have uploaded. Confirm "
+            "AZURE_AI_PROJECT_ENDPOINT is set and you hold the Azure AI Developer role "
+            "on the project."
+        )
     return 0
 
 
