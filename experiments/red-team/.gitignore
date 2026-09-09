@@ -1,0 +1,4 @@
+# Generated AI Red Teaming scan outputs (scorecards) are not committed.
+# Keep only the example custom attack-objectives seed file.
+*.json
+!hr_policy_attack_objectives.json
