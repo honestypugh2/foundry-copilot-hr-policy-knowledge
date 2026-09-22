@@ -79,8 +79,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Created red team: {red_team.id}")
 
             taxonomy = project_client.beta.evaluation_taxonomies.create(
-                name=args.agent_name,
-                body=EvaluationTaxonomy(
+                args.agent_name,
+                EvaluationTaxonomy(
                     description="Taxonomy for HR policy agent red teaming",
                     taxonomy_input=AgentTaxonomyInput(
                         risk_categories=[RiskCategory.PROHIBITED_ACTIONS],
@@ -115,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
 
             items = list(client.evals.runs.output_items.list(run_id=run.id, eval_id=red_team.id))
             args.output.parent.mkdir(parents=True, exist_ok=True)
-            payload = [item.as_dict() if hasattr(item, "as_dict") else item for item in items]
+            payload = [item.to_dict() if hasattr(item, "to_dict") else item for item in items]
             args.output.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
             print(
                 f"Saved {len(items)} output items to {args.output}. "
