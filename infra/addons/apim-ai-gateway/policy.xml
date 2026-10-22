@@ -1,0 +1,29 @@
+<policies>
+    <inbound>
+        <base />
+        <!-- Callers authenticate with an APIM subscription key; never forward it to the model. -->
+        <set-header name="api-key" exists-action="delete" />
+        <set-backend-service backend-id="pwwdemo-aoai-backend" />
+        <authentication-managed-identity resource="https://cognitiveservices.azure.com" />
+        <llm-token-limit
+            counter-key="@(context.Subscription.Id)"
+            tokens-per-minute="2000"
+            estimate-prompt-tokens="true"
+            remaining-tokens-header-name="x-ratelimit-remaining-tokens"
+            tokens-consumed-header-name="x-tokens-consumed" />
+        <llm-emit-token-metric namespace="pwwdemo">
+            <dimension name="Subscription ID" />
+            <dimension name="API ID" />
+            <dimension name="Agent Name" value="@(context.Request.Headers.GetValueOrDefault("x-agent-name", "unknown"))" />
+        </llm-emit-token-metric>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

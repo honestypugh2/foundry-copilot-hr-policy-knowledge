@@ -167,6 +167,22 @@ origin.
 
 ---
 
+## AI gateway demo (APIM)
+
+Requires the add-on in [infra/addons/apim-ai-gateway](../../infra/addons/apim-ai-gateway/README.md) and `APIM_*` values in `.env`.
+
+```bash
+python -m scripts.demo.preflight                                   # PASS/FAIL checks
+python -m scripts.demo.gateway_demo --consumer asset-agent -q "How much sick leave do I get?"
+python -m scripts.demo.gateway_demo --consumer partner-app --burst 15   # shows 429s
+python -m scripts.demo.gateway_demo --consumer asset-agent --jailbreak  # blocked by guardrail
+bash scripts/demo/warmup.sh                                        # all of the above + Pattern B
+```
+
+KQL for App Insights / Log Analytics: [gateway_queries.kql](gateway_queries.kql). Full runbook: [docs/DemoRunbook-PWW.md](../../docs/DemoRunbook-PWW.md).
+
+---
+
 ## See also
 
 - [docs/RetrievalPatterns.md](../../docs/RetrievalPatterns.md) — full pattern detail

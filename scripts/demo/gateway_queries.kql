@@ -1,0 +1,32 @@
+// ===== Application Insights (appi-hr-policy-kb-*) =====
+// Token metrics by consumer, last 1h. Namespace "pwwdemo"; dimension "Agent Name" comes from x-agent-name.
+// Metric names: Total Tokens, Prompt Tokens, Completion Tokens.
+customMetrics
+| where timestamp > ago(1h)
+| where customDimensions["Agent Name"] != ""
+| extend consumer = tostring(customDimensions["Agent Name"])
+| summarize tokens = sum(valueSum) by name, consumer, bin(timestamp, 5m)
+| order by timestamp desc
+
+// ---- Simple per-consumer totals
+customMetrics
+| where timestamp > ago(1h) and name == "Total Tokens"
+| summarize total_tokens = sum(valueSum) by consumer = tostring(customDimensions["Agent Name"])
+
+// ===== Log Analytics (log-hr-policy-kb-*) =====
+// Gateway requests by subscription / status code (resource-specific table)
+ApiManagementGatewayLogs
+| where TimeGenerated > ago(1h)
+| summarize requests = count() by SubscriptionId = tostring(ApimSubscriptionId), ResponseCode, bin(TimeGenerated, 5m)
+| order by TimeGenerated desc
+
+// 429s (token limit hits)
+ApiManagementGatewayLogs
+| where TimeGenerated > ago(1h) and ResponseCode == 429
+| project TimeGenerated, ApimSubscriptionId, ApiId, OperationId, ResponseCode, CorrelationId
+| order by TimeGenerated desc
+
+// LLM gateway log table (only populated once GatewayLlmLogs is flowing)
+ApiManagementGatewayLlmLog
+| where TimeGenerated > ago(1h)
+| take 50
