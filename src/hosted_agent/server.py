@@ -157,7 +157,7 @@ def search_hr_policies(
     )
 
     expanded_query = expand_query_with_glossary(query)
-    logger.info("Search query: %r -> expanded: %r", query, expanded_query)
+    logger.info("HR policy search (glossary_expanded=%s)", expanded_query != query)
 
     search_kwargs: dict[str, Any] = {
         "search_text": expanded_query,
@@ -271,15 +271,6 @@ OUTPUT FORMAT:
 # ---------------------------------------------------------------------------
 # Create Agent + Server
 # ---------------------------------------------------------------------------
-# GenAI tracing (best-effort; captures agent/model/tool calls as spans).
-if os.environ.get("ENABLE_TRACING", "true").lower() == "true":
-    try:
-        from src.observability import enable_tracing
-
-        enable_tracing(instrument_ai_clients=False)
-    except Exception as _trace_exc:  # pragma: no cover - never block hosting
-        logger.warning("GenAI tracing not enabled: %s", _trace_exc)
-
 credential = DefaultAzureCredential()
 
 # Retrieval mode: "tool" (default classic @tool search), "context-semantic"
@@ -333,7 +324,15 @@ agent = Agent(
     default_options={"store": False},
 )
 
-server = ResponsesHostServer(agent)
+# The hosting SDK owns the OTel provider and Agent 365 identity/export settings.
+# A second Azure Monitor setup can conflict with that provider; the standalone
+# hosted image also does not contain the repository's src.observability package.
+server = ResponsesHostServer(
+    agent,
+    applicationinsights_connection_string=os.environ.get(
+        "APPLICATIONINSIGHTS_CONNECTION_STRING"
+    ),
+)
 
 
 if __name__ == "__main__":

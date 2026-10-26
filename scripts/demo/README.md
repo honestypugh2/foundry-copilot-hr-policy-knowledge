@@ -1,191 +1,122 @@
-# Pattern Test Scripts + Decision-Tree Demo
+# Demo script interfaces
 
-These are smoke tests for repository-owned invocation paths, not the canonical
-setup guide and not benchmark evidence. Start with
-[Pattern Setup, Code Ownership, and Benchmark Guide](../../docs/PatternSetupAndBenchmarkGuide.md).
-Pattern A2 has no local demo script because Copilot Studio owns its synthesis;
-test A2 in Copilot Studio or through the Direct Line benchmark adapter.
+These modules exercise repository-owned retrieval and gateway paths against live
+Azure resources. They are integration utilities, not unit tests or comparative
+benchmark evidence. Mocked regression tests are in [tests/](../../tests/).
 
-Live, runnable scripts that exercise each retrieval pattern in this
-repo against the configured Azure resources, plus a storytelling demo
-that walks the decision tree end-to-end.
+## Retrieval scripts
 
-These are **integration scripts**, not unit tests. They hit the real
-`hr-policy-index`, real Azure OpenAI, and (for Pattern B / Hosted) the
-real Foundry project. For the mocked unit tests, see `tests/`.
+| Module | Code path | Scope |
+| --- | --- | --- |
+| [test_pattern_a.py](test_pattern_a.py) | Direct hybrid index search | Glossary expansion and deterministic rendering of retrieved policy content |
+| [test_pattern_b.py](test_pattern_b.py) | [HRPolicyAgent](../../src/agents/hr_policy_agent.py) | Managed Foundry prompt agent with Knowledge Base MCP retrieval |
+| [test_pattern_c.py](test_pattern_c.py) | Document locator | Hybrid search projected into policy/document link metadata |
+| [test_pattern_hosted.py](test_pattern_hosted.py) | [Agent Framework HRPolicyAgent](../../src/agents/hr_policy_agent_af.py) | In-process agent invocation, not the deployed hosted application endpoint |
+| [demo_decision_tree.py](demo_decision_tree.py) | The four paths above | Prints single-run results and latency observations |
+| [_common.py](_common.py) | Shared helpers | Environment checks, timing, and result formatting |
 
-> **TL;DR.** Run `python -m scripts.demo.demo_decision_tree` for the full
-> story. Run `python -m scripts.demo.test_pattern_<a|b|c|hosted>` for a
-> single pattern. Both honor `--question` / `-q` to swap the prompt.
+Pattern A2 has no local demo module because Copilot Studio owns its synthesis.
+Its repository integration is covered by the Direct Line benchmark adapter.
 
----
-
-## Files
-
-| Script | Pattern | Lab origin | Illustrative latency | Needs Foundry agent? |
-| ------ | ------- | ---------- | ------- | -------------------- |
-| [`test_pattern_a.py`](test_pattern_a.py) | **A** — Direct Index (★ default) | Lab 1.4, Lab 2.1 Option 1 | ~1–2 s | No |
-| [`test_pattern_b.py`](test_pattern_b.py) | **B** — Foundry Agent + MCPTool | Lab 2.4 (Foundry side) | ~10–14 s | **Yes** — run `create_foundry_agent` first |
-| [`test_pattern_c.py`](test_pattern_c.py) | **C** — Dual-Tool Routing | Lab 2.1 Options 2 & 3, Lab 2.4 (quick path) | ~1–2 s | No |
-| [`test_pattern_hosted.py`](test_pattern_hosted.py) | Hosted Agent (Agent Framework GA hosting) | — | ~10–14 s | No (uses `FoundryChatClient` directly) |
-| [`demo_decision_tree.py`](demo_decision_tree.py) | All of the above | All four labs | sum of the above | Optional (auto-skips with a warning) |
-| [`_common.py`](_common.py) | shared helpers | — | — | — |
-
-> These figures are illustrative and environment-dependent, not benchmark
-> results. Each script performs a single timed run; Pattern A measures the
-> direct search path rather than Copilot Studio's end-to-end answer path.
-
----
-
-## Prerequisites
-
-All scripts read environment from `.env` via `python-dotenv`, the same
-file the FastAPI backend uses.
-
-| Variable | Used by | Notes |
-| -------- | ------- | ----- |
-| `AZURE_SEARCH_ENDPOINT` | A, B, C, Hosted | Required everywhere |
-| `AZURE_SEARCH_API_KEY` | A, C, Hosted | Optional — `DefaultAzureCredential` is used as fallback |
-| `AZURE_SEARCH_INDEX_NAME` | All | Defaults to `hr-policy-index` |
-| `AZURE_AI_PROJECT_ENDPOINT` | B, Hosted | Foundry project endpoint |
-| `AZURE_OPENAI_DEPLOYMENT_NAME` | B, Hosted | Defaults to `gpt-5-mini` |
-
-The `hr-policy-index` must already be populated. From the repo root:
+The individual pattern modules accept `--question` / `-q`. The decision-tree
+module accepts `--content`, `--locator`, `--skip-b`, and `--skip-hosted`.
+Example interface shapes:
 
 ```bash
-uv run python scripts/index_knowledge_base_integrated_vectorization.py
-```
-
-For **Pattern B**, you also need to provision the PromptAgent once:
-
-```bash
-uv run python -m src.agents.create_foundry_agent
-```
-
----
-
-## Quick start
-
-```bash
-# Activate the project venv first
-source .venv/bin/activate
-
-# Run a single pattern with the default question
-python -m scripts.demo.test_pattern_a
-python -m scripts.demo.test_pattern_c
-
-# Pattern B (requires Foundry agent provisioned)
-python -m scripts.demo.test_pattern_b
-
-# Hosted agent (Agent Framework runtime)
-python -m scripts.demo.test_pattern_hosted
-
-# Override the question
 python -m scripts.demo.test_pattern_a -q "What is the dress code policy?"
-python -m scripts.demo.test_pattern_c -q "Where can I download the Code of Ethics?"
-
-# Full storytelling demo — walks every act of the decision tree
-python -m scripts.demo.demo_decision_tree
-
-# Demo with selected acts skipped
-python -m scripts.demo.demo_decision_tree --skip-b --skip-hosted
-
-# Demo with custom questions
-python -m scripts.demo.demo_decision_tree \
-  --content "How much PTO do part-time employees accrue?" \
-  --locator "Give me the link to the PTO policy"
+python -m scripts.demo.test_pattern_b -q "What is the parental leave policy?"
+python -m scripts.demo.demo_decision_tree --skip-hosted
 ```
 
-The demo ends with a side-by-side table of single-run observations. Those
-observations can confirm a path is working but cannot establish a comparative
-latency result.
+Pattern B initializes the managed prompt agent before invocation. Its fallback
+path can return local-search results when Foundry is unavailable; an exit code
+of zero alone does not prove the managed-agent path ran.
+The hosted-pattern module exercises local Agent Framework code rather than the
+platform-managed `ResponsesHostServer` runtime or its Agent 365 exporter.
 
----
+## Environment contract
 
-## What each script proves
+The scripts load the repository's ignored `.env` through `python-dotenv`.
 
-### `test_pattern_a.py`
-Replicates `src/backend/main.py:_pattern_a_answer` exactly:
-1. Glossary expansion (`expand_query_with_glossary`).
-2. Hybrid search via `IntegratedVectorizationSearchService.search()`.
-3. Deterministic concatenation of the top-3 hits with policy citations.
+| Variable | Consumer | Meaning |
+| --- | --- | --- |
+| `AZURE_SEARCH_ENDPOINT` | Retrieval scripts | Search service endpoint |
+| `AZURE_SEARCH_API_KEY` | Key-enabled retrieval paths | Optional key; identity credentials are used on identity-enabled paths |
+| `AZURE_SEARCH_INDEX_NAME` | Retrieval scripts | Index name, default `hr-policy-index` |
+| `AZURE_AI_PROJECT_ENDPOINT` | Pattern B / in-process Agent Framework | Foundry project endpoint |
+| `AZURE_OPENAI_DEPLOYMENT_NAME` | Model-backed paths | Chat deployment selection |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Tracing / preflight | Azure Monitor destination or presence check, not an Agent 365 credential |
 
-This is **byte-for-byte the same retrieval shape** that Copilot
-Studio's native "Add knowledge → Azure AI Search" connector runs
-against `hr-policy-index`, which is why Pattern A is the default.
+The retrieval scripts assume a populated index. Pattern B additionally depends
+on the managed agent and Knowledge Base MCP configuration owned by
+[create_foundry_agent.py](../../src/agents/create_foundry_agent.py).
+Full pattern ownership is described in
+[PatternSetupAndBenchmarkGuide.md](../../docs/PatternSetupAndBenchmarkGuide.md).
 
-### `test_pattern_b.py`
-1. Constructs `HRPolicyAgent` (Foundry path).
-2. Calls `initialize()` to ensure the PromptAgent exists.
-3. Invokes `answer_question_async()` which calls the Responses API with
-   `agent_reference={"name":"HRPolicyAgent"}` — `MCPTool` runs
-   server-side with `tool_choice="required"`.
+## Gateway and traffic utilities
 
-If the Foundry client is unavailable (e.g. agent not provisioned), the
-agent falls back to local search and prints a warning — the script
-still exits 0 so it's safe in CI.
+| File | Behavior |
+| --- | --- |
+| [gateway_demo.py](gateway_demo.py) | Calls the APIM model route with a consumer subscription; prints status, usage, remaining tokens, and latency |
+| [gateway_queries.kql](gateway_queries.kql) | Queries token metrics, gateway status counts, 429s, and LLM logs |
+| [preflight.py](preflight.py) | Checks subscription, backend health, Foundry verification, index count, both gateway keys, and App Insights configuration |
+| [warmup.sh](warmup.sh) | Generates timestamped Pattern B and gateway traffic, including synthetic jailbreak prompts |
 
-### `test_pattern_c.py`
-Replicates `src/backend/main.py:/api/lookup`:
-1. Glossary expansion (same as Pattern A).
-2. Hybrid search over the same index, but projected into the
-   article-compatible top-level locator fields (`policy_id`, `title`, `blob_url`)
-   plus the richer `documents` metadata (`policy_number`, `parent_title`,
-   `metadata_storage_name`, `metadata_storage_path`, `blob_url`, `score`).
-3. Prints the routing levers used by the Copilot Studio side
-   ([CopilotStudioLookupRouting.md](../../docs/CopilotStudioLookupRouting.md)).
+The gateway module depends on the
+[APIM add-on](../../infra/addons/apim-ai-gateway/README.md) and these variables:
+`APIM_GATEWAY_URL`, `APIM_KEY_ASSET_AGENT`, `APIM_KEY_PARTNER_APP`,
+`APIM_API_VERSION` (default `2024-10-21`), and `APIM_DEPLOYMENT_NAME`
+(default `gpt-5-mini`).
 
-### `test_pattern_hosted.py`
-Runs `hr_policy_agent_af.HRPolicyAgent` end-to-end: Agent Framework
-`Agent` + `FoundryChatClient` + `@tool search_hr_policies`. This is
-the same agent the self-hosted container in `src/hosted_agent/`
-serves; the script just exercises the class directly so you don't
-have to build/deploy a container.
-
-### `demo_decision_tree.py`
-Four-act storytelling walk-through:
-- **Act 1** — Pattern A (Lab 1.4)
-- **Act 2** — Pattern B (Lab 2.4 Foundry side)
-- **Act 3** — Native citations alternative → Pattern C (Lab 2.1 Options 2 & 3)
-- **Act 4** — Hosted Agent (Agent Framework GA hosting)
-
-Each act prints the decision-tree branch being taken, the lab it
-maps to, and the relevant code path. The final "curtain call"
-prints a comparison table of pattern × result × latency × lab
-origin.
-
----
-
-## Exit codes
-
-| Code | Meaning |
-| ---- | ------- |
-| `0`  | All requested patterns ran successfully |
-| `1`  | One or more requested patterns failed |
-| `2`  | Required env vars missing (preflight failed) |
-| `130` | Demo aborted (Ctrl+C) |
-
----
-
-## AI gateway demo (APIM)
-
-Requires the add-on in [infra/addons/apim-ai-gateway](../../infra/addons/apim-ai-gateway/README.md) and `APIM_*` values in `.env`.
+Example CLI interfaces:
 
 ```bash
-python -m scripts.demo.preflight                                   # PASS/FAIL checks
-python -m scripts.demo.gateway_demo --consumer asset-agent -q "How much sick leave do I get?"
-python -m scripts.demo.gateway_demo --consumer partner-app --burst 15   # shows 429s
-python -m scripts.demo.gateway_demo --consumer asset-agent --jailbreak  # blocked by guardrail
-bash scripts/demo/warmup.sh                                        # all of the above + Pattern B
+python -m scripts.demo.gateway_demo --consumer asset-agent -q "Describe a fictional leave policy."
+python -m scripts.demo.gateway_demo --consumer partner-app --burst 15
+python -m scripts.demo.gateway_demo --consumer asset-agent --jailbreak
 ```
 
-KQL for App Insights / Log Analytics: [gateway_queries.kql](gateway_queries.kql). Full runbook: [docs/DemoRunbook-PWW.md](../../docs/DemoRunbook-PWW.md).
+`--burst` sends sequential requests and does not guarantee a 429.
+`--jailbreak` sends a fixed test prompt and reports the returned filter status;
+it does not create or verify Defender alerts. Gateway requests do not invoke a
+published agent. The implementation reference is
+[DemoRunbook-PWW.md](../../docs/DemoRunbook-PWW.md).
 
----
+## Agent 365 configuration diagnostic
 
-## See also
+[agent365_preflight.py](agent365_preflight.py) is a separate read-only diagnostic.
+It checks the account collection state, Agent 365 observability service,
+supplied hosted identities' write assignments, and Defender configuration.
+It does not send conversations, grant permissions, or verify remote ingestion.
 
-- [docs/RetrievalPatterns.md](../../docs/RetrievalPatterns.md) — full pattern detail
-- [docs/LabCoverage.md](../../docs/LabCoverage.md) — cross-walk to Azure/Copilot-Studio-and-Azure labs
-- [docs/CopilotStudioLookupRouting.md](../../docs/CopilotStudioLookupRouting.md) — Pattern C vs native citations
-- [tests/](../../tests/) — unit tests (mocked, fast, CI-friendly)
+```text
+python -m scripts.demo.agent365_preflight \
+  --hosted-agent-principal-id <agent-identity-object-id>
+```
+
+The account defaults to the parent of `AZURE_AI_PROJECT_RESOURCE_ID`, with
+`--account-resource-id` as an override. The hosted-principal flag is repeatable.
+Expected tenant/subscription variables constrain the active Azure CLI context
+when configured.
+
+Telemetry ownership, privacy, and security attribution are documented in
+[Agent365Observability.md](../../docs/Agent365Observability.md).
+
+## Exit-code semantics
+
+| Utility | Meaning |
+| --- | --- |
+| Retrieval/decision-tree scripts | `0`: requested path returned successfully, including any supported fallback; `1`: failure; `2`: missing required configuration; `130`: interrupted demo where handled |
+| `gateway_demo.py` | `2`: missing gateway URL/key; otherwise `0` after the request loop, including printed HTTP or transport errors |
+| `preflight.py` | `0`: dependency checks pass; `1`: one or more fail; HTTP 429 counts as gateway reachability |
+| `agent365_preflight.py` | `1`: configuration/read failure; `2`: no failure but visibility or coverage unknown; successful reads currently always leave ingestion unknown |
+| `warmup.sh` | Continues after individual failures; does not compute an aggregate test result |
+
+The gateway and dependency preflight issue live model requests and can incur
+usage charges. Agent 365 preflight performs configuration reads only.
+
+## Related code documentation
+
+- [RetrievalPatterns.md](../../docs/RetrievalPatterns.md)
+- [LabCoverage.md](../../docs/LabCoverage.md)
+- [CopilotStudioLookupRouting.md](../../docs/CopilotStudioLookupRouting.md)

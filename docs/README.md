@@ -1,12 +1,9 @@
 # Documentation Map
 
-Start with [Build the Retrieval Patterns](patterns/README.md). It is the linear
-setup path: Pattern A and its options first, followed by one focused guide each
-for A2, B, C, and Hosted.
-
-The top-level [README](../README.md) is the repository front door. Documents
-below are focused deep dives; they should not redefine pattern names or provide
-competing setup flows.
+[Build the Retrieval Patterns](patterns/README.md) covers Pattern A and its
+options, followed by A2, B, C, and Hosted. The top-level
+[README](../README.md) summarizes the repository. The references below describe
+its implementation, interfaces, and supporting integrations.
 
 ## Build and run
 
@@ -30,6 +27,8 @@ competing setup flows.
 | [AgentArchitecturePaths.md](AgentArchitecturePaths.md) | Managed Foundry Agent Service versus hosted Agent Framework runtime. |
 | [SharePointLogicAppsArchitecture.md](SharePointLogicAppsArchitecture.md) | Alternative SharePoint/Logic Apps ingestion architecture. |
 | [Distribution-M365-Teams.md](Distribution-M365-Teams.md) | Distribution after a retrieval pattern is working. |
+| [Agent365Observability.md](Agent365Observability.md) | Native prompt/hosted telemetry ownership, runtime configuration, privacy, and diagnostic limits. |
+| [DemoRunbook-PWW.md](DemoRunbook-PWW.md) | Gateway demo request paths, APIM policies, CLI behavior, and telemetry boundaries. |
 | [LabCoverage.md](LabCoverage.md) | Crosswalk to the Azure/Copilot-Studio-and-Azure labs. |
 
 ## Benchmarking
