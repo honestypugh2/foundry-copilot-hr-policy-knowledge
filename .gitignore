@@ -205,3 +205,6 @@ extract_urls.py
 raw_urls.txt
 
 deliverables/
+
+# Local governance evidence exports; notebook source remains tracked.
+notebooks/governance/exports/

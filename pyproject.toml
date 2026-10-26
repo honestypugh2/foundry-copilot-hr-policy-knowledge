@@ -53,6 +53,11 @@ eval = [
 load = [
     "locust>=2.43.3",
 ]
+notebooks = [
+    "ipykernel>=6.29",
+    "nbclient>=0.10",
+    "nbformat>=5.10",
+]
 
 [tool.uv]
 prerelease = "allow"

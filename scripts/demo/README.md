@@ -117,6 +117,8 @@ usage charges. Agent 365 preflight performs configuration reads only.
 
 ## Related code documentation
 
+- [AIGovernanceDemo.md](../../docs/AIGovernanceDemo.md): shared evidence modules,
+  four offline-default notebooks, and the `scripts.demo.governance_demo` CLI.
 - [RetrievalPatterns.md](../../docs/RetrievalPatterns.md)
 - [LabCoverage.md](../../docs/LabCoverage.md)
 - [CopilotStudioLookupRouting.md](../../docs/CopilotStudioLookupRouting.md)

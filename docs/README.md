@@ -29,6 +29,7 @@ its implementation, interfaces, and supporting integrations.
 | [Distribution-M365-Teams.md](Distribution-M365-Teams.md) | Distribution after a retrieval pattern is working. |
 | [Agent365Observability.md](Agent365Observability.md) | Native prompt/hosted telemetry ownership, runtime configuration, privacy, and diagnostic limits. |
 | [DemoRunbook-PWW.md](DemoRunbook-PWW.md) | Gateway demo request paths, APIM policies, CLI behavior, and telemetry boundaries. |
+| [AIGovernanceDemo.md](AIGovernanceDemo.md) | Shared governance evidence models, four educational notebooks, scoped reads, and reporting boundaries. |
 | [LabCoverage.md](LabCoverage.md) | Crosswalk to the Azure/Copilot-Studio-and-Azure labs. |
 
 ## Benchmarking

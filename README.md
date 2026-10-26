@@ -58,6 +58,12 @@ configured path works. The current benchmark system under `src/benchmarking/`
 and `experiments/` produces versioned evidence for the planned follow-up article.
 See the [documentation map](docs/README.md) for every focused deep dive.
 
+**AI governance notebooks:** [AI Governance Demo](docs/AIGovernanceDemo.md)
+describes four independently runnable notebooks for inventory, gateway access,
+security-evidence interpretation, and a combined governance overview. They use
+clearly labeled synthetic data by default, with separate opt-ins for scoped
+live reads and paid inference.
+
 ---
 
 ## Decision Tree — Pick a Pattern
