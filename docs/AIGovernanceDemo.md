@@ -11,6 +11,7 @@ not a new enforcement service or an enterprise-wide discovery product.
 | --- | --- |
 | [evidence.py](../src/governance/evidence.py) | Typed assets/observations, synthetic fixtures, coverage, overview tables, exports and snapshot loading |
 | [live.py](../src/governance/live.py) | Scoped Commercial inventory/configuration/log reads and explicitly gated inference |
+| [agent365_walkthrough.py](../src/governance/agent365_walkthrough.py) | Installed package versions, actual host source, and offline native SDK configuration inspection |
 | [governance_demo.py](../scripts/demo/governance_demo.py) | Offline/live/snapshot CLI and local exports |
 | [test_governance_evidence.py](../tests/test_governance_evidence.py) | Model constraints, provenance, scope checks, invocation safety, exports and notebook execution |
 
@@ -31,13 +32,37 @@ own directory. Committed notebooks contain no outputs.
 | --- | --- |
 | [01_ai_estate.ipynb](../notebooks/governance/01_ai_estate.ipynb) | Asset inventory, ownership, cloud/source provenance, coverage, optional live reads |
 | [02_govern_model_access.ipynb](../notebooks/governance/02_govern_model_access.ipynb) | Two gateway consumers, subscription counters, status/usage interpretation, opt-in model calls |
-| [03_follow_the_evidence.ipynb](../notebooks/governance/03_follow_the_evidence.ipynb) | Filter outcomes versus traces/alerts/risks; opt-in existing prompt and hosted endpoint calls |
+| [03_follow_the_evidence.ipynb](../notebooks/governance/03_follow_the_evidence.ipynb) | Native Agent 365 telemetry SDK walkthrough, filter outcomes versus traces/alerts/risks, and opt-in existing agent calls |
 | [04_governance_overview.ipynb](../notebooks/governance/04_governance_overview.ipynb) | Combined overview, explicit gaps, snapshot loading and optional local export |
 
 `LIVE_READS` enables configuration reads only. `ALLOW_PAID_INFERENCE` enables
 model requests. `ALLOW_JAILBREAK_TEST` separately selects the synthetic
 prompt-injection input. No notebook grants roles, configures security plans,
 marks an identity compromised, or deploys infrastructure.
+
+### Native Agent 365 telemetry walkthrough
+
+Notebook 3 displays installed hosting/distro versions and extracts the real
+`ResponsesHostServer` assignment without importing or starting the agent.
+The observability implementation uses Microsoft OpenTelemetry, which replaces
+the earlier Agent 365 Observability SDK, not the entire Agent 365 SDK.
+
+`inspect_native_wiring` calls the installed hosting SDK's public
+`configure_observability` function with the Microsoft OpenTelemetry initializer
+mocked. It compares disabled/enabled simulated hosted feature flags and displays
+only selected configuration booleans. No identity IDs are fabricated, tokens
+requested, providers installed, or exporters executed. An inert connection-string
+placeholder exercises the Azure Monitor configuration branch; no real connection
+string is displayed. The helper restores environment flags and intercepts logger
+mutations. Unexpected SDK wiring changes fail explicitly.
+
+This example is isolated educational inspection, not production initialization
+code. The hosted runtime continues to own its provider and platform identity
+context; no second provider belongs in the notebook or hosted entry point.
+The walkthrough also explains query-log privacy, the existing read-only
+preflight interface, and why configuration does not prove ingestion or security
+risk. [test_agent365_walkthrough.py](../tests/test_agent365_walkthrough.py) checks
+offline behavior, privacy, state restoration, and evidence boundaries.
 
 ## Evidence contract
 
