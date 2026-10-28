@@ -1,0 +1,68 @@
+/// Nine governance tiles at one row per metric. All sources/clouds are simulated target coverage, not live connectors.
+table Tiles
+	lineageTag: b78a8bcb-f4db-41e5-8fcf-2629764fbd79
+
+	/// Number of modeled tiles in current filter context.
+	measure 'Tile Count' = COUNTROWS('Tiles')
+		formatString: 0
+		lineageTag: 2369d0d4-0ee7-4f61-84ac-b51d72c7f43d
+
+	column 'Tile Key'
+		dataType: int64
+		isHidden
+		lineageTag: 2f251372-1f81-4129-9a8c-71df43fd47c5
+		summarizeBy: none
+		sourceColumn: Tile Key
+
+	/// Readable metric label; use unit and evidence status before interpreting.
+	column 'Tile Name'
+		dataType: string
+		lineageTag: 1a1012c0-e8ef-48c1-99c5-db262106ff95
+		sourceColumn: Tile Name
+
+	/// Crawl uses existing visibility sources; Walk adds runtime, cost and drift.
+	column Phase
+		dataType: string
+		lineageTag: 8f601eca-c4dd-4143-807d-c7449adb0b97
+		sourceColumn: Phase
+
+	/// Intended source; connector is simulated, not a live feed.
+	column 'Source System'
+		dataType: string
+		lineageTag: 0a112df3-4131-4284-b866-0a3d0d598d7a
+		sourceColumn: Source System
+
+	/// Simulated target architecture; report itself is in Azure Commercial.
+	column 'Target Cloud'
+		dataType: string
+		lineageTag: 9d96c271-110a-4dd1-971f-3c7492f6eb93
+		sourceColumn: Target Cloud
+
+	/// Governance layer aligned to the presentation.
+	column Layer
+		dataType: string
+		lineageTag: 8d16c151-59b4-4a24-8b3e-9eec1296dc93
+		sourceColumn: Layer
+
+	/// Unit for this tile; values across different tiles must not be added.
+	column Unit
+		dataType: string
+		lineageTag: 525b3c82-620b-4cf3-9cf0-86236da185a8
+		sourceColumn: Unit
+
+	/// Public commercial console entry point; not an authenticated GCC/Government deep link.
+	column 'Source URL'
+		dataType: string
+		lineageTag: 62f75683-7a56-447e-bcdd-5c9c647aba63
+		dataCategory: WebUrl
+		sourceColumn: Source URL
+
+	/// All metric data in this model is Synthetic.
+	column 'Evidence Kind'
+		dataType: string
+		lineageTag: 8c9af1d7-8b73-4cbc-ab46-0a67edcd1f7b
+		sourceColumn: Evidence Kind
+
+	partition Tiles = m
+		mode: import
+		source = let Source = #table(type table [#"Tile Key"=Int64.Type, #"Tile Name"=text, Phase=text, #"Source System"=text, #"Target Cloud"=text, Layer=text, Unit=text, #"Source URL"=text, #"Evidence Kind"=text], {{1,"AI tools missing tier / owner / approver","Crawl","SharePoint intake list","Microsoft 365 GCC (simulated)","0 - Decide & be accountable","tools","https://www.microsoft365.com/","Synthetic"},{2,"Agents in the registry","Crawl","Agent 365 registry + Foundry definitions","Both clouds (simulated)","1 - Know what exists","agents","https://admin.microsoft.com/","Synthetic"},{3,"Discovered / blocked AI apps","Crawl","Defender for Cloud Apps","Microsoft 365 GCC (simulated)","5 - Detect & respond","apps","https://security.microsoft.com/","Synthetic"},{4,"Sensitive-data events with AI","Crawl","Purview Audit / DSPM for AI","Microsoft 365 GCC (simulated)","2 - Protect the data","events","https://purview.microsoft.com/","Synthetic"},{5,"AI-related incidents","Crawl","Defender XDR + Sentinel","Both clouds (simulated)","5 - Detect & respond","incidents","https://security.microsoft.com/","Synthetic"},{6,"Copilot & agent usage","Crawl","Microsoft 365 usage + Copilot Studio analytics","Microsoft 365 GCC (simulated)","4 - See behavior","sessions","https://copilotstudio.microsoft.com/","Synthetic"},{7,"Guardrail blocks & traces","Walk","Foundry + APIM + Log Analytics","Azure Government (simulated)","3 - Govern access / 4 - See behavior","blocks","https://ai.azure.com/","Synthetic"},{8,"Cost by agent / team","Walk","Azure Cost Management","Azure Government (simulated)","6 - Cost","USD","https://portal.azure.com/#view/Microsoft_Azure_CostManagement/Menu/~/overview","Synthetic"},{9,"Model drift","Walk","Azure ML monitoring / custom checks","Azure Government (simulated)","4 - See behavior","models flagged","https://ml.azure.com/","Synthetic"}}) in Source

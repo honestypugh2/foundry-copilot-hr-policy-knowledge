@@ -1,0 +1,15 @@
+/// SYNTHETIC AI governance landing-page demonstration. GCC/Government labels are simulated target architecture; no live security feeds.
+model pwwdemo-ai-governance
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	discourageImplicitMeasures
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation PBI_ProTooling = ["MCP-PBIModeling"]
+
+ref table Tiles
+ref table Calendar
+ref table Observations

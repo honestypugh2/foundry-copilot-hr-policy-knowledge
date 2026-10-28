@@ -1,0 +1,4 @@
+.local/
+project/**/.pbi/
+project/**/*.pbix
+project/**/*.abf

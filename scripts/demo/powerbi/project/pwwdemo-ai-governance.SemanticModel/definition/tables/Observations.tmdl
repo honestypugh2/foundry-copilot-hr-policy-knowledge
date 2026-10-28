@@ -1,0 +1,88 @@
+/// One synthetic observation per tile per day. Mixed metric units; no cross-tile aggregate is meaningful.
+table Observations
+	lineageTag: 1b55f676-8b77-48e7-b393-7e9b3de6e623
+
+	/// Latest synthetic daily value within the selected period for one tile only; blank for mixed units.
+	measure 'Latest Value' = VAR _date = MAX('Calendar'[Date]) RETURN IF(HASONEVALUE('Tiles'[Tile Key]), CALCULATE(SUM('Observations'[Value]), KEEPFILTERS('Calendar'[Date] = _date)))
+		formatString: #,##0.##
+		displayFolder: Evidence
+		lineageTag: 7060b14f-4b09-4397-b8e4-5d215d175b24
+
+	/// Synthetic tools missing a tier, owner or approver on the latest selected day.
+	measure 'Missing Owners' = CALCULATE([Latest Value], 'Tiles'[Tile Key] = 1)
+		formatString: #,##0
+		displayFolder: Crawl
+		lineageTag: 4b8d200e-0b9b-45a0-b9df-3c71f4d61ed4
+
+	/// Illustrative registry count, not live Agent 365 inventory.
+	measure 'Registered Agents' = CALCULATE([Latest Value], 'Tiles'[Tile Key] = 2)
+		formatString: #,##0
+		displayFolder: Crawl
+		lineageTag: 49c19927-a7b4-4d17-87b2-a635f57ddba9
+
+	/// Synthetic discovered/blocked AI application count.
+	measure 'Blocked Apps' = CALCULATE([Latest Value], 'Tiles'[Tile Key] = 3)
+		formatString: #,##0
+		displayFolder: Crawl
+		lineageTag: 371f7efb-d5f2-40b1-a758-3efeb833ec9f
+
+	/// Synthetic sensitive-data AI events; no Purview connector.
+	measure 'Sensitive Events' = CALCULATE([Latest Value], 'Tiles'[Tile Key] = 4)
+		formatString: #,##0
+		displayFolder: Crawl
+		lineageTag: af647d92-657a-49cb-afe0-9d814c7e1abf
+
+	/// Synthetic source incidents; not verified agent-attributed risks.
+	measure 'Source Incidents' = CALCULATE([Latest Value], 'Tiles'[Tile Key] = 5)
+		formatString: #,##0
+		displayFolder: Crawl
+		lineageTag: 0b6cfccd-1adb-4b26-8436-2504a56c8136
+
+	/// Synthetic Copilot and agent sessions, not Microsoft 365 usage telemetry.
+	measure 'Usage Sessions' = CALCULATE([Latest Value], 'Tiles'[Tile Key] = 6)
+		formatString: #,##0
+		displayFolder: Crawl
+		lineageTag: 9763025e-8a11-43c5-8ab4-d2f0315fdd92
+
+	/// Synthetic runtime guardrail blocks; not proof of Defender alerts.
+	measure 'Guardrail Blocks' = CALCULATE([Latest Value], 'Tiles'[Tile Key] = 7)
+		formatString: #,##0
+		displayFolder: Walk
+		lineageTag: cb2f4eae-f3a1-468b-a6dc-aafb035fe63c
+
+	/// Illustrative daily USD, not Azure billing or token-derived spend.
+	measure 'Illustrative Cost' = CALCULATE([Latest Value], 'Tiles'[Tile Key] = 8)
+		formatString: $#,##0.00
+		displayFolder: Walk
+		lineageTag: 2052060c-c504-406b-8134-c85381ecd569
+
+	/// Synthetic number of models with drift flags; no Azure ML integration.
+	measure 'Drift Flags' = CALCULATE([Latest Value], 'Tiles'[Tile Key] = 9)
+		formatString: #,##0
+		displayFolder: Walk
+		lineageTag: c56b7989-9b51-4dd3-90c7-6ad28920c75f
+
+	column 'Tile Key'
+		dataType: int64
+		isHidden
+		lineageTag: 38f50f48-ca5d-4ffb-afe9-dcbfaa992e37
+		summarizeBy: none
+		sourceColumn: Tile Key
+
+	column Date
+		dataType: dateTime
+		isHidden
+		formatString: yyyy-MM-dd
+		lineageTag: f440b7dd-6c2f-47f7-a5a5-d0f2faeda6a3
+		sourceColumn: Date
+
+	/// Synthetic metric quantity; only meaningful within one tile and its unit.
+	column Value
+		dataType: decimal
+		isHidden
+		lineageTag: 2f9f4339-5d9c-412e-9d90-1073c70c3016
+		sourceColumn: Value
+
+	partition Observations = m
+		mode: import
+		source = let Keys = {1..9}, Days = {0..6}, Latest = {7,12,5,9,3,2480,18,146.25,2}, Rows = List.Combine(List.Transform(Keys,(k)=>List.Transform(Days,(d)=>[ #"Tile Key"=k, Date=Date.AddDays(#date(2026,10,22),d), Value=if k=8 then Number.Round(Latest{k-1}*(0.7+0.05*d),2) else Number.RoundDown(Latest{k-1}*(0.7+0.05*d)) ]))), Source = Table.FromRecords(Rows), Typed = Table.TransformColumnTypes(Source,{{"Tile Key",Int64.Type},{"Date",type date},{"Value",Currency.Type}}) in Typed

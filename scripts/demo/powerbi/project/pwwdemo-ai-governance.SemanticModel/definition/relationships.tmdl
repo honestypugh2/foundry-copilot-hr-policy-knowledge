@@ -1,0 +1,7 @@
+relationship 'Observations to Tiles'
+	fromColumn: Observations.'Tile Key'
+	toColumn: Tiles.'Tile Key'
+
+relationship 'Observations to Calendar'
+	fromColumn: Observations.Date
+	toColumn: Calendar.Date
